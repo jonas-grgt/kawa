@@ -1,0 +1,70 @@
+# SASL-enabled Kafka + kawa gateway.
+#
+# Usage:
+#   docker compose -f docker-compose.sasl.yml up --build
+#
+# Clients connect to the gateway on port 9092 (SASL_PLAINTEXT, user: john / pw: doe).
+# Host tools can reach the broker directly on port 19092 (SASL_PLAINTEXT, user: kawa / pw: kawa-secret).
+
+services:
+  kafka:
+    image: apache/kafka:4.3.1
+    container_name: kawa-kafka-sasl
+    ports:
+      - "19092:19092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: SASL_PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093,EXTERNAL_SASL://kafka:19092
+      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://kafka:9092,EXTERNAL_SASL://localhost:19092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,SASL_PLAINTEXT:SASL_PLAINTEXT,EXTERNAL_SASL:SASL_PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: SASL_PLAINTEXT
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+      KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_jaas.conf"
+    volumes:
+      - ./docker/kafka_jaas.conf:/etc/kafka/kafka_jaas.conf:ro
+
+  kafka-init:
+    image: apache/kafka:4.3.1
+    container_name: kawa-kafka-init-sasl
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        cat > /tmp/admin.properties << 'EOF'
+        security.protocol=SASL_PLAINTEXT
+        sasl.mechanism=PLAIN
+        sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="kawa" password="kawa-secret";
+        EOF
+        until /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
+          --command-config /tmp/admin.properties --list > /dev/null 2>&1; do
+          echo "waiting for kafka...";
+          sleep 1;
+        done
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
+          --command-config /tmp/admin.properties \
+          --create --if-not-exists --topic orders-v2 --partitions 1 --replication-factor 1
+        echo "orders-v2 ready"
+    restart: "no"
+
+  gateway:
+    build: .
+    container_name: kawa-gateway-sasl
+    depends_on:
+      kafka:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "9092:9092"
+      - "8080:8080"
+    volumes:
+      - ./docker/gateway-sasl.yaml:/etc/kawa/config.yaml:ro

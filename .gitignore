@@ -1,0 +1,51 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+org.eclipse.jdt.core.prefs
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+### maven ###
+.flattened-pom.xml
+
+### shade plugin artifact
+/gateway-server/dependency-reduced-pom.xml
+
+### docusaurus ###
+docs/node_modules/
+docs/build/
+docs/.docusaurus/
+docs/.cache-loader/
+
+### opencode ###
+maven-20*

@@ -1,0 +1,67 @@
+name: kawa-gateway
+
+listeners:
+  - host: 0.0.0.0
+    port: 9092
+
+clusters:
+  default:
+    name: default
+    bootstrapServers:
+      - kafka:9092
+
+auth:
+  mechanisms:
+    - PLAIN
+  users:
+    john:
+      password: doe
+  brokerAuth:
+    mechanism: PLAIN
+    username: kawa
+    password: kawa-secret
+
+rbac:
+  roles:
+    allow-all:
+      acls:
+        - resource:
+            type: TOPIC
+            pattern: ""
+            patternType: PREFIXED
+          operation: ALL
+        - resource:
+            type: GROUP
+            pattern: ""
+            patternType: PREFIXED
+          operation: ALL
+        - resource:
+            type: CLUSTER
+          operation: ALL
+  groups:
+    everyone:
+      members: [john]
+      roles: [allow-all]
+
+virtualTopics:
+  orders.eu:
+    exposePhysicalTopic: true
+    topic: orders-v2
+    filter:
+      type: headerEquals
+      header: region
+      value: eu
+
+advertised:
+  nodeId: 1
+  host: localhost
+  port: 9092
+
+admin:
+  enabled: true
+  host: 0.0.0.0
+  port: 8080
+
+metrics:
+  enabled: false
+  prometheusPort: 9404
