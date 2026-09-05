@@ -57,6 +57,15 @@ public final class MetadataCache {
         return topic == null ? 0 : topic.partitions().size();
     }
 
+    /// Replication factor (replica count per partition) for `physicalTopic`, or `0` if unknown.
+    public int replicationFactor(String physicalTopic) {
+        TopicMetadata topic = topics.get(physicalTopic);
+        if (topic == null || topic.partitions().isEmpty()) {
+            return 0;
+        }
+        return topic.partitions().getFirst().replicas().size();
+    }
+
     public Collection<BrokerNode> brokers() {
         return brokers.values();
     }

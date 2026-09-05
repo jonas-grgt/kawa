@@ -53,7 +53,16 @@ class AdminGetTopicsIT extends GatewayTestSupport {
 					// then
 					assertThat(response.statusCode()).isEqualTo(200);
 					JSONAssert.assertEquals("""
-							[{"logicalName":"orders","physicalName":"orders-v2","partitionCount":1,"filter":null,"exposePhysicalTopic":false}]
+							[
+								{
+									"logicalName": "orders",
+									"physicalName": "orders-v2",
+									"partitionCount": 1,
+									"replicationFactor": 1,
+									"filter": null,
+									"exposePhysicalTopic": false
+								  }
+							]
 							""", response.body(), JSONCompareMode.LENIENT);
 				});
 	}

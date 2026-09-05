@@ -32,6 +32,7 @@ public final class GetTopicsHandler implements Router.Handler<TopicView> {
                     virtualized ? virtualTopics.toLogical(tm.name()) : null,
                     tm.name(),
                     cache.partitionCount(tm.name()),
+                    cache.replicationFactor(tm.name()),
                     virtualized ? describeFilter(virtualTopics.filterFor(tm.name()).orElse(null)) : null,
                     virtualized && virtualTopics.exposesPhysicalTopic(tm.name())));
         }

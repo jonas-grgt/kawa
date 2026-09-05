@@ -26,9 +26,9 @@ class GetTopicsHandlerTest {
                 "customers", new VirtualTopicConfig("crm.customers",
                         new HeaderEqualsFilterConfig("tenant", "acme"), true)));
         MetadataCache cache = cacheWith(
-                topic("orders-v2", 3),
-                topic("crm.customers", 2),
-                topic("raw-events", 1));
+                topic("orders-v2", 3, 2),
+                topic("crm.customers", 2, 3),
+                topic("raw-events", 1, 1));
         var handler = new GetTopicsHandler(virtualTopics, cache);
 
         // when
@@ -36,9 +36,9 @@ class GetTopicsHandlerTest {
 
         // then
         assertThat(topics).containsExactlyInAnyOrder(
-                new TopicView("orders", "orders-v2", 3, null, false),
-                new TopicView("customers", "crm.customers", 2, "headerEquals(tenant=acme)", true),
-                new TopicView(null, "raw-events", 1, null, false));
+                new TopicView("orders", "orders-v2", 3, 2, null, false),
+                new TopicView("customers", "crm.customers", 2, 3, "headerEquals(tenant=acme)", true),
+                new TopicView(null, "raw-events", 1, 1, null, false));
     }
 
     @Test
@@ -59,7 +59,7 @@ class GetTopicsHandlerTest {
         var virtualTopics = new VirtualTopicManager(Map.of(
                 "audit", new VirtualTopicConfig("audit-v1",
                         new CelFilterConfig("headers.tenant == \"acme\""), false)));
-        MetadataCache cache = cacheWith(topic("audit-v1", 1));
+        MetadataCache cache = cacheWith(topic("audit-v1", 1, 1));
         var handler = new GetTopicsHandler(virtualTopics, cache);
 
         // when
@@ -83,10 +83,10 @@ class GetTopicsHandlerTest {
         return cache;
     }
 
-    private static TopicMetadata topic(String name, int partitions) {
+    private static TopicMetadata topic(String name, int partitions, int replicas) {
         var partitionList = new java.util.ArrayList<PartitionMetadata>();
         for (int i = 0; i < partitions; i++) {
-            partitionList.add(PartitionMetadata.of(i, 1, List.of(1), List.of(1), List.of()));
+            partitionList.add(PartitionMetadata.of(i, 1, java.util.Collections.nCopies(replicas, 1), List.of(1), List.of()));
         }
         return TopicMetadata.of(name, partitionList);
     }
