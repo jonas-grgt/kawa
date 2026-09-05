@@ -84,10 +84,16 @@ class BrokerAuthIT {
             .withEnv("KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL", "PLAIN")
             .withEnv("KAFKA_INTER_BROKER_LISTENER_NAME", "SASL_PLAINTEXT")
             .withEnv("CLUSTER_ID", "MkU3OEVBNTcwNTJENDM2Qk")
-            .withCreateContainerCmdModifier(cmd -> cmd.getHostConfig().withPortBindings(
-                    new PortBinding(
-                            Ports.Binding.bindPort(HOST_SASL_PORT),
-                            ExposedPort.tcp(SASL_PORT))))
+            .withCreateContainerCmdModifier(cmd -> {
+                // Docker publishes a host port only for a container port that is *exposed*; a
+                // PortBindings entry for an unexposed port is dropped silently. The cp-kafka image
+                // exposes 9092/9093, not this SASL listener's port, so it has to be added here or
+                // the binding below never takes effect and the host can't reach the broker.
+                cmd.withExposedPorts(ExposedPort.tcp(SASL_PORT));
+                cmd.getHostConfig().withPortBindings(new PortBinding(
+                        Ports.Binding.bindPort(HOST_SASL_PORT),
+                        ExposedPort.tcp(SASL_PORT)));
+            })
             .withCommand("bash", "-c",
                     "mkdir -p /etc/kafka/secrets && "
                             + "cat > /etc/kafka/secrets/kafka_server_jaas.conf << 'EOF'\n"
