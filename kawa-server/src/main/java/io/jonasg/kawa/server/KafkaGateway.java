@@ -167,6 +167,11 @@ public final class KafkaGateway implements Gateway {
         return ((InetSocketAddress) serverChannel.localAddress()).getPort();
     }
 
+    /// The bound port of the admin HTTP server, or `-1` when the admin surface is disabled.
+    public int adminBoundPort() {
+        return adminServer == null ? -1 : adminServer.boundPort();
+    }
+
     private static AdvertisedListener resolveAdvertised(
             AdvertisedListener advertised,
             int boundPort

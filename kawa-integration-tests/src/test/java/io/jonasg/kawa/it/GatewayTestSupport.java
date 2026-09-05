@@ -1,6 +1,7 @@
 package io.jonasg.kawa.it;
 
 import io.jonasg.kawa.config.AdvertisedListener;
+import io.jonasg.kawa.config.AdminConfig;
 import io.jonasg.kawa.config.AclConfig;
 import io.jonasg.kawa.config.AuthConfig;
 import io.jonasg.kawa.config.ClusterConfig;
@@ -197,6 +198,13 @@ abstract class GatewayTestSupport {
 				Map.of("it-defaults", new GroupConfig(List.of(DEFAULT_PRINCIPAL), List.of("allow-all"))));
 	}
 
+	/// The gateway's admin HTTP server configuration. Defaults to disabled; subclasses that
+	/// exercise the admin surface override this with `enabled=true` (and usually an ephemeral
+	/// port).
+	protected AdminConfig adminConfig() {
+		return new AdminConfig(false, "127.0.0.1", 0);
+	}
+
 	private GatewayConfig buildConfig() {
 		Map<String, VirtualTopicConfig> typedVirtualTopics = new java.util.HashMap<>();
 		virtualTopics().forEach((logical, physical) ->
@@ -211,6 +219,6 @@ abstract class GatewayTestSupport {
 				new MetricsConfig(false, 0),
 				authConfig(),
 				rbacConfig(),
-				null);
+				adminConfig());
 	}
 }
