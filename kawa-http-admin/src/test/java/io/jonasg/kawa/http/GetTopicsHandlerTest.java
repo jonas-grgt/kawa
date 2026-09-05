@@ -16,7 +16,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class TopicsHandlerTest {
+class GetTopicsHandlerTest {
 
     @Test
     void returnsJoinedLogicalAndPhysicalTopics() {
@@ -29,7 +29,7 @@ class TopicsHandlerTest {
                 topic("orders-v2", 3),
                 topic("crm.customers", 2),
                 topic("raw-events", 1));
-        var handler = new TopicsHandler(virtualTopics, cache);
+        var handler = new GetTopicsHandler(virtualTopics, cache);
 
         // when
         List<TopicView> topics = handler.handle();
@@ -44,7 +44,7 @@ class TopicsHandlerTest {
     @Test
     void returnsEmptyListWhenNoTopics() {
         // given
-        var handler = new TopicsHandler(new VirtualTopicManager(Map.of()), new MetadataCache());
+        var handler = new GetTopicsHandler(new VirtualTopicManager(Map.of()), new MetadataCache());
 
         // when
         List<TopicView> topics = handler.handle();
@@ -60,7 +60,7 @@ class TopicsHandlerTest {
                 "audit", new VirtualTopicConfig("audit-v1",
                         new CelFilterConfig("headers.tenant == \"acme\""), false)));
         MetadataCache cache = cacheWith(topic("audit-v1", 1));
-        var handler = new TopicsHandler(virtualTopics, cache);
+        var handler = new GetTopicsHandler(virtualTopics, cache);
 
         // when
         List<TopicView> topics = handler.handle();

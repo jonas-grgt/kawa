@@ -1,6 +1,7 @@
 package io.jonasg.kawa.core.cluster;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -60,11 +61,7 @@ public final class MetadataCache {
         return brokers.values();
     }
 
-    public Collection<String> topics() {
-        return topics.keySet();
-    }
-
-    public String clusterId() {
-        return clusterId;
+    public Collection<TopicMetadata> topics() {
+        return topics.values();
     }
 }

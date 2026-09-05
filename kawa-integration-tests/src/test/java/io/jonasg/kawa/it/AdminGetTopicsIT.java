@@ -17,7 +17,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AdminTopicsIT extends GatewayTestSupport {
+class AdminGetTopicsIT extends GatewayTestSupport {
 
 	@Override
 	protected AdminConfig adminConfig() {

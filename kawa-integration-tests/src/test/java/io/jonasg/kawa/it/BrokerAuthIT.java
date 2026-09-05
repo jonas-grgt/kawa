@@ -25,6 +25,8 @@ import org.apache.kafka.common.acl.AclOperation;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.resource.PatternType;
 import org.apache.kafka.common.resource.ResourceType;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,10 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -56,9 +62,11 @@ class BrokerAuthIT {
     static final String BROKER_PASSWORD = "gateway-secret";
     static final int SASL_PORT = 19093;
 
-    /// Port 19093 is bound to a fixed host port so that the broker's advertised
-    /// listener (`localhost:19093`) is reachable from the host where the
-    /// gateway runs.
+    /// The broker's SASL listener is bound to a dynamic host port (instead of a
+    /// fixed one) so the test does not collide with other processes on shared CI
+    /// runners. The advertised listener (`localhost:<hostPort>`) is what the
+    /// gateway connects to.
+    static final int HOST_SASL_PORT = freePort();
     static GenericContainer<?> kafka = new GenericContainer<>("confluentinc/cp-kafka:7.6.0")
             .withEnv("KAFKA_NODE_ID", "1")
             .withEnv("KAFKA_PROCESS_ROLES", "broker,controller")
@@ -69,18 +77,17 @@ class BrokerAuthIT {
             .withEnv("KAFKA_LISTENERS",
                     "CONTROLLER://0.0.0.0:29093,SASL_PLAINTEXT://0.0.0.0:" + SASL_PORT)
             .withEnv("KAFKA_ADVERTISED_LISTENERS",
-                    "SASL_PLAINTEXT://localhost:" + SASL_PORT)
+                    "SASL_PLAINTEXT://localhost:" + HOST_SASL_PORT)
             .withEnv("KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR", "1")
             .withEnv("KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS", "0")
             .withEnv("KAFKA_SASL_ENABLED_MECHANISMS", "PLAIN")
             .withEnv("KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL", "PLAIN")
             .withEnv("KAFKA_INTER_BROKER_LISTENER_NAME", "SASL_PLAINTEXT")
             .withEnv("CLUSTER_ID", "MkU3OEVBNTcwNTJENDM2Qk")
-            .withCreateContainerCmdModifier(cmd -> cmd.withHostConfig(
-                    HostConfig.newHostConfig()
-                            .withPortBindings(new PortBinding(
-                                    Ports.Binding.bindPort(SASL_PORT),
-                                    ExposedPort.tcp(SASL_PORT)))))
+            .withCreateContainerCmdModifier(cmd -> cmd.getHostConfig().withPortBindings(
+                    new PortBinding(
+                            Ports.Binding.bindPort(HOST_SASL_PORT),
+                            ExposedPort.tcp(SASL_PORT))))
             .withCommand("bash", "-c",
                     "mkdir -p /etc/kafka/secrets && "
                             + "cat > /etc/kafka/secrets/kafka_server_jaas.conf << 'EOF'\n"
@@ -93,7 +100,8 @@ class BrokerAuthIT {
                             + "EOF\n"
                             + "export KAFKA_OPTS='-Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf' && "
                             + "/etc/confluent/docker/run")
-            .waitingFor(Wait.forLogMessage(".*Kafka Server started.*", 1));
+            .waitingFor(Wait.forLogMessage(".*Kafka Server started.*", 1))
+            .withStartupTimeout(Duration.ofMinutes(2));
 
     private static KafkaGateway gateway;
     private static String gatewayBootstrap;
@@ -101,7 +109,8 @@ class BrokerAuthIT {
     @BeforeAll
     void setUp() throws Exception {
         kafka.start();
-        String brokerBootstrap = "localhost:" + SASL_PORT;
+        awaitSaslListener(kafka);
+        String brokerBootstrap = "localhost:" + HOST_SASL_PORT;
 
         var auth = new AuthConfig(
                 Set.of("PLAIN"),
@@ -128,7 +137,11 @@ class BrokerAuthIT {
                 null);
 
         gateway = new KafkaGateway(config);
-        gateway.start();
+        try {
+            gateway.start();
+        } catch (Exception e) {
+            throw new IllegalStateException("Gateway failed to start; broker logs:\n" + kafka.getLogs(), e);
+        }
         gatewayBootstrap = "localhost:" + gateway.boundPort();
     }
 
@@ -139,6 +152,48 @@ class BrokerAuthIT {
         }
         if (kafka != null) {
             kafka.stop();
+        }
+    }
+
+    /// Waits until the broker's SASL listener accepts TCP connections on the host
+    /// port. The "Kafka Server started" log line can appear slightly before the
+    /// listener is actually reachable, and on slow CI runners that gap can be
+    /// significant.
+    private static void awaitSaslListener(GenericContainer<?> container) {
+        try {
+            Awaitility.await("SASL listener on localhost:" + HOST_SASL_PORT)
+                    .atMost(Duration.ofSeconds(60))
+                    .pollInterval(Duration.ofMillis(500))
+                    .until(() -> canConnect(HOST_SASL_PORT));
+        } catch (ConditionTimeoutException e) {
+            throw new IllegalStateException(
+                    "Broker SASL listener never became reachable on localhost:" + HOST_SASL_PORT
+                            + "; container logs:\n" + container.getLogs(), e);
+        }
+    }
+
+    private static boolean canConnect(int port) {
+        try {
+            for (var address : InetAddress.getAllByName("localhost")) {
+                try (var socket = new Socket(address, port)) {
+                    return true;
+                } catch (IOException ignored) {
+                    // try the next resolved address
+                }
+            }
+            return false;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /// Allocates a free ephemeral port and releases it again; the container binds it
+    /// shortly after, so the race window is negligible.
+    private static int freePort() {
+        try (var socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            throw new IllegalStateException("Could not allocate a free port for the SASL listener", e);
         }
     }
 

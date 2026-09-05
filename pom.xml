@@ -28,7 +28,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <maven.compiler.release>26</maven.compiler.release>
 
-    <netty.version>4.1.115.Final</netty.version>
+    <netty.version>4.1.137.Final</netty.version>
     <kafka.version>4.3.0</kafka.version>
     <micrometer.version>1.13.6</micrometer.version>
     <jackson.version>3.2.1</jackson.version>

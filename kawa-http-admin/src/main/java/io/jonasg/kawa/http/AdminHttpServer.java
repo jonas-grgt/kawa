@@ -52,7 +52,7 @@ public final class AdminHttpServer {
                         ch.pipeline().addLast("httpCodec", new HttpServerCodec());
                         ch.pipeline().addLast("httpAggregator", new HttpObjectAggregator(65536));
                         var router = new Router()
-                                .get("/topics", new TopicsHandler(virtualTopics, cache));
+                                .get("/topics", new GetTopicsHandler(virtualTopics, cache));
                         ch.pipeline().addLast("httpRouter", new HttpRouterHandler(router));
                     }
                 });
