@@ -88,7 +88,7 @@ public final class MetadataClient {
         this.brokerAuthConfig = brokerAuthConfig;
     }
 
-    public void start() throws InterruptedException {
+    public void start() throws Exception {
         var bootstrap = new Bootstrap();
         bootstrap.group(group)
                 .channel(NioSocketChannel.class)
@@ -101,7 +101,7 @@ public final class MetadataClient {
                         ch.pipeline().addLast("handler", new MetadataResponseHandler(MetadataClient.this));
                     }
                 });
-        channel = bootstrap.connect(host, port).sync().channel();
+        channel = connectWithRetry(bootstrap);
         if (brokerAuthConfig != null) {
             var authenticator = new BrokerSaslAuthenticator(brokerAuthConfig, codec);
             if (!authenticator.authenticate(channel)) {
@@ -124,6 +124,27 @@ public final class MetadataClient {
 
         if (!initialMetadataLatch.await(INITIAL_METADATA_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             throw new IllegalStateException("Timed out waiting for initial metadata from " + host + ":" + port);
+        }
+    }
+
+    /// Connects to the bootstrap broker, retrying within the initial-metadata timeout window.
+    /// A broker that is still starting (listener not yet bound) refuses connections; the
+    /// gateway should tolerate that instead of failing startup on the first refusal.
+    Channel connectWithRetry(Bootstrap bootstrap) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(INITIAL_METADATA_TIMEOUT_SECONDS);
+        while (true) {
+            try {
+                return bootstrap.connect(host, port).sync().channel();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw e;
+            } catch (Exception e) {
+                if (System.nanoTime() >= deadline) {
+                    throw e;
+                }
+                log.warn("Metadata connect to {}:{} failed ({}); retrying", host, port, e.getMessage());
+                Thread.sleep(500);
+            }
         }
     }
 
