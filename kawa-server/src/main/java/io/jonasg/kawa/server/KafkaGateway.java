@@ -124,9 +124,11 @@ public final class KafkaGateway implements Gateway {
                 codec, apiVersionsBuilder, pipeline,
                 new LeaderRouter(cache), brokerPool, metadataClient, metrics, fetchSessions,
                 saslAuthenticator);
-        holder.set(dispatcher);
-
         metadataClient.start();
+        // The dispatcher is only installed after the initial metadata fetch, so the Kafka
+        // listener (bound earlier for advertised-port resolution) closes every connection
+        // until the gateway can actually route.
+        holder.set(dispatcher);
         if (config.admin().enabled()) {
             adminServer = new AdminHttpServer(config.admin(), virtualTopics, cache);
             adminServer.start();

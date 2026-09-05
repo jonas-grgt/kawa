@@ -17,10 +17,6 @@ public final class ResponseHeaderCodec {
         return correlationId;
     }
 
-    public int headerSize(short headerVersion) {
-        return headerVersion >= 1 ? 4 + Wire.tagBufferSize() : 4;
-    }
-
     public void encode(
             ByteBuf out,
             short headerVersion,

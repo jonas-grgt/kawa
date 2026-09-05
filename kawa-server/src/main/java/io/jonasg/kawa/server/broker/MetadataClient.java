@@ -36,6 +36,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -48,6 +50,7 @@ public final class MetadataClient {
     private static final short API_VERSIONS = 18;
     private static final short METADATA = 3;
     private static final long REFRESH_SECONDS = 10;
+    private static final long INITIAL_METADATA_TIMEOUT_SECONDS = 30;
 
     private final String host;
     private final int port;
@@ -61,6 +64,7 @@ public final class MetadataClient {
     private final ResponseHeaderCodec responseHeaderCodec = new ResponseHeaderCodec();
     private final Map<Integer, Consumer<ByteBuf>> pending = new ConcurrentHashMap<>();
     private final AtomicInteger correlationIds = new AtomicInteger();
+    private final CountDownLatch initialMetadataLatch = new CountDownLatch(1);
 
     private volatile Channel channel;
     private volatile boolean running;
@@ -117,6 +121,10 @@ public final class MetadataClient {
         });
         running = true;
         refresh();
+
+        if (!initialMetadataLatch.await(INITIAL_METADATA_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Timed out waiting for initial metadata from " + host + ":" + port);
+        }
     }
 
     public Map<Short, VersionRange> brokerRanges() {
@@ -157,7 +165,7 @@ public final class MetadataClient {
             int correlationId,
             Object body
     ) {
-        KafkaHeader header = KafkaHeader.of(apiKey, version, correlationId, "kawa-metadata-client");
+        var header = KafkaHeader.of(apiKey, version, correlationId, "kawa-metadata-client");
         ByteBuf out = ch.alloc().buffer();
         requestHeaderCodec.encode(out, header);
         codec.encodeRequest(apiKey, version, body, out);
@@ -221,6 +229,8 @@ public final class MetadataClient {
             MetadataSnapshot snapshot = toSnapshot(data);
             cache.update(snapshot);
             pool.prune(snapshot.brokers().values());
+            // No-op after the first response; the latch only gates startup.
+            initialMetadataLatch.countDown();
             log.info("Refreshed topology: {} brokers, {} topics, cluster {}",
                     snapshot.brokers().size(), snapshot.topics().size(), snapshot.clusterId());
         } finally {
