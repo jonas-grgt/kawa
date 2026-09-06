@@ -28,13 +28,22 @@ public final class GetTopicsHandler implements Router.Handler<TopicView> {
         List<TopicView> views = new ArrayList<>();
         for (TopicMetadata tm : cache.topics()) {
             boolean virtualized = virtualTopics.hasVirtualTopic(tm.name());
+            if (virtualized) {
+                views.add(new TopicView(
+                        "logical",
+                        virtualTopics.toLogical(tm.name()),
+                        cache.partitionCount(tm.name()),
+                        cache.replicationFactor(tm.name()),
+                        toFilterView(virtualTopics.filterFor(tm.name()).orElse(null)),
+                        tm.name()));
+            }
             views.add(new TopicView(
-                    virtualized ? "logical" : "physical",
-                    virtualized ? virtualTopics.toLogical(tm.name()) : tm.name(),
+                    "physical",
+                    tm.name(),
                     cache.partitionCount(tm.name()),
                     cache.replicationFactor(tm.name()),
-                    virtualized ? toFilterView(virtualTopics.filterFor(tm.name()).orElse(null)) : null,
-                    virtualized ? tm.name() : null));
+                    null,
+                    null));
         }
         return views;
     }

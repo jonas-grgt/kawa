@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GetTopicsHandlerTest {
 
     @Test
-    void returnsJoinedLogicalAndPhysicalTopics() {
+    void returnsLogicalAndPhysicalEntriesForVirtualizedTopics() {
         // given
         var virtualTopics = new VirtualTopicManager(Map.of(
                 "orders", new VirtualTopicConfig("orders-v2"),
@@ -37,8 +37,10 @@ class GetTopicsHandlerTest {
         // then
         assertThat(topics).containsExactlyInAnyOrder(
                 new TopicView("logical", "orders", 3, 2, null, "orders-v2"),
+                new TopicView("physical", "orders-v2", 3, 2, null, null),
                 new TopicView("logical", "customers", 2, 3,
                         new TopicFilterView("header", "tenant=acme"), "crm.customers"),
+                new TopicView("physical", "crm.customers", 2, 3, null, null),
                 new TopicView("physical", "raw-events", 1, 1, null, null));
     }
 
@@ -55,7 +57,7 @@ class GetTopicsHandlerTest {
     }
 
     @Test
-    void describesCelFilter() {
+    void describesCelFilterOnLogicalEntry() {
         // given
         var virtualTopics = new VirtualTopicManager(Map.of(
                 "audit", new VirtualTopicConfig("audit-v1",
@@ -67,8 +69,10 @@ class GetTopicsHandlerTest {
         List<TopicView> topics = handler.handle();
 
         // then
-        assertThat(topics).singleElement().satisfies(view ->
-                assertThat(view.filter()).isEqualTo(new TopicFilterView("cel", "headers.tenant == \"acme\"")));
+        assertThat(topics).filteredOn(view -> view.type().equals("logical"))
+                .singleElement()
+                .satisfies(view ->
+                        assertThat(view.filter()).isEqualTo(new TopicFilterView("cel", "headers.tenant == \"acme\"")));
     }
 
     private static MetadataCache cacheWith(TopicMetadata... topics) {

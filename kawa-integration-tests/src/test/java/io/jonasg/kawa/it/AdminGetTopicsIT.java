@@ -61,6 +61,14 @@ class AdminGetTopicsIT extends GatewayTestSupport {
 									"replicationFactor": 1,
 									"filter": null,
 									"physicalTopic": "orders-v2"
+								  },
+								{
+									"type": "physical",
+									"name": "orders-v2",
+									"partitions": 1,
+									"replicationFactor": 1,
+									"filter": null,
+									"physicalTopic": null
 								  }
 							]
 							""", response.body(), JSONCompareMode.LENIENT);

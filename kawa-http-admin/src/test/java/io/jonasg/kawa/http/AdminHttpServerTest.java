@@ -59,7 +59,9 @@ class AdminHttpServerTest {
                 "\"type\":\"logical\"",
                 "\"name\":\"orders\"",
                 "\"partitions\":1",
-                "\"physicalTopic\":\"orders-v2\"");
+                "\"physicalTopic\":\"orders-v2\"",
+                "\"type\":\"physical\"",
+                "\"name\":\"orders-v2\"");
     }
 
     @Test
