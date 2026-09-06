@@ -13,6 +13,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.cors.CorsHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +52,9 @@ public final class AdminHttpServer {
                     protected void initChannel(SocketChannel ch) {
                         ch.pipeline().addLast("httpCodec", new HttpServerCodec());
                         ch.pipeline().addLast("httpAggregator", new HttpObjectAggregator(65536));
+                        if (config.cors() != null) {
+                            ch.pipeline().addLast("cors", new CorsHandler(CorsConfigFactory.from(config.cors())));
+                        }
                         var router = new Router()
                                 .get("/topics", new GetTopicsHandler(virtualTopics, cache));
                         ch.pipeline().addLast("httpRouter", new HttpRouterHandler(router));

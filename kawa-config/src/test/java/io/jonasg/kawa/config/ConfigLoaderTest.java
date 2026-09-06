@@ -357,14 +357,46 @@ class ConfigLoaderTest {
         assertThat(config.admin().enabled()).isTrue();
         assertThat(config.admin().host()).isEqualTo("127.0.0.1");
         assertThat(config.admin().port()).isEqualTo(8081);
+        assertThat(config.admin().cors()).isNull();
     }
 
     @Test
-    void adminDefaultsToDisabled() {
+    void loadsAdminCorsConfiguration() {
+        GatewayConfig config = loader.loadFromYaml("""
+                admin:
+                  enabled: true
+                  host: 127.0.0.1
+                  port: 8081
+                  cors:
+                    allowedOrigins:
+                      - http://localhost:8080
+                      - http://localhost:5173
+                    allowedMethods:
+                      - GET
+                      - OPTIONS
+                    allowedHeaders:
+                      - Content-Type
+                    allowCredentials: true
+                    maxAge: 3600
+                """);
+
+        CorsConfig cors = config.admin().cors();
+        assertThat(cors).isNotNull();
+        assertThat(cors.allowedOrigins())
+                .containsExactly("http://localhost:8080", "http://localhost:5173");
+        assertThat(cors.allowedMethods()).containsExactly("GET", "OPTIONS");
+        assertThat(cors.allowedHeaders()).containsExactly("Content-Type");
+        assertThat(cors.allowCredentials()).isTrue();
+        assertThat(cors.maxAge()).isEqualTo(3600L);
+    }
+
+    @Test
+    void adminCorsDefaultsToDisabled() {
         GatewayConfig config = loader.loadFromYaml("listeners:\n  - port: 9092\n");
 
         assertThat(config.admin().enabled()).isFalse();
         assertThat(config.admin().host()).isEqualTo("0.0.0.0");
         assertThat(config.admin().port()).isEqualTo(8080);
+        assertThat(config.admin().cors()).isNull();
     }
 }

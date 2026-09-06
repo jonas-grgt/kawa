@@ -29,21 +29,23 @@ public final class GetTopicsHandler implements Router.Handler<TopicView> {
         for (TopicMetadata tm : cache.topics()) {
             boolean virtualized = virtualTopics.hasVirtualTopic(tm.name());
             views.add(new TopicView(
-                    virtualized ? virtualTopics.toLogical(tm.name()) : null,
-                    tm.name(),
+                    virtualized ? "logical" : "physical",
+                    virtualized ? virtualTopics.toLogical(tm.name()) : tm.name(),
                     cache.partitionCount(tm.name()),
                     cache.replicationFactor(tm.name()),
-                    virtualized ? describeFilter(virtualTopics.filterFor(tm.name()).orElse(null)) : null,
-                    virtualized && virtualTopics.exposesPhysicalTopic(tm.name())));
+                    virtualized ? toFilterView(virtualTopics.filterFor(tm.name()).orElse(null)) : null,
+                    virtualized ? tm.name() : null));
         }
         return views;
     }
 
-    private static String describeFilter(VirtualTopicFilterConfig filter) {
-		return switch (filter) {
-		    case null -> null;
-		    case HeaderEqualsFilterConfig header -> "headerEquals(" + header.header() + "=" + header.value() + ")";
-		    case CelFilterConfig cel -> "cel(" + cel.expression() + ")";
-		};
-	}
+    private static TopicFilterView toFilterView(VirtualTopicFilterConfig filter) {
+        return switch (filter) {
+            case null -> null;
+            case HeaderEqualsFilterConfig header ->
+                    new TopicFilterView("header", header.header() + "=" + header.value());
+            case CelFilterConfig cel ->
+                    new TopicFilterView("cel", cel.expression());
+        };
+    }
 }

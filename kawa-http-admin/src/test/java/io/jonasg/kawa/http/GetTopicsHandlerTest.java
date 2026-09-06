@@ -36,9 +36,10 @@ class GetTopicsHandlerTest {
 
         // then
         assertThat(topics).containsExactlyInAnyOrder(
-                new TopicView("orders", "orders-v2", 3, 2, null, false),
-                new TopicView("customers", "crm.customers", 2, 3, "headerEquals(tenant=acme)", true),
-                new TopicView(null, "raw-events", 1, 1, null, false));
+                new TopicView("logical", "orders", 3, 2, null, "orders-v2"),
+                new TopicView("logical", "customers", 2, 3,
+                        new TopicFilterView("header", "tenant=acme"), "crm.customers"),
+                new TopicView("physical", "raw-events", 1, 1, null, null));
     }
 
     @Test
@@ -67,7 +68,7 @@ class GetTopicsHandlerTest {
 
         // then
         assertThat(topics).singleElement().satisfies(view ->
-                assertThat(view.filter()).isEqualTo("cel(headers.tenant == \"acme\")"));
+                assertThat(view.filter()).isEqualTo(new TopicFilterView("cel", "headers.tenant == \"acme\"")));
     }
 
     private static MetadataCache cacheWith(TopicMetadata... topics) {

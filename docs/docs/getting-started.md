@@ -15,8 +15,13 @@ broker and a gateway configured with one virtual topic.
 ## Run the demo stack
 
 ```bash
-docker compose up --build
+make up
 ```
+
+This always rebuilds the gateway image and force-recreates the containers, so code and
+config changes are picked up reliably. (A plain `docker compose up` can silently keep
+running a stale image or container.) The SASL-enabled variant is `make up-sasl`; see
+`make help` for the full list of targets.
 
 This starts three services:
 

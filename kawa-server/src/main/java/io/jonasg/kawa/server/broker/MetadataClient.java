@@ -40,6 +40,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /// The gateway's own connection to the cluster. Refreshes the [MetadataCache] used for
 /// routing and captures the broker's ApiVersions ranges so the gateway can advertise a safe
@@ -277,10 +278,11 @@ public final class MetadataClient {
             topics.put(topic.name(), TopicMetadata.of(topic.name(), partitions));
         }
 
-        Map<Integer, BrokerNode> brokers = new HashMap<>();
-        for (MetadataResponseData.MetadataResponseBroker broker : data.brokers()) {
-            brokers.put(broker.nodeId(), BrokerNode.of(broker.nodeId(), broker.host(), broker.port(), broker.rack()));
-        }
+        var brokers = data.brokers().stream()
+                .collect(
+                        Collectors.toMap(MetadataResponseData.MetadataResponseBroker::nodeId,
+                        b -> BrokerNode.of(b.nodeId(), b.host(), b.port(), b.rack()))
+                );
         return MetadataSnapshot.of(topics, brokers, data.clusterId());
     }
 

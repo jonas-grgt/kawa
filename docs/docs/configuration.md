@@ -80,6 +80,14 @@ advertised:
 metrics:
   enabled: true
   prometheusPort: 9404
+
+admin:
+  enabled: true
+  host: 0.0.0.0
+  port: 8080
+  cors:
+    allowedOrigins:
+      - http://localhost:8080
 ```
 
 ## Reference
@@ -328,3 +336,38 @@ Observability settings.
 
 When enabled, kawa exports Micrometer metrics — see [Metrics](/docs/reference/metrics)
 for the full list.
+
+### `admin`
+
+The admin HTTP surface exposing gateway state (e.g. `GET /topics`) to a UI.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | bool | `false` | Whether the admin HTTP server is started |
+| `host` | string | `0.0.0.0` | Bind address |
+| `port` | int | `8080` | Bind port; `0` binds an ephemeral port |
+| `cors` | object | *(disabled)* | CORS configuration for browser-based UIs served from another host/port |
+
+```yaml
+admin:
+  enabled: true
+  host: 0.0.0.0
+  port: 8080
+  cors:
+    allowedOrigins:
+      - http://localhost:8080
+```
+
+#### `admin.cors`
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `allowedOrigins` | string list | `["*"]` | Origins allowed to call the admin API; `["*"]` allows any origin |
+| `allowedMethods` | string list | `["GET"]` | HTTP methods allowed in preflight responses |
+| `allowedHeaders` | string list | *(empty)* | Request headers allowed in preflight responses |
+| `allowCredentials` | bool | `false` | Whether credentialed requests (cookies, auth headers) are allowed |
+| `maxAge` | int | *(omitted)* | How long preflight results may be cached, in seconds |
+
+CORS is disabled entirely when `admin.cors` is omitted. When `allowCredentials` is `true`
+with a wildcard origin, kawa echoes the request origin (with a `Vary` header) instead of
+returning `*`, as required by the CORS spec.

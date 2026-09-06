@@ -21,7 +21,7 @@ class AdminGetTopicsIT extends GatewayTestSupport {
 
 	@Override
 	protected AdminConfig adminConfig() {
-		return new AdminConfig(true, "127.0.0.1", 0);
+		return new AdminConfig(true, "127.0.0.1", 0, null);
 	}
 
 	@Override
@@ -55,12 +55,12 @@ class AdminGetTopicsIT extends GatewayTestSupport {
 					JSONAssert.assertEquals("""
 							[
 								{
-									"logicalName": "orders",
-									"physicalName": "orders-v2",
-									"partitionCount": 1,
+									"type": "logical",
+									"name": "orders",
+									"partitions": 1,
 									"replicationFactor": 1,
 									"filter": null,
-									"exposePhysicalTopic": false
+									"physicalTopic": "orders-v2"
 								  }
 							]
 							""", response.body(), JSONCompareMode.LENIENT);

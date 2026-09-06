@@ -51,7 +51,7 @@ public record GatewayConfig(
             rbac = new RbacConfig(null, null);
         }
         if (admin == null) {
-            admin = new AdminConfig(false, null, null);
+            admin = new AdminConfig(false, null, null, null);
         }
         if (advertised == null) {
             ListenerConfig first = listeners.getFirst();

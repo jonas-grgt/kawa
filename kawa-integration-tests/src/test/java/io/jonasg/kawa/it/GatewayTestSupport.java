@@ -202,7 +202,7 @@ abstract class GatewayTestSupport {
 	/// exercise the admin surface override this with `enabled=true` (and usually an ephemeral
 	/// port).
 	protected AdminConfig adminConfig() {
-		return new AdminConfig(false, "127.0.0.1", 0);
+		return new AdminConfig(false, "127.0.0.1", 0, null);
 	}
 
 	private GatewayConfig buildConfig() {

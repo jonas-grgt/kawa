@@ -2,17 +2,17 @@ package io.jonasg.kawa.http;
 
 /// A single topic entry in the admin `/topics` response.
 ///
-/// @param logicalName client-visible name, or `null` if the physical topic is not virtualized
-/// @param physicalName the physical topic name on the broker
-/// @param partitionCount number of partitions (from the live metadata cache)
+/// @param type either `"logical"` (virtual topic with an alias) or `"physical"` (raw broker topic)
+/// @param name the display name — logical alias for virtual topics, physical name otherwise
+/// @param partitions number of partitions (from the live metadata cache)
 /// @param replicationFactor number of replicas per partition (from the live metadata cache)
-/// @param filter human-readable consume filter description, or `null` if none
-/// @param exposePhysicalTopic whether the physical name is also listed alongside the logical name
+/// @param filter structured consume-filter, or `null` if none
+/// @param physicalTopic the broker-side topic name, only present when `type` is `"logical"`
 public record TopicView(
-        String logicalName,
-        String physicalName,
-        int partitionCount,
+        String type,
+        String name,
+        int partitions,
         int replicationFactor,
-        String filter,
-        boolean exposePhysicalTopic) {
+        TopicFilterView filter,
+        String physicalTopic) {
 }
