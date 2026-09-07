@@ -1,12 +1,10 @@
 package io.jonasg.kawa.it;
 
 import com.github.dockerjava.api.model.ExposedPort;
-import com.github.dockerjava.api.model.HostConfig;
-import com.github.dockerjava.api.model.InternetProtocol;
 import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
-import io.jonasg.kawa.config.AdvertisedListener;
 import io.jonasg.kawa.config.AclConfig;
+import io.jonasg.kawa.config.AdvertisedListener;
 import io.jonasg.kawa.config.AuthConfig;
 import io.jonasg.kawa.config.BrokerAuthConfig;
 import io.jonasg.kawa.config.ClusterConfig;
@@ -19,8 +17,13 @@ import io.jonasg.kawa.config.ResourceConfig;
 import io.jonasg.kawa.config.RoleConfig;
 import io.jonasg.kawa.config.UserConfig;
 import io.jonasg.kawa.server.KafkaGateway;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
+import tools.jackson.databind.json.JsonMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.acl.AclOperation;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.resource.PatternType;
@@ -131,18 +134,28 @@ class BrokerAuthIT {
                 Map.of("allow-all", allowAllRole),
                 Map.of("clients", new GroupConfig(List.of("client"), List.of("allow-all"))));
 
-        var config = new GatewayConfig(
+        // Create the config topic and write the dynamic snapshot (client auth + RBAC) before
+        // the gateway starts; the gateway gets the static bootstrap (listeners, advertised,
+        // admin, broker auth) from the file.
+        try (var admin = AdminClient.create(saslBrokerProps(brokerBootstrap))) {
+            admin.createTopics(List.of(new NewTopic(CONFIG_TOPIC, 1, (short) 1)
+                    .configs(Map.of("cleanup.policy", "compact")))).all().get();
+        }
+        writeConfigSnapshot(brokerBootstrap, auth, rbac);
+
+        var bootstrap = new GatewayConfig(
                 "test-gateway",
                 List.of(new ListenerConfig("127.0.0.1", 0)),
                 Map.of("default", new ClusterConfig("default", List.of(brokerBootstrap))),
-                Map.of(),
+                null,
                 new AdvertisedListener(1, "localhost", 0),
                 new MetricsConfig(false, 0),
-                auth,
-                rbac,
-                null);
+                new AuthConfig(null, null, new BrokerAuthConfig("PLAIN", BROKER_USER, BROKER_PASSWORD)),
+                null,
+                null,
+                CONFIG_TOPIC);
 
-        gateway = new KafkaGateway(config);
+        gateway = new KafkaGateway(bootstrap);
         try {
             gateway.start();
         } catch (Exception e) {
@@ -200,6 +213,45 @@ class BrokerAuthIT {
             return socket.getLocalPort();
         } catch (IOException e) {
             throw new IllegalStateException("Could not allocate a free port for the SASL listener", e);
+        }
+    }
+
+    static final String CONFIG_TOPIC = "__kawa";
+
+    /// `Properties` that authenticate to the SASL broker as the gateway's own broker user.
+    private static Properties saslBrokerProps(String bootstrap) {
+        Properties props = new Properties();
+        props.put("bootstrap.servers", bootstrap);
+        props.put(SECURITY_PROTOCOL_CONFIG, "SASL_PLAINTEXT");
+        props.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
+        props.put(SaslConfigs.SASL_JAAS_CONFIG,
+                "org.apache.kafka.common.security.plain.PlainLoginModule required "
+                        + "username=\"" + BROKER_USER + "\" password=\"" + BROKER_PASSWORD + "\";");
+        return props;
+    }
+
+    /// Serializes the dynamic config (client auth + RBAC) as JSON and writes it to the config
+    /// topic, so the gateway's initial catch-up finds it at boot. Listeners, advertised and
+    /// admin are startup-only and come from the static bootstrap.
+    private static void writeConfigSnapshot(String brokerBootstrap, AuthConfig auth, RbacConfig rbac) throws Exception {
+        var fullConfig = new GatewayConfig(
+                "test-gateway",
+                null,
+                Map.of("default", new ClusterConfig("default", List.of(brokerBootstrap))),
+                Map.of(),
+                null,
+                null,
+                auth,
+                rbac,
+                null,
+                CONFIG_TOPIC);
+        var mapper = JsonMapper.builder().build();
+        String json = mapper.writeValueAsString(fullConfig);
+        Properties props = saslBrokerProps(brokerBootstrap);
+        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        try (var producer = new KafkaProducer<String, String>(props)) {
+            producer.send(new ProducerRecord<>(CONFIG_TOPIC, "test-gateway", json)).get();
         }
     }
 

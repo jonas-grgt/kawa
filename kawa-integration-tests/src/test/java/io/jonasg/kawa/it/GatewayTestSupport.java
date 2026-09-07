@@ -19,6 +19,7 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.acl.AclOperation;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.resource.PatternType;
@@ -32,6 +33,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -50,12 +52,19 @@ import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_
 /// Shared lifecycle for integration tests: one Testcontainers Kafka broker, an in-JVM
 /// [KafkaGateway] in front of it, and admin/producer/consumer clients on both sides.
 ///
+/// The gateway's dynamic config (virtual topics, RBAC, client auth) is written to the
+/// `__kawa` config topic before the gateway starts; the gateway is given the static bootstrap
+/// (cluster bootstrap servers, config topic name, listeners, advertised, admin).
+///
 /// Subclasses override [virtualTopics] and [initialTopics] to describe the
 /// gateway virtual-topic map and the physical topics to pre-create. Fields are `protected static`
 /// so tests can use them directly.
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class GatewayTestSupport {
+
+	/// The config topic the gateway reads its dynamic config from.
+	protected static final String CONFIG_TOPIC = "__kawa";
 
 	/// The canonical principal the shared gateway clients authenticate as, and the password
 	/// they use. `authConfig()` grants this user broad access via `rbacConfig()`, so tests that
@@ -86,14 +95,17 @@ abstract class GatewayTestSupport {
 	void setUp() throws Exception {
 		brokerBootstrap = kafka.getBootstrapServers();
 
-		gateway = new KafkaGateway(buildConfig());
+		brokerAdmin = AdminClient.create(Map.of(BOOTSTRAP_SERVERS_CONFIG, brokerBootstrap));
+		brokerAdmin.createTopics(List.of(new NewTopic(CONFIG_TOPIC, 1, (short) 1)
+				.configs(Map.of("cleanup.policy", "compact")))).all().get();
+		brokerAdmin.createTopics(initialTopics()).all().get();
+		writeConfigSnapshot();
+
+		gateway = new KafkaGateway(buildBootstrap());
 		gateway.start();
 		gatewayBootstrap = "localhost:" + gateway.boundPort();
 
-		brokerAdmin = AdminClient.create(Map.of(BOOTSTRAP_SERVERS_CONFIG, brokerBootstrap));
 		gatewayAdmin = AdminClient.create(saslProps(gatewayBootstrap));
-
-		brokerAdmin.createTopics(initialTopics()).all().get();
 
 		Properties producerProps = saslProps(gatewayBootstrap);
 		producerProps.put(KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -205,20 +217,55 @@ abstract class GatewayTestSupport {
 		return new AdminConfig(false, "127.0.0.1", 0, null);
 	}
 
-	private GatewayConfig buildConfig() {
+	/// The static bootstrap passed to the gateway: cluster bootstrap servers, config topic
+	/// name, listeners, advertised endpoint and admin. Virtual topics, RBAC and client auth
+	/// come from the config topic snapshot.
+	private GatewayConfig buildBootstrap() {
+		return new GatewayConfig(
+				"test-gateway",
+				List.of(new ListenerConfig("127.0.0.1", 0)),
+				Map.of("default", new ClusterConfig("default", List.of(brokerBootstrap))),
+				null,
+				new AdvertisedListener(1, "localhost", 0),
+				new MetricsConfig(false, 0),
+				new AuthConfig(null, null, null),
+				null,
+				adminConfig(),
+				CONFIG_TOPIC);
+	}
+
+	/// The full dynamic config written to the config topic before the gateway starts. Only
+	/// virtual topics, RBAC and client auth are dynamic; listeners, advertised and admin are
+	/// startup-only and come from the static bootstrap.
+	private GatewayConfig buildDynamicConfig() {
 		Map<String, VirtualTopicConfig> typedVirtualTopics = new java.util.HashMap<>();
 		virtualTopics().forEach((logical, physical) ->
 				typedVirtualTopics.put(logical, new VirtualTopicConfig(physical)));
 		typedVirtualTopics.putAll(filteredVirtualTopics());
 		return new GatewayConfig(
 				"test-gateway",
-				List.of(new ListenerConfig("127.0.0.1", 0)),
+				null,
 				Map.of("default", new ClusterConfig("default", List.of(brokerBootstrap))),
 				typedVirtualTopics,
-				new AdvertisedListener(1, "localhost", 0),
-				new MetricsConfig(false, 0),
+				null,
+				null,
 				authConfig(),
 				rbacConfig(),
-				adminConfig());
+				null,
+				CONFIG_TOPIC);
+	}
+
+	/// Serializes the full dynamic config as JSON and writes it to the config topic, so the
+	/// gateway's initial catch-up finds it at boot.
+	private void writeConfigSnapshot() throws Exception {
+		var mapper = JsonMapper.builder().build();
+		String json = mapper.writeValueAsString(buildDynamicConfig());
+		Properties props = new Properties();
+		props.put(BOOTSTRAP_SERVERS_CONFIG, brokerBootstrap);
+		props.put(KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		props.put(VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		try (var producer = new KafkaProducer<String, String>(props)) {
+			producer.send(new ProducerRecord<>(CONFIG_TOPIC, "test-gateway", json)).get();
+		}
 	}
 }

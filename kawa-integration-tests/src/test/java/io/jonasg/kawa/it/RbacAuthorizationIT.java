@@ -11,7 +11,6 @@ import io.jonasg.kawa.config.UserConfig;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -98,7 +97,12 @@ class RbacAuthorizationIT extends GatewayTestSupport {
 						"bob", new UserConfig("PLAIN", PASSWORD),
 						"carol", new UserConfig("PLAIN", PASSWORD),
 						"dave", new UserConfig("PLAIN", PASSWORD),
-						"erin", new UserConfig("PLAIN", PASSWORD)),
+						"erin", new UserConfig("PLAIN", PASSWORD),
+						// GatewayTestSupport builds shared gatewayProducer/gatewayConsumer/gatewayAdmin
+						// as DEFAULT_PRINCIPAL for every subclass. This class never uses them, but if
+						// that principal cannot authenticate they reconnect in a tight loop for the
+						// lifetime of the class, flooding the log and starving the tests that matter.
+						DEFAULT_PRINCIPAL, new UserConfig("PLAIN", DEFAULT_PASSWORD)),
 				null);
 	}
 
@@ -273,17 +277,23 @@ class RbacAuthorizationIT extends GatewayTestSupport {
 
 	@Test
 	@Timeout(30)
-	void consumerWithoutDescribeCannotSeeTopicAtAll() {
+	void principalWithoutDescribeCannotSeeTopicAtAll() throws Exception {
 		// given
-		KafkaConsumer<String, String> consumer = newConsumer("bob", "orders-group");
-		consumer.subscribe(List.of("orders"));
+		AdminClient admin = newAdmin("bob");
 
 		// when
-		ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(5));
+		Set<String> visible = admin.listTopics().names().get(10, TimeUnit.SECONDS);
 
 		// then
-		// observed: the topic is invisible (UNKNOWN_TOPIC_OR_PARTITION), so the poll returns empty
-		assertThat(records).isEmpty();
+		// bob holds no TOPIC ACLs, so MetadataAuthorizationCheck.onResponse strips `orders` from
+		// the list-all response: the topic is not merely unreadable, it is invisible.
+		//
+		// This deliberately does not go through subscribe()+poll(). A consumer whose only
+		// subscribed topic is invisible becomes the group leader, can never resolve the
+		// subscription to a partition, and so never sends SyncGroup - poll() then blocks inside
+		// the rebalance instead of honouring its timeout, which is why the previous assertion
+		// could not pass.
+		assertThat(visible).doesNotContain("orders");
 	}
 
 	@Test

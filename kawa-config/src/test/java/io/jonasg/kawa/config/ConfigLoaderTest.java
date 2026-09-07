@@ -64,6 +64,18 @@ class ConfigLoaderTest {
         assertThat(config.auth().users()).isEmpty();
         assertThat(config.auth().brokerAuth()).isNull();
         assertThat(config.admin().enabled()).isFalse();
+        assertThat(config.configTopic()).isEqualTo("__kawa");
+    }
+
+    @Test
+    void loadsConfigTopic() {
+        GatewayConfig config = loader.loadFromYaml("""
+                configTopic: kawa-config
+                listeners:
+                  - port: 9092
+                """);
+
+        assertThat(config.configTopic()).isEqualTo("kawa-config");
     }
 
     @Test

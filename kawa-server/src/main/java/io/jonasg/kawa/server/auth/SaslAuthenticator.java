@@ -28,10 +28,18 @@ import java.util.Set;
 /// of the interceptor pipeline.
 ///
 /// `SaslAuthenticate` auth bytes are validated by this class for PLAIN credentials.
+///
+/// The mechanisms and users are an immutable snapshot replaced atomically via [reload]: a
+/// reader on the hot path sees either the previous or the new auth state, never a
+/// partially-applied one.
 public final class SaslAuthenticator {
 
-    private final Set<String> mechanisms;
-    private final Map<String, UserConfig> users;
+    /// Immutable snapshot of the dynamic auth state, published as a unit so a reload can never
+    /// be observed half-applied.
+    private record Snapshot(Set<String> mechanisms, Map<String, UserConfig> users) {
+    }
+
+    private volatile Snapshot snapshot;
 
     public SaslAuthenticator(Set<String> mechanisms) {
         this(mechanisms, Map.of());
@@ -41,8 +49,16 @@ public final class SaslAuthenticator {
             Set<String> mechanisms,
             Map<String, UserConfig> users
     ) {
-        this.mechanisms = Set.copyOf(mechanisms);
-        this.users = Map.copyOf(users);
+        reload(mechanisms, users);
+    }
+
+    /// Replaces the supported mechanisms and user directory with a new snapshot.
+    ///
+    /// Safe to call concurrently with readers: the new snapshot is assigned to a single
+    /// `volatile` reference, so readers see either the previous or the new auth state, never a
+    /// partially-applied one.
+    public void reload(Set<String> mechanisms, Map<String, UserConfig> users) {
+        this.snapshot = new Snapshot(Set.copyOf(mechanisms), Map.copyOf(users));
     }
 
     public static boolean isSaslApi(int apiKey) {
@@ -53,6 +69,7 @@ public final class SaslAuthenticator {
     /// [Errors#UNSUPPORTED_SASL_MECHANISM] otherwise - always listing every supported
     /// mechanism so the client knows what to retry with.
     public SaslHandshakeResponseData handleHandshake(SaslHandshakeRequestData request) {
+        Set<String> mechanisms = snapshot.mechanisms();
         var response = new SaslHandshakeResponseData();
         response.setErrorCode(mechanisms.contains(request.mechanism())
                 ? Errors.NONE.code()
@@ -85,7 +102,7 @@ public final class SaslAuthenticator {
             return authenticationFailed(response);
         }
 
-        UserConfig userConfig = users.get(username);
+        UserConfig userConfig = snapshot.users().get(username);
         if (userConfig == null || !userConfig.password().equals(password)) {
             return authenticationFailed(response);
         }

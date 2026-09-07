@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 /// @param auth client SASL authentication configuration
 /// @param rbac role-based access control configuration
 /// @param admin admin HTTP listener configuration
+/// @param configTopic the topic that holds the dynamic gateway config (defaults to `__kawa`)
 public record GatewayConfig(
         String name,
         List<ListenerConfig> listeners,
@@ -26,7 +27,8 @@ public record GatewayConfig(
         MetricsConfig metrics,
         AuthConfig auth,
         RbacConfig rbac,
-        AdminConfig admin) {
+        AdminConfig admin,
+        String configTopic) {
 
     public GatewayConfig {
         if (name == null) {
@@ -53,6 +55,9 @@ public record GatewayConfig(
         if (admin == null) {
             admin = new AdminConfig(false, null, null, null);
         }
+        if (configTopic == null) {
+            configTopic = "__kawa";
+        }
         if (advertised == null) {
             ListenerConfig first = listeners.getFirst();
             advertised = new AdvertisedListener(null, null, first.port());
@@ -74,7 +79,7 @@ public record GatewayConfig(
                         .collect(Collectors.toUnmodifiableMap(
                                 Map.Entry::getKey,
                                 entry -> new VirtualTopicConfig(entry.getValue())));
-        return new GatewayConfig(name, listeners, clusters, typedVirtualTopics, advertised, metrics, auth, null, null);
+        return new GatewayConfig(name, listeners, clusters, typedVirtualTopics, advertised, metrics, auth, null, null, null);
     }
 
     /// The default cluster (first entry), or `null` if none is configured.

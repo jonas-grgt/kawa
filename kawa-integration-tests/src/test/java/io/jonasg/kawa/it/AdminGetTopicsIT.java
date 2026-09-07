@@ -4,8 +4,9 @@ import io.jonasg.kawa.config.AdminConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
-import org.skyscreamer.jsonassert.JSONAssert;
-import org.skyscreamer.jsonassert.JSONCompareMode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -15,6 +16,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
+import static net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER;
+import static net.javacrumbs.jsonunit.core.Option.IGNORING_EXTRA_FIELDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AdminGetTopicsIT extends GatewayTestSupport {
@@ -44,6 +48,7 @@ class AdminGetTopicsIT extends GatewayTestSupport {
 
 		// when — the gateway's metadata cache picks up the pre-created topic on its next refresh
 		Awaitility.await()
+				.logging()
 				.atMost(Duration.ofSeconds(30))
 				.pollInterval(Duration.ofMillis(500))
 				.untilAsserted(() -> {
@@ -52,26 +57,41 @@ class AdminGetTopicsIT extends GatewayTestSupport {
 
 					// then
 					assertThat(response.statusCode()).isEqualTo(200);
-					JSONAssert.assertEquals("""
-							[
-								{
-									"type": "logical",
-									"name": "orders",
-									"partitions": 1,
-									"replicationFactor": 1,
-									"filter": null,
-									"physicalTopic": "orders-v2"
-								  },
-								{
-									"type": "physical",
-									"name": "orders-v2",
-									"partitions": 1,
-									"replicationFactor": 1,
-									"filter": null,
-									"physicalTopic": null
-								  }
-							]
-							""", response.body(), JSONCompareMode.LENIENT);
+					assertThatJson(withoutInternalTopics(response.body()))
+							.when(IGNORING_ARRAY_ORDER, IGNORING_EXTRA_FIELDS)
+							.isEqualTo("""
+									[
+										{
+											"type": "logical",
+											"name": "orders",
+											"partitions": 1,
+											"replicationFactor": 1,
+											"filter": null,
+											"physicalTopic": "orders-v2"
+										  },
+										{
+											"type": "physical",
+											"name": "orders-v2",
+											"partitions": 1,
+											"replicationFactor": 1,
+											"filter": null,
+											"physicalTopic": null
+										  }
+									]
+									""");
 				});
+	}
+
+	/// Drops `__`-prefixed (internal) topics from the admin `/topics` payload so the
+	/// assertion only sees user-visible topics.
+	private static String withoutInternalTopics(String json) {
+		var mapper = JsonMapper.builder().build();
+		ArrayNode visible = mapper.createArrayNode();
+		for (JsonNode topic : mapper.readTree(json)) {
+			if (!topic.get("name").asString().startsWith("__")) {
+				visible.add(topic);
+			}
+		}
+		return mapper.writeValueAsString(visible);
 	}
 }

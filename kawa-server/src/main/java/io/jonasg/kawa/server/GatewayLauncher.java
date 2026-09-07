@@ -7,6 +7,10 @@ import io.jonasg.kawa.core.Gateway;
 import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
 
+/// Entry point. The `--config` file is the static bootstrap: cluster bootstrap servers,
+/// broker credentials, config topic name, listeners, advertised endpoint and admin.
+/// Virtual topics, RBAC and client auth are read from the config topic by [KafkaGateway]
+/// and update live; an empty config topic on first boot is valid.
 public final class GatewayLauncher {
 
     private GatewayLauncher() {
@@ -14,8 +18,8 @@ public final class GatewayLauncher {
 
     public static void main(String[] args) throws Exception {
         Path configPath = parseConfigPath(args);
-        GatewayConfig config = new ConfigLoader().load(configPath);
-        Gateway gateway = new KafkaGateway(config);
+        GatewayConfig bootstrap = new ConfigLoader().load(configPath);
+        Gateway gateway = new KafkaGateway(bootstrap);
 
         var shutdown = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -24,7 +28,7 @@ public final class GatewayLauncher {
         }));
 
         gateway.start();
-        System.out.println("kawa gateway started with config " + configPath);
+        System.out.println("kawa gateway started (bootstrap " + configPath + ", dynamic config from topic)");
         shutdown.await();
     }
 

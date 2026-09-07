@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -104,5 +105,79 @@ class SaslAuthenticatorTest {
         var failure = (AuthenticationResult.Failure) result;
         assertThat(failure.response().errorCode()).isEqualTo(Errors.SASL_AUTHENTICATION_FAILED.code());
         assertThat(failure.response().errorMessage()).contains("Invalid username or password");
+    }
+
+    @Test
+    void reloadReplacesMechanismsAndUsers() {
+        // given
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")));
+
+        // when
+        authenticator.reload(Set.of("SCRAM-SHA-256"), Map.of("bob", new UserConfig("SCRAM-SHA-256", "hunter2")));
+
+        // then
+        var handshake = authenticator.handleHandshake(new SaslHandshakeRequestData().setMechanism("PLAIN"));
+        assertThat(handshake.errorCode()).isEqualTo(Errors.UNSUPPORTED_SASL_MECHANISM.code());
+        var newHandshake = authenticator.handleHandshake(new SaslHandshakeRequestData().setMechanism("SCRAM-SHA-256"));
+        assertThat(newHandshake.errorCode()).isEqualTo(Errors.NONE.code());
+
+        var oldUser = authenticator.handleAuthenticate(new SaslAuthenticateRequestData()
+                .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8)));
+        assertThat(oldUser).isInstanceOf(AuthenticationResult.Failure.class);
+        var newUser = authenticator.handleAuthenticate(new SaslAuthenticateRequestData()
+                .setAuthBytes("\u0000bob\u0000hunter2".getBytes(StandardCharsets.UTF_8)));
+        assertThat(newUser).isInstanceOf(AuthenticationResult.Success.class);
+    }
+
+    @Test
+    void reloadWithEmptyStateRejectsEverything() {
+        // given
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")));
+
+        // when
+        authenticator.reload(Set.of(), Map.of());
+
+        // then
+        var handshake = authenticator.handleHandshake(new SaslHandshakeRequestData().setMechanism("PLAIN"));
+        assertThat(handshake.errorCode()).isEqualTo(Errors.UNSUPPORTED_SASL_MECHANISM.code());
+        var authenticate = authenticator.handleAuthenticate(new SaslAuthenticateRequestData()
+                .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8)));
+        assertThat(authenticate).isInstanceOf(AuthenticationResult.Failure.class);
+    }
+
+    @Test
+    void reloadIsSafeDuringConcurrentReads() throws Exception {
+        // given
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")));
+        var first = Map.of("alice", new UserConfig("PLAIN", "secret"));
+        var second = Map.of("bob", new UserConfig("PLAIN", "hunter2"));
+        var failure = new AtomicReference<Throwable>();
+
+        // when
+        var writer = new Thread(() -> {
+            for (int i = 0; i < 10_000; i++) {
+                authenticator.reload(Set.of("PLAIN"), i % 2 == 0 ? first : second);
+            }
+        });
+        var reader = new Thread(() -> {
+            try {
+                for (int i = 0; i < 10_000; i++) {
+                    authenticator.handleHandshake(new SaslHandshakeRequestData().setMechanism("PLAIN"));
+                    authenticator.handleAuthenticate(new SaslAuthenticateRequestData()
+                            .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8)));
+                    authenticator.handleAuthenticate(new SaslAuthenticateRequestData()
+                            .setAuthBytes("\u0000bob\u0000hunter2".getBytes(StandardCharsets.UTF_8)));
+                }
+            } catch (Throwable t) {
+                failure.set(t);
+            }
+        });
+        writer.start();
+        reader.start();
+        writer.join();
+        reader.join();
+
+        // then
+        assertThat(failure).hasValue(null);
     }
 }

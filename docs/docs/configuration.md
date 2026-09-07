@@ -13,6 +13,13 @@ java -jar kawa-server.jar --config /path/to/config.yaml   # default: ./config.ya
 
 Unknown properties are ignored. Every field is optional unless stated otherwise.
 
+The file is the **static bootstrap**: it carries the startup-only configuration
+(`listeners`, `clusters`, `advertised`, `admin`, `auth.brokerAuth`, `configTopic`).
+Virtual topics, RBAC and client authentication are **dynamic** and are read from the
+config topic (see [Dynamic config](#dynamic-config)); an empty config topic on first
+boot is valid and the gateway boots with no virtual topics, default-deny RBAC and no
+client auth.
+
 ## Full example
 
 ```yaml
@@ -371,3 +378,23 @@ admin:
 CORS is disabled entirely when `admin.cors` is omitted. When `allowCredentials` is `true`
 with a wildcard origin, kawa echoes the request origin (with a `Vary` header) instead of
 returning `*`, as required by the CORS spec.
+
+## Dynamic config
+
+Virtual topics, RBAC and client authentication are **dynamic**: they are read from the
+config topic (default `__kawa`) and update live while the gateway runs. The static YAML
+file does **not** carry them - any `virtualTopics`, `rbac` or `auth.users`/`auth.mechanisms`
+in the file are ignored.
+
+Each message in the config topic is a full JSON snapshot of the dynamic subset of
+[`GatewayConfig`](#reference). The topic is expected to have a single partition and
+`cleanup.policy=compact`; the last snapshot wins.
+
+An **empty config topic on first boot is valid**: the gateway boots with no virtual topics,
+default-deny RBAC and no client auth, and picks up the config as soon as the first snapshot
+is written. This is the normal first-boot flow - there is no "seed the config topic before
+starting" requirement.
+
+The startup-only configuration (`listeners`, `clusters`, `advertised`, `admin`,
+`auth.brokerAuth`, `configTopic`) always comes from the static YAML file and cannot be
+changed live.

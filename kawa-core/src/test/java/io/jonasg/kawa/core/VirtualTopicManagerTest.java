@@ -5,6 +5,7 @@ import io.jonasg.kawa.config.VirtualTopicConfig;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -75,5 +76,88 @@ class VirtualTopicManagerTest {
     @Test
     void exposesPhysicalTopicIsFalseForNonVirtualTopics() {
         assertThat(virtualTopics.exposesPhysicalTopic("plain")).isFalse();
+    }
+
+    @Test
+    void reloadReplacesSnapshot() {
+        // given
+        var manager = new VirtualTopicManager(Map.of("orders", new VirtualTopicConfig("orders-v2")));
+
+        // when
+        manager.reload(Map.of("customers", new VirtualTopicConfig("crm.customers")));
+
+        // then
+        assertThat(manager.toPhysical("orders")).isEqualTo("orders");
+        assertThat(manager.toPhysical("customers")).isEqualTo("crm.customers");
+        assertThat(manager.size()).isEqualTo(1);
+    }
+
+    @Test
+    void reloadWithEmptyMapClearsAllMappings() {
+        // given
+        var manager = new VirtualTopicManager(Map.of("orders", new VirtualTopicConfig("orders-v2")));
+
+        // when
+        manager.reload(Map.of());
+
+        // then
+        assertThat(manager.toPhysical("orders")).isEqualTo("orders");
+        assertThat(manager.size()).isZero();
+        assertThat(manager.virtualTopics()).isEmpty();
+    }
+
+    @Test
+    void reloadCarriesFilterAndExposePhysicalTopic() {
+        // given
+        var manager = new VirtualTopicManager(Map.of());
+
+        // when
+        manager.reload(Map.of(
+                "customers", new VirtualTopicConfig("crm.customers",
+                        new HeaderEqualsFilterConfig("tenant", "acme")),
+                "legacy", new VirtualTopicConfig("legacy-v1", null, true)));
+
+        // then
+        assertThat(manager.filterFor("customers"))
+                .contains(new HeaderEqualsFilterConfig("tenant", "acme"));
+        assertThat(manager.exposesPhysicalTopic("legacy")).isTrue();
+    }
+
+    @Test
+    void reloadIsSafeDuringConcurrentReads() throws Exception {
+        // given
+        var manager = new VirtualTopicManager(Map.of("orders", new VirtualTopicConfig("orders-v2")));
+        var first = Map.of("orders", new VirtualTopicConfig("orders-v2"));
+        var second = Map.of("customers", new VirtualTopicConfig("crm.customers",
+                new HeaderEqualsFilterConfig("tenant", "acme")));
+        var failure = new AtomicReference<Throwable>();
+
+        // when
+        var writer = new Thread(() -> {
+            for (int i = 0; i < 10_000; i++) {
+                manager.reload(i % 2 == 0 ? first : second);
+            }
+        });
+        var reader = new Thread(() -> {
+            try {
+                for (int i = 0; i < 10_000; i++) {
+                    manager.toPhysical("orders");
+                    manager.toPhysical("customers");
+                    manager.toLogical("orders-v2");
+                    manager.toLogical("crm.customers");
+                    manager.filterFor("customers");
+                    manager.exposesPhysicalTopic("legacy-v1");
+                }
+            } catch (Throwable t) {
+                failure.set(t);
+            }
+        });
+        writer.start();
+        reader.start();
+        writer.join();
+        reader.join();
+
+        // then
+        assertThat(failure.get()).isNull();
     }
 }

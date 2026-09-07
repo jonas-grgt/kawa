@@ -39,7 +39,7 @@
     <kassert.version>0.1.0</kassert.version>
     <testcontainers.version>1.21.4</testcontainers.version>
     <awaitility.version>4.2.2</awaitility.version>
-    <jsonassert.version>1.5.3</jsonassert.version>
+    <jsonunit.version>6.2.0</jsonunit.version>
     <cel.version>0.13.1</cel.version>
   </properties>
 
@@ -106,9 +106,9 @@
         <scope>test</scope>
       </dependency>
       <dependency>
-        <groupId>org.skyscreamer</groupId>
-        <artifactId>jsonassert</artifactId>
-        <version>${jsonassert.version}</version>
+        <groupId>net.javacrumbs.json-unit</groupId>
+        <artifactId>json-unit-assertj</artifactId>
+        <version>${jsonunit.version}</version>
         <scope>test</scope>
       </dependency>
       <dependency>
