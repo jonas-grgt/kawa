@@ -13,11 +13,10 @@ import io.netty.handler.codec.http.HttpVersion;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
-/// The single Netty dispatcher in the admin HTTP pipeline. It decodes a [FullHttpRequest], routes it
-/// through the [Router] to a plain handler, and writes the JSON response (handling keep-alive,
-/// content-type, 404 and 405). All HTTP plumbing lives here so route handlers stay Netty-free.
+/// Http Routing capable Netty Handler. It decodes a [FullHttpRequest], routes it
+/// through the [Router] to a plain handler, and writes the response.
+/// All HTTP plumbing lives here so route handlers stay Netty-free.
 public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     private static final String JSON = "application/json";
@@ -37,20 +36,31 @@ public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHtt
             write(ctx, request, HttpResponseStatus.NOT_FOUND, "{\"error\":\"not found\"}");
             return;
         }
-        Router.Handler<?> handler = router.find(request.method(), path).orElse(null);
-        if (handler == null) {
+        Router.Match match = router.find(request.method(), path).orElse(null);
+        if (match == null) {
             write(ctx, request, HttpResponseStatus.METHOD_NOT_ALLOWED, "{\"error\":\"method not allowed\"}");
             return;
         }
-        Object topics = handler.handle();
-        byte[] body;
+        byte[] body = new byte[request.content().readableBytes()];
+        request.content().readBytes(body);
+        Router.Request req = new Router.Request(request.method().name(), path, match.pathParams(), body);
+        Router.Response<?> response;
         try {
-            body = mapper.writeValueAsBytes(topics);
+            response = match.handler().handle(req);
+        } catch (Exception e) {
+            write(ctx, request, HttpResponseStatus.INTERNAL_SERVER_ERROR, "{\"error\":\"handler failed\"}");
+            return;
+        }
+        byte[] responseBody;
+        try {
+            responseBody = response.body() == null
+                    ? new byte[0]
+                    : mapper.writeValueAsBytes(response.body());
         } catch (Exception e) {
             write(ctx, request, HttpResponseStatus.INTERNAL_SERVER_ERROR, "{\"error\":\"serialization failed\"}");
             return;
         }
-        write(ctx, request, HttpResponseStatus.OK, body);
+        write(ctx, request, HttpResponseStatus.valueOf(response.status()), responseBody);
     }
 
     private static void write(

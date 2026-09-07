@@ -13,7 +13,7 @@ import java.util.List;
 /// Projects the logical and physical topics served by `GET /topics` from the [VirtualTopicManager]
 /// (logical config) and the [MetadataCache] (live physical topology). Plain handler with no Netty
 /// imports; the [HttpRouterHandler] dispatcher serializes the result and writes the response.
-public final class GetTopicsHandler implements Router.Handler<TopicView> {
+public final class GetTopicsHandler implements Router.Handler {
 
     private final VirtualTopicManager virtualTopics;
     private final MetadataCache cache;
@@ -24,7 +24,7 @@ public final class GetTopicsHandler implements Router.Handler<TopicView> {
     }
 
     @Override
-    public List<TopicView> handle() {
+    public Router.Response<List<TopicView>> handle(Router.Request request) {
         List<TopicView> views = new ArrayList<>();
         for (TopicMetadata tm : cache.topics()) {
             boolean virtualized = virtualTopics.hasVirtualTopic(tm.name());
@@ -45,7 +45,7 @@ public final class GetTopicsHandler implements Router.Handler<TopicView> {
                     null,
                     null));
         }
-        return views;
+        return Router.Response.ok(views);
     }
 
     private static TopicFilterView toFilterView(VirtualTopicFilterConfig filter) {

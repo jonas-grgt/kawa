@@ -1,15 +1,21 @@
 package io.jonasg.kawa.server;
 
 import io.jonasg.kawa.config.ConfigTopicConsumer;
+import io.jonasg.kawa.config.ConfigTopicRepository;
 import io.jonasg.kawa.config.GatewayConfig;
+import io.jonasg.kawa.config.GatewayConfigRepository;
 import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.rbac.RbacAuthorizer;
 import io.jonasg.kawa.server.auth.SaslAuthenticator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
 /// Owns the config-topic consumer and applies each [GatewayConfig] snapshot to the mutable
-/// consumers: [VirtualTopicManager], [RbacAuthorizer] and [SaslAuthenticator].
+/// consumers: [VirtualTopicManager], [RbacAuthorizer] and [SaslAuthenticator]. Also owns the
+/// config-topic producer, so it is the [GatewayConfigRepository] the admin HTTP surface uses
+/// to read the current snapshot and persist changes.
 ///
 /// A snapshot is applied in an order that keeps the application atomic in the failure case:
 /// [RbacAuthorizer#reload] is the only consumer that can reject a snapshot (an unknown role
@@ -20,14 +26,22 @@ import java.util.Properties;
 /// [awaitInitialLoad] blocks until the config topic has been caught up from the earliest
 /// offset, so the gateway can refuse to serve until it has applied the config that existed
 /// at boot.
-public final class DynamicConfigManager implements AutoCloseable {
+///
+/// [current] reports the newest *persisted* snapshot (from the write repository) when one
+/// exists, falling back to the last *applied* one. The admin API's read-modify-write must
+/// build on the persisted snapshot: the consumer applies asynchronously, so a burst of PUTs
+/// would otherwise each start from the same stale base and overwrite each other.
+public final class DynamicConfigManager implements GatewayConfigRepository, AutoCloseable {
+
+    private static final Logger log = LoggerFactory.getLogger(DynamicConfigManager.class);
 
     private final ConfigTopicConsumer consumer;
+    private final GatewayConfigRepository writeRepository;
     private final VirtualTopicManager virtualTopics;
     private final RbacAuthorizer authorizer;
     private final SaslAuthenticator saslAuthenticator;
 
-    private volatile GatewayConfig lastConfig;
+    private volatile GatewayConfig current;
 
     public DynamicConfigManager(
             String bootstrapServers,
@@ -40,8 +54,8 @@ public final class DynamicConfigManager implements AutoCloseable {
         this(bootstrapServers, topic, groupId, new Properties(), virtualTopics, authorizer, saslAuthenticator);
     }
 
-    /// Variant that accepts extra consumer properties (e.g. SASL/security settings for the
-    /// config topic) on top of the base bootstrap/group/deserializer configuration.
+    /// Variant that accepts extra consumer/producer properties (e.g. SASL/security settings
+    /// for the config topic) on top of the base bootstrap/deserializer configuration.
     public DynamicConfigManager(
             String bootstrapServers,
             String topic,
@@ -55,6 +69,23 @@ public final class DynamicConfigManager implements AutoCloseable {
         this.authorizer = authorizer;
         this.saslAuthenticator = saslAuthenticator;
         this.consumer = new ConfigTopicConsumer(bootstrapServers, topic, groupId, extraProps, this::apply);
+        this.writeRepository = new ConfigTopicRepository(bootstrapServers, topic, extraProps);
+    }
+
+    /// Test seam: injects the write-side repository so the read-modify-write base can be
+    /// verified without a broker. The consumer is created against a dummy bootstrap and never
+    /// started.
+    DynamicConfigManager(
+            GatewayConfigRepository writeRepository,
+            VirtualTopicManager virtualTopics,
+            RbacAuthorizer authorizer,
+            SaslAuthenticator saslAuthenticator
+    ) {
+        this.virtualTopics = virtualTopics;
+        this.authorizer = authorizer;
+        this.saslAuthenticator = saslAuthenticator;
+        this.consumer = new ConfigTopicConsumer("localhost:9092", "__kawa", "test-group", this::apply);
+        this.writeRepository = writeRepository;
     }
 
     /// Applies a snapshot to the three mutable consumers. Package-private so the wiring is
@@ -63,7 +94,7 @@ public final class DynamicConfigManager implements AutoCloseable {
         authorizer.reload(config.rbac()); // risky first: can throw on unknown role
         virtualTopics.reload(config.virtualTopics());
         saslAuthenticator.reload(config.auth().mechanisms(), config.auth().users());
-        lastConfig = config;
+        current = config;
     }
 
     /// Starts the config-topic consumer. Idempotent.
@@ -76,19 +107,28 @@ public final class DynamicConfigManager implements AutoCloseable {
         consumer.awaitInitialLoad();
     }
 
-    /// Whether the initial catch-up has completed.
-    public boolean initialLoadComplete() {
-        return consumer.initialLoadComplete();
+    @Override
+    public GatewayConfig current() {
+        // The admin API's read-modify-write must build on the most recent *persisted*
+        // snapshot, not the last *applied* one: the consumer applies asynchronously, so a
+        // burst of PUTs would otherwise each start from the same stale base and overwrite
+        // each other. The write repository tracks the newest persisted snapshot.
+        GatewayConfig persisted = writeRepository.current();
+        return persisted != null ? persisted : current;
     }
 
-    /// The most recently applied config snapshot, or `null` before the first successful
-    /// application.
-    public GatewayConfig lastConfig() {
-        return lastConfig;
+    @Override
+    public void write(GatewayConfig config) {
+        writeRepository.write(config);
     }
 
     @Override
     public void close() {
         consumer.close();
+        try {
+            writeRepository.close();
+        } catch (Exception e) {
+            log.warn("failed to close config write repository", e);
+        }
     }
 }

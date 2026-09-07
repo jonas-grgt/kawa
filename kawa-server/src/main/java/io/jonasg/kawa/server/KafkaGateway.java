@@ -165,7 +165,7 @@ public final class KafkaGateway implements Gateway {
         // until the gateway can actually route.
         holder.set(dispatcher);
         if (config.admin().enabled()) {
-            adminServer = new AdminHttpServer(config.admin(), virtualTopics, cache);
+            adminServer = new AdminHttpServer(config.admin(), virtualTopics, cache, dynamicConfig);
             adminServer.start();
         }
         running = true;

@@ -59,4 +59,134 @@ class AuthConfigTest {
                 .hasMessageContaining("SCRAM-SHA-256")
                 .hasMessageContaining("PLAIN");
     }
+
+    @Test
+    void withUserAddsNewUser() {
+        // given
+        var config = new AuthConfig(Set.of("PLAIN"), Map.of(), null);
+
+        // when
+        var updated = config.withUser("alice", new UserConfig("PLAIN", "secret"));
+
+        // then
+        assertThat(updated.users()).containsKey("alice");
+        assertThat(updated.users().get("alice").mechanism()).isEqualTo("PLAIN");
+    }
+
+    @Test
+    void withUserOverwritesExisting() {
+        // given
+        var config = new AuthConfig(Set.of("PLAIN"),
+                Map.of("alice", new UserConfig("PLAIN", "old-secret")), null);
+
+        // when
+        var updated = config.withUser("alice", new UserConfig("PLAIN", "new-secret"));
+
+        // then
+        assertThat(updated.users()).hasSize(1);
+        assertThat(updated.users().get("alice").password()).isEqualTo("new-secret");
+    }
+
+    @Test
+    void withoutUserRemovesExisting() {
+        // given
+        var config = new AuthConfig(Set.of("PLAIN"),
+                Map.of("alice", new UserConfig("PLAIN", "secret")), null);
+
+        // when
+        var updated = config.withoutUser("alice");
+
+        // then
+        assertThat(updated.users()).isEmpty();
+    }
+
+    @Test
+    void withoutUserPreservesOtherUsers() {
+        // given
+        var config = new AuthConfig(Set.of("PLAIN"), Map.of(
+                "alice", new UserConfig("PLAIN", "secret-alice"),
+                "bob", new UserConfig("PLAIN", "secret-bob")), null);
+
+        // when
+        var updated = config.withoutUser("alice");
+
+        // then
+        assertThat(updated.users()).hasSize(1);
+        assertThat(updated.users()).containsKey("bob");
+    }
+
+    @Test
+    void withUserPreservesMechanisms() {
+        // given
+        var config = new AuthConfig(Set.of("PLAIN", "SCRAM-SHA-256"), Map.of(), null);
+
+        // when
+        var updated = config.withUser("alice", new UserConfig("PLAIN", "secret"));
+
+        // then
+        assertThat(updated.mechanisms()).containsExactlyInAnyOrder("PLAIN", "SCRAM-SHA-256");
+    }
+
+    @Test
+    void withUserAddsMechanismWhenUserUsesNewOne() {
+        // given
+        var config = new AuthConfig(Set.of("PLAIN"), Map.of(), null);
+
+        // when
+        var updated = config.withUser("bob", new UserConfig("SCRAM-SHA-256", "secret"));
+
+        // then
+        assertThat(updated.mechanisms()).containsExactlyInAnyOrder("PLAIN", "SCRAM-SHA-256");
+        assertThat(updated.users().get("bob").mechanism()).isEqualTo("SCRAM-SHA-256");
+    }
+
+    @Test
+    void withUserWithoutMechanismIsRejected() {
+        // given
+        var config = new AuthConfig(Set.of(), Map.of(), null);
+
+        // when / then
+        assertThatThrownBy(() -> config.withUser("alice", new UserConfig(null, "secret")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("alice")
+                .hasMessageContaining("mechanism");
+    }
+
+    @Test
+    void withUserWithoutMechanismIsRejectedEvenWhenMechanismsConfigured() {
+        // given
+        var config = new AuthConfig(Set.of("SCRAM-SHA-256", "PLAIN"), Map.of(), null);
+
+        // when / then
+        assertThatThrownBy(() -> config.withUser("alice", new UserConfig(null, "secret")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("alice")
+                .hasMessageContaining("mechanism");
+    }
+
+    @Test
+    void withUserRejectsNullUser() {
+        // given
+        var config = new AuthConfig(Set.of("PLAIN"), Map.of(), null);
+
+        // when / then
+        assertThatThrownBy(() -> config.withUser("alice", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("alice");
+    }
+
+    @Test
+    void brokerAuthPreservedThroughWithUser() {
+        // given
+        var brokerAuth = BrokerAuthConfig.of("PLAIN", "admin", "kafka-secret", k -> null);
+        var config = new AuthConfig(Set.of("PLAIN"),
+                Map.of("alice", new UserConfig("PLAIN", "secret")), brokerAuth);
+
+        // when
+        var updated = config.withUser("bob", new UserConfig("PLAIN", "bob-secret"));
+
+        // then
+        assertThat(updated.brokerAuth()).isEqualTo(brokerAuth);
+        assertThat(updated.users()).hasSize(2);
+    }
 }

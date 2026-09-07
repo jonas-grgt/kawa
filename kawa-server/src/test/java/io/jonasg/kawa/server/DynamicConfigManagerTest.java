@@ -3,6 +3,7 @@ package io.jonasg.kawa.server;
 import io.jonasg.kawa.config.AclConfig;
 import io.jonasg.kawa.config.AuthConfig;
 import io.jonasg.kawa.config.GatewayConfig;
+import io.jonasg.kawa.config.GatewayConfigRepository;
 import io.jonasg.kawa.config.GroupConfig;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
@@ -73,7 +74,7 @@ class DynamicConfigManagerTest {
         var authenticate = sasl.handleAuthenticate(new SaslAuthenticateRequestData()
                 .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8)));
         assertThat(authenticate).isInstanceOf(AuthenticationResult.Success.class);
-        assertThat(manager.lastConfig()).isSameAs(config);
+        assertThat(manager.current()).isSameAs(config);
     }
 
     @Test
@@ -98,7 +99,7 @@ class DynamicConfigManagerTest {
         assertThat(virtualTopics.toPhysical("orders")).isEqualTo("orders-v2");
         assertThat(virtualTopics.toPhysical("customers")).isEqualTo("customers");
         assertThat(authorizer.isAuthorized("alice", ResourceType.TOPIC, "orders", AclOperation.READ)).isTrue();
-        assertThat(manager.lastConfig()).isSameAs(good);
+        assertThat(manager.current()).isSameAs(good);
     }
 
     @Test
@@ -111,8 +112,45 @@ class DynamicConfigManagerTest {
 
         // when / then
         // An empty config topic on first boot is valid: no snapshot has been applied, so the
-        // manager reports no last config and the consumers stay at their initial empty state.
-        assertThat(manager.lastConfig()).isNull();
+        // manager reports no current config and the consumers stay at their initial empty state.
+        assertThat(manager.current()).isNull();
+    }
+
+    @Test
+    void currentReturnsLastPersistedSnapshotBeforeConsumerAppliesIt() {
+        // given - a manager whose write side is an in-memory repository (no broker needed)
+        var writeRepository = new GatewayConfigRepository() {
+            private GatewayConfig last;
+
+            @Override
+            public GatewayConfig current() {
+                return last;
+            }
+
+            @Override
+            public void write(GatewayConfig config) {
+                last = config;
+            }
+
+            @Override
+            public void close() {
+                // no resources
+            }
+        };
+        var manager = new DynamicConfigManager(writeRepository,
+                new VirtualTopicManager(Map.of()),
+                new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
+                new SaslAuthenticator(Set.of()));
+        var first = config(Map.of("orders", new VirtualTopicConfig("orders-v2")), rbacAllowingReadOnOrders(), plainAuth());
+        var second = config(Map.of("customers", new VirtualTopicConfig("crm.customers")), rbacAllowingReadOnOrders(), plainAuth());
+
+        // when - two snapshots are persisted before the consumer has applied either
+        manager.write(first);
+        manager.write(second);
+
+        // then - the read-modify-write base is the newest persisted snapshot, so a burst of
+        // PUTs builds on each other instead of overwriting from the same stale base
+        assertThat(manager.current()).isSameAs(second);
     }
 
     @Test

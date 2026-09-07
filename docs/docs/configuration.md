@@ -398,3 +398,45 @@ starting" requirement.
 The startup-only configuration (`listeners`, `clusters`, `advertised`, `admin`,
 `auth.brokerAuth`, `configTopic`) always comes from the static YAML file and cannot be
 changed live.
+
+## Admin API
+
+When `admin.enabled` is `true`, the admin HTTP server exposes gateway state and the
+dynamic config. All endpoints return JSON.
+
+### `GET /topics`
+
+Lists the logical and physical topics known to the gateway (see [Admin](#admin)).
+
+### Config endpoints
+
+The `/config/...` endpoints read and write the dynamic config (virtual topics, RBAC and
+client auth). `GET` lists a section, `PUT /{name}` upserts one entry, `DELETE /{name}`
+removes it. Writes persist a full snapshot to the config topic and are applied live.
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/config/virtual-topics` | GET | List virtual topics |
+| `/config/virtual-topics/{name}` | PUT | Add or replace a virtual topic |
+| `/config/virtual-topics/{name}` | DELETE | Remove a virtual topic |
+| `/config/rbac/roles` | GET | List roles |
+| `/config/rbac/roles/{name}` | PUT | Add or replace a role |
+| `/config/rbac/roles/{name}` | DELETE | Remove a role |
+| `/config/rbac/groups` | GET | List groups |
+| `/config/rbac/groups/{name}` | PUT | Add or replace a group |
+| `/config/rbac/groups/{name}` | DELETE | Remove a group |
+| `/config/auth/users` | GET | List users |
+| `/config/auth/users/{name}` | PUT | Add or replace a user |
+| `/config/auth/users/{name}` | DELETE | Remove a user |
+
+The request body for a `PUT` is the entry's JSON object, using the same fields as the
+YAML reference above — e.g. `{"topic": "orders-v2"}` for a virtual topic,
+`{"acls": [...]}` for a role, `{"members": [...], "roles": [...]}` for a group, or
+`{"mechanism": "PLAIN", "password": "..."}` for a user.
+
+Adding a user via `PUT /config/auth/users/{name}` auto-expands the advertised SASL
+mechanisms to include the user's mechanism, so the first user can be added to an empty
+config. The user's `mechanism` is required — a `PUT` without it is rejected with `400`.
+
+`PUT` returns `200` with the stored entry, `DELETE` returns `204`, a missing entry on
+`DELETE` returns `404`, and an invalid body returns `400`.

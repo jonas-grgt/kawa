@@ -22,7 +22,7 @@ class RouterTest {
     @Test
     void routesGetToRegisteredHandler() {
         // given
-        var router = new Router().get("/topics", List::of);
+        var router = new Router().get("/topics", request -> Router.Response.ok(List.of()));
         var handler = new HttpRouterHandler(router);
 
         // when
@@ -37,7 +37,7 @@ class RouterTest {
     @Test
     void returnsNotFoundForUnknownPath() {
         // given
-        var handler = new HttpRouterHandler(new Router().get("/topics", List::of));
+        var handler = new HttpRouterHandler(new Router().get("/topics", request -> Router.Response.ok(List.of())));
 
         // when
         FullHttpResponse response = request(handler, HttpMethod.GET, "/unknown");
@@ -49,7 +49,7 @@ class RouterTest {
     @Test
     void returnsMethodNotAllowedForKnownPathWithWrongMethod() {
         // given
-        var handler = new HttpRouterHandler(new Router().get("/topics", List::of));
+        var handler = new HttpRouterHandler(new Router().get("/topics", request -> Router.Response.ok(List.of())));
 
         // when
         FullHttpResponse response = request(handler, HttpMethod.POST, "/topics");
@@ -61,7 +61,7 @@ class RouterTest {
     @Test
     void setsKeepAliveHeaderWhenRequestIsKeepAlive() {
         // given
-        var handler = new HttpRouterHandler(new Router().get("/topics", List::of));
+        var handler = new HttpRouterHandler(new Router().get("/topics", request -> Router.Response.ok(List.of())));
 
         // when
         FullHttpResponse response = request(handler, HttpMethod.GET, "/topics");
@@ -70,10 +70,72 @@ class RouterTest {
         assertThat(response.headers().get("Connection")).isEqualTo("keep-alive");
     }
 
+    @Test
+    void passesRequestBodyToHandler() {
+        // given
+        var router = new Router().put("/configs/rbac", request ->
+                Router.Response.ok(new String(request.body(), StandardCharsets.UTF_8)));
+        var handler = new HttpRouterHandler(router);
+
+        // when
+        FullHttpResponse response = request(handler, HttpMethod.PUT, "/configs/rbac", "{\"roles\":{}}");
+
+        // then
+        assertThat(response.status()).isEqualTo(HttpResponseStatus.OK);
+        assertThat(response.content().toString(StandardCharsets.UTF_8)).contains("roles");
+    }
+
+    @Test
+    void writesHandlerStatusAndBody() {
+        // given
+        var router = new Router().get("/configs/rbac", request -> Router.Response.badRequest("nope"));
+        var handler = new HttpRouterHandler(router);
+
+        // when
+        FullHttpResponse response = request(handler, HttpMethod.GET, "/configs/rbac");
+
+        // then
+        assertThat(response.status()).isEqualTo(HttpResponseStatus.BAD_REQUEST);
+        assertThat(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("{\"error\":\"nope\"}");
+    }
+
+    @Test
+    void capturesPathParameters() {
+        // given
+        var router = new Router().delete("/configs/virtual-topics/{name}", request ->
+                Router.Response.ok(request.pathParams().get("name")));
+        var handler = new HttpRouterHandler(router);
+
+        // when
+        FullHttpResponse response = request(handler, HttpMethod.DELETE, "/configs/virtual-topics/orders");
+
+        // then
+        assertThat(response.status()).isEqualTo(HttpResponseStatus.OK);
+        assertThat(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("\"orders\"");
+    }
+
+    @Test
+    void writesNoContentWithoutBody() {
+        // given
+        var router = new Router().delete("/configs/virtual-topics/{name}", request -> Router.Response.noContent());
+        var handler = new HttpRouterHandler(router);
+
+        // when
+        FullHttpResponse response = request(handler, HttpMethod.DELETE, "/configs/virtual-topics/orders");
+
+        // then
+        assertThat(response.status()).isEqualTo(HttpResponseStatus.NO_CONTENT);
+        assertThat(response.content().readableBytes()).isZero();
+    }
+
     private static FullHttpResponse request(HttpRouterHandler handler, HttpMethod method, String path) {
+        return request(handler, method, path, "");
+    }
+
+    private static FullHttpResponse request(HttpRouterHandler handler, HttpMethod method, String path, String body) {
         var channel = new EmbeddedChannel(handler);
         FullHttpRequest request = new DefaultFullHttpRequest(
-                HttpVersion.HTTP_1_1, method, path, Unpooled.EMPTY_BUFFER);
+                HttpVersion.HTTP_1_1, method, path, Unpooled.copiedBuffer(body, StandardCharsets.UTF_8));
         channel.writeInbound(request);
         FullHttpResponse response = channel.readOutbound();
         channel.finish();

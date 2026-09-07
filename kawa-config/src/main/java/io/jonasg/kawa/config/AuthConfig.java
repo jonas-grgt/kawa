@@ -1,5 +1,7 @@
 package io.jonasg.kawa.config;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -14,6 +16,37 @@ public record AuthConfig(
         mechanisms = mechanisms == null ? Set.of() : Set.copyOf(mechanisms);
         users = users == null ? Map.of() : resolveUserMechanisms(users, mechanisms);
         validateUserMechanisms(users, mechanisms);
+    }
+
+    /// Returns a new [AuthConfig] with the given user added or replaced. The user's mechanism
+    /// is required. It is ensured present in the advertised [mechanisms] list (added when
+    /// missing), so the first user can be added to an empty config via the admin API. The
+    /// startup-only [brokerAuth] is preserved.
+    public AuthConfig withUser(String username, UserConfig user) {
+        if (user == null) {
+            throw new IllegalArgumentException("user config for '" + username + "' must not be null");
+        }
+        String mechanism = user.mechanism();
+        if (mechanism == null || mechanism.isBlank()) {
+            throw new IllegalArgumentException("user '" + username + "' must specify a mechanism");
+        }
+        var newUsers = new HashMap<>(users);
+        newUsers.put(username, user);
+        Set<String> newMechanisms = mechanisms;
+        if (!mechanisms.contains(mechanism)) {
+            var expanded = new HashSet<>(mechanisms);
+            expanded.add(mechanism);
+            newMechanisms = Set.copyOf(expanded);
+        }
+        return new AuthConfig(newMechanisms, newUsers, brokerAuth);
+    }
+
+    /// Returns a new [AuthConfig] with the given user removed. The startup-only [brokerAuth]
+    /// is preserved.
+    public AuthConfig withoutUser(String username) {
+        var newUsers = new HashMap<>(users);
+        newUsers.remove(username);
+        return new AuthConfig(mechanisms, newUsers, brokerAuth);
     }
 
     private static Map<String, UserConfig> resolveUserMechanisms(

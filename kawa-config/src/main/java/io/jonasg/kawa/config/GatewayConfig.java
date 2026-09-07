@@ -2,6 +2,7 @@ package io.jonasg.kawa.config;
 
 import tools.jackson.databind.annotation.JsonDeserialize;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -64,6 +65,13 @@ public record GatewayConfig(
         }
     }
 
+    /// A fully-defaulted, empty gateway config: no virtual topics, no RBAC, no client auth.
+    /// Used as the base for the admin config endpoints before the first snapshot has been
+    /// applied (an empty config topic on first boot).
+    public static GatewayConfig empty() {
+        return new GatewayConfig(null, null, null, null, null, null, null, null, null, null);
+    }
+
     /// Convenience factory for programmatic configuration.
     public static GatewayConfig of(
             String name,
@@ -88,5 +96,42 @@ public record GatewayConfig(
             return null;
         }
         return clusters.values().iterator().next();
+    }
+
+    /// Returns a new [GatewayConfig] with the [AuthConfig] section replaced.
+    public GatewayConfig updateAuth(AuthConfig auth) {
+        return copyWith(virtualTopics, auth, rbac);
+    }
+
+    /// Returns a new [GatewayConfig] with the [RbacConfig] section replaced.
+    public GatewayConfig updateRbac(RbacConfig rbac) {
+        return copyWith(virtualTopics, auth, rbac);
+    }
+
+    /// Returns a new [GatewayConfig] with the virtual topics map replaced.
+    public GatewayConfig updateVirtualTopics(Map<String, VirtualTopicConfig> virtualTopics) {
+        return copyWith(virtualTopics, auth, rbac);
+    }
+
+    /// Returns a new [GatewayConfig] with the given virtual topic added or replaced.
+    public GatewayConfig putVirtualTopic(String topicName, VirtualTopicConfig topic) {
+        var newTopics = new HashMap<>(virtualTopics);
+        newTopics.put(topicName, topic);
+        return copyWith(Map.copyOf(newTopics), auth, rbac);
+    }
+
+    /// Returns a new [GatewayConfig] with the given virtual topic removed.
+    public GatewayConfig removeVirtualTopic(String topicName) {
+        var newTopics = new HashMap<>(virtualTopics);
+        newTopics.remove(topicName);
+        return copyWith(Map.copyOf(newTopics), auth, rbac);
+    }
+
+    private GatewayConfig copyWith(
+            Map<String, VirtualTopicConfig> virtualTopics,
+            AuthConfig auth,
+            RbacConfig rbac
+    ) {
+        return new GatewayConfig(name, listeners, clusters, virtualTopics, advertised, metrics, auth, rbac, admin, configTopic);
     }
 }

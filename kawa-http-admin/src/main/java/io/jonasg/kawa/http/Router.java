@@ -2,39 +2,145 @@ package io.jonasg.kawa.http;
 
 import io.netty.handler.codec.http.HttpMethod;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/// A tiny, data-driven HTTP route table. Routes are keyed by `(method, path)` so that a path
-/// registered for one method but hit with another can be distinguished from a wholly unknown path.
+/// A tiny, data-driven HTTP route table. Routes are keyed by `(method, path template)` so that a
+/// path registered for one method but hit with another can be distinguished from a wholly unknown
+/// path. A template may contain `{name}` segments that match any single path segment and are
+/// captured into [Request#pathParams].
 public final class Router {
 
     /// A route handler. Implementations are plain (no Netty imports); the [HttpRouterHandler]
-    /// dispatcher is responsible for serializing the returned topics and writing the HTTP response.
+    /// dispatcher is responsible for serializing the returned [Response] body and writing the HTTP
+    /// response.
     @FunctionalInterface
-    public interface Handler<T> {
-        List<T> handle();
+    public interface Handler {
+        Response<?> handle(Request request);
     }
 
-    private record RouteKey(HttpMethod method, String path) {}
+    /// The decoded request handed to a handler: method, path, path parameters captured from
+    /// `{name}` template segments, and the raw request body (empty when the request has none).
+    public record Request(String method, String path, Map<String, String> pathParams, byte[] body) {
 
-    private final Map<RouteKey, Handler<?>> routes = new HashMap<>();
+        public boolean hasBody() {
+            return body.length > 0;
+        }
+    }
+
+    /// The response a handler returns: an HTTP status plus a body object serialized to JSON by the
+    /// dispatcher. A `null` body serializes to an empty body.
+    public record Response<T>(int status, T body) {
+
+        public static <T> Response<T> ok(T body) {
+            return new Response<>(200, body);
+        }
+
+        public static <T> Response<T> created(T body) {
+            return new Response<>(201, body);
+        }
+
+        public static Response<Void> noContent() {
+            return new Response<>(204, null);
+        }
+
+        public static Response<Map<String, String>> badRequest(String message) {
+            return error(400, message);
+        }
+
+        public static Response<Map<String, String>> notFound(String message) {
+            return error(404, message);
+        }
+
+        public static Response<Map<String, String>> conflict(String message) {
+            return error(409, message);
+        }
+
+        public static Response<Map<String, String>> internalError(String message) {
+            return error(500, message);
+        }
+
+        private static Response<Map<String, String>> error(int status, String message) {
+            return new Response<>(status, Map.of("error", message));
+        }
+    }
+
+    /// A matched route: the handler plus the path parameters captured from `{name}` segments.
+    public record Match(Handler handler, Map<String, String> pathParams) {
+    }
+
+    private record Route(HttpMethod method, List<String> segments, Handler handler) {
+    }
+
+    private final List<Route> routes = new ArrayList<>();
 
     /// Registers a handler for `GET path` and returns `this` for chaining.
-    public Router get(String path, Handler<?> handler) {
-        routes.put(new RouteKey(HttpMethod.GET, path), handler);
+    public Router get(String path, Handler handler) {
+        return route(HttpMethod.GET, path, handler);
+    }
+
+    /// Registers a handler for `PUT path` and returns `this` for chaining.
+    public Router put(String path, Handler handler) {
+        return route(HttpMethod.PUT, path, handler);
+    }
+
+    /// Registers a handler for `DELETE path` and returns `this` for chaining.
+    public Router delete(String path, Handler handler) {
+        return route(HttpMethod.DELETE, path, handler);
+    }
+
+    private Router route(HttpMethod method, String path, Handler handler) {
+        routes.add(new Route(method, split(path), handler));
         return this;
     }
 
-    /// Returns the handler registered for `(method, path)`, if any.
-    public Optional<Handler<?>> find(HttpMethod method, String path) {
-        return Optional.ofNullable(routes.get(new RouteKey(method, path)));
+    /// Returns the handler registered for `(method, path)`, if any, along with the path parameters
+    /// captured from `{name}` template segments.
+    public Optional<Match> find(HttpMethod method, String path) {
+        List<String> segments = split(path);
+        for (Route route : routes) {
+            if (route.method() != method || !matches(route.segments(), segments)) {
+                continue;
+            }
+            Map<String, String> params = new HashMap<>();
+            for (int i = 0; i < segments.size(); i++) {
+                String template = route.segments().get(i);
+                if (template.startsWith("{") && template.endsWith("}")) {
+                    params.put(template.substring(1, template.length() - 1), segments.get(i));
+                }
+            }
+            return Optional.of(new Match(route.handler(), params));
+        }
+        return Optional.empty();
     }
 
     /// Returns whether any route is registered for `path` regardless of method.
     public boolean hasPath(String path) {
-        return routes.keySet().stream().anyMatch(key -> key.path().equals(path));
+        List<String> segments = split(path);
+        return routes.stream().anyMatch(route -> matches(route.segments(), segments));
+    }
+
+    private static boolean matches(List<String> template, List<String> actual) {
+        if (template.size() != actual.size()) {
+            return false;
+        }
+        for (int i = 0; i < template.size(); i++) {
+            String t = template.get(i);
+            if (!t.startsWith("{") && !t.equals(actual.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static List<String> split(String path) {
+        String trimmed = path.startsWith("/") ? path.substring(1) : path;
+        if (trimmed.isEmpty()) {
+            return List.of();
+        }
+        return List.of(trimmed.split("/"));
     }
 }

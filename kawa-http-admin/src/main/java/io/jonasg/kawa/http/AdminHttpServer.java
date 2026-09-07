@@ -1,6 +1,7 @@
 package io.jonasg.kawa.http;
 
 import io.jonasg.kawa.config.AdminConfig;
+import io.jonasg.kawa.config.GatewayConfigRepository;
 import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.core.cluster.MetadataCache;
 import io.netty.bootstrap.ServerBootstrap;
@@ -19,8 +20,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 
-/// Netty HTTP server exposing the gateway's admin/UI surface (currently `GET /topics`).
-/// Reads only from the [VirtualTopicManager] and [MetadataCache]; it never talks to the broker.
+/// Netty HTTP server exposing the gateway's admin/UI surface: `GET /topics` reads the
+/// [VirtualTopicManager] and [MetadataCache], and the `/config/...` endpoints read and write
+/// the dynamic config through the [GatewayConfigRepository]. It never talks to the broker
+/// directly - config writes go to the config topic and are applied by the consumer.
 public final class AdminHttpServer {
 
     private static final Logger log = LoggerFactory.getLogger(AdminHttpServer.class);
@@ -28,15 +31,35 @@ public final class AdminHttpServer {
     private final AdminConfig config;
     private final VirtualTopicManager virtualTopics;
     private final MetadataCache cache;
+    private final Router router;
 
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
     private Channel serverChannel;
 
-    public AdminHttpServer(AdminConfig config, VirtualTopicManager virtualTopics, MetadataCache cache) {
+    public AdminHttpServer(
+            AdminConfig config,
+            VirtualTopicManager virtualTopics,
+            MetadataCache cache,
+            GatewayConfigRepository configRepository
+    ) {
         this.config = config;
         this.virtualTopics = virtualTopics;
         this.cache = cache;
+        this.router = new Router()
+                .get("/topics", new GetTopicsHandler(virtualTopics, cache))
+                .get("/config/virtual-topics", new VirtualTopicsConfigHandler(configRepository))
+                .put("/config/virtual-topics/{name}", new VirtualTopicsConfigHandler(configRepository))
+                .delete("/config/virtual-topics/{name}", new VirtualTopicsConfigHandler(configRepository))
+                .get("/config/rbac/roles", new RbacRolesConfigHandler(configRepository))
+                .put("/config/rbac/roles/{name}", new RbacRolesConfigHandler(configRepository))
+                .delete("/config/rbac/roles/{name}", new RbacRolesConfigHandler(configRepository))
+                .get("/config/rbac/groups", new RbacGroupsConfigHandler(configRepository))
+                .put("/config/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
+                .delete("/config/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
+                .get("/config/auth/users", new AuthUsersConfigHandler(configRepository))
+                .put("/config/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
+                .delete("/config/auth/users/{name}", new AuthUsersConfigHandler(configRepository));
     }
 
     public void start() throws InterruptedException {
@@ -55,8 +78,6 @@ public final class AdminHttpServer {
                         if (config.cors() != null) {
                             ch.pipeline().addLast("cors", new CorsHandler(CorsConfigFactory.from(config.cors())));
                         }
-                        var router = new Router()
-                                .get("/topics", new GetTopicsHandler(virtualTopics, cache));
                         ch.pipeline().addLast("httpRouter", new HttpRouterHandler(router));
                     }
                 });
