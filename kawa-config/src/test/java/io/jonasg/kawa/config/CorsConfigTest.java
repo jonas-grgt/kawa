@@ -15,7 +15,7 @@ class CorsConfigTest {
 
         // then
         assertThat(config.allowedOrigins()).containsExactly("*");
-        assertThat(config.allowedMethods()).containsExactly("GET");
+        assertThat(config.allowedMethods()).containsExactly("GET", "POST", "PUT", "DELETE", "OPTIONS");
         assertThat(config.allowedHeaders()).containsExactly("*");
         assertThat(config.allowCredentials()).isFalse();
         assertThat(config.maxAge()).isNull();

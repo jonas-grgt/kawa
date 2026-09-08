@@ -90,7 +90,9 @@ class AdminHttpServerTest {
         assertThat(response.headers().firstValue("Access-Control-Allow-Origin"))
                 .contains("http://localhost:8080");
         assertThat(response.headers().firstValue("Access-Control-Allow-Methods"))
-                .contains("GET");
+                .get()
+                .asString()
+                .contains("GET", "POST", "PUT", "DELETE", "OPTIONS");
     }
 
     @Test

@@ -7,7 +7,7 @@ import java.util.List;
 ///
 /// @param allowedOrigins origins allowed to call the admin API; `["*"]` allows any origin
 ///                       (defaults to `["*"]`)
-/// @param allowedMethods HTTP methods allowed in preflight responses (defaults to `["GET"]`)
+/// @param allowedMethods HTTP methods allowed in preflight responses (defaults to `["GET", "POST", "PUT", "DELETE", "OPTIONS"]`)
 /// @param allowedHeaders request headers allowed in preflight responses (defaults to none)
 /// @param allowCredentials whether credentialed requests (cookies, auth headers) are allowed;
 ///                         cannot be combined with a wildcard origin (defaults to `false`)
@@ -22,7 +22,7 @@ public record CorsConfig(
 
     public CorsConfig {
         allowedOrigins = allowedOrigins == null ? List.of("*") : List.copyOf(allowedOrigins);
-        allowedMethods = allowedMethods == null ? List.of("GET") : List.copyOf(allowedMethods);
+        allowedMethods = allowedMethods == null ? List.of("GET", "POST", "PUT", "DELETE", "OPTIONS") : List.copyOf(allowedMethods);
         allowedHeaders = allowedHeaders == null ? List.of("*") : List.copyOf(allowedHeaders);
         allowCredentials = allowCredentials == null ? false : allowCredentials;
     }
