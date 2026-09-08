@@ -140,14 +140,14 @@ clusters:
 
 ### `virtualTopics`
 
-Map of logical name → virtual topic definition. The map key is the topic name clients
+Map of virtual name → virtual topic definition. The map key is the topic name clients
 see and use.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `topic` | string | *(required)* | Physical topic name on the upstream cluster |
 | `filter` | object | none | Optional server-side consume filter |
-| `exposePhysicalTopic` | bool | `false` | When `true`, the physical topic stays visible in Metadata responses next to its logical name |
+| `exposePhysicalTopic` | bool | `false` | When `true`, the physical topic stays visible in Metadata responses next to its virtual name |
 
 #### `filter` (`headerEquals`)
 
@@ -406,7 +406,7 @@ dynamic config. All endpoints return JSON.
 
 ### `GET /topics`
 
-Lists the logical and physical topics known to the gateway (see [Admin](#admin)).
+Lists the virtual and physical topics known to the gateway (see [Admin](#admin)).
 
 ### Config endpoints
 

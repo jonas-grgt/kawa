@@ -18,10 +18,10 @@ upstream cluster over dedicated broker connections.
    |-- Metadata --------------->| rewrite endpoints + topic names       |
    |<---------------------------| single advertised node (the gateway)  |
    |                            |                                       |
-   |-- Produce orders.eu ------>| logical -> physical rewrite           |
+   |-- Produce orders.eu ------>| virtual -> physical rewrite           |
    |                            |-- Produce orders-v2 ----------------->| leader broker
    |                            |<-------- response --------------------|
-   |<---- mapped back ----------| restore logical names                 |
+   |<---- mapped back ----------| restore virtual names                 |
 ```
 
 ## Modules

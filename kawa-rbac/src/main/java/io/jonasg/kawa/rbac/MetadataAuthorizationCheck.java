@@ -24,7 +24,7 @@ import java.util.List;
 ///   entry is merged into the response for each.
 /// - List-all (`data.topics() == null`): nothing to strip, forwarded unchanged. Filtering
 ///   happens entirely on the response, translating each returned (physical) topic name to its
-///   logical name via VirtualTopicManager before checking the ACL - this runs before
+///   virtual name via VirtualTopicManager before checking the ACL - this runs before
 ///   VirtualTopicInterceptor's own rename/expose-physical-topic step, so a denied entry never
 ///   reaches it.
 public final class MetadataAuthorizationCheck implements AuthorizationCheck<MetadataRequestData, MetadataResponseData> {
@@ -86,13 +86,13 @@ public final class MetadataAuthorizationCheck implements AuthorizationCheck<Meta
             return; // request-side already denied; nothing more to do
         }
         // List-all filtering first: remove any topic the principal can't describe, translating
-        // the broker's physical name to logical first since this runs before
+        // the broker's physical name to virtual first since this runs before
         // VirtualTopicInterceptor.onResponse. This must run BEFORE appending the synthesized
         // denial entries below - those carry UNKNOWN_TOPIC_OR_PARTITION and a name the principal
         // is by definition denied DESCRIBE on, so removeIf would immediately delete them again.
         data.topics().removeIf(topic -> {
-            String logical = virtualTopics.toLogical(topic.name());
-            return !authorizer.isAuthorized(principal, ResourceType.TOPIC, logical, AclOperation.DESCRIBE);
+            String virtual = virtualTopics.toVirtual(topic.name());
+            return !authorizer.isAuthorized(principal, ResourceType.TOPIC, virtual, AclOperation.DESCRIBE);
         });
         // Then append the synthesized denial entries for the specific-topics case.
         MetadataAuthState state = context.state(MetadataAuthState.class);

@@ -115,7 +115,7 @@ class KafkaClientRequestHandlerTest {
         localResponse.topics().add(new CreateTopicsResponseData.CreatableTopicResult()
                 .setName("orders")
                 .setErrorCode(Errors.INVALID_REQUEST.code())
-                .setErrorMessage("logical topic 'orders' is reserved; use 'orders-v2'"));
+                .setErrorMessage("virtual topic 'orders' is reserved; use 'orders-v2'"));
 
         var shortCircuitingInterceptor = new Interceptor() {
             @Override

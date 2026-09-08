@@ -5,8 +5,8 @@ package io.jonasg.kawa.config;
 /// @param topic physical topic name
 /// @param filter optional server-side consume filter configuration
 /// @param exposePhysicalTopic when `true`, the physical topic is still listed alongside
-///                            its logical name in Metadata responses instead of being hidden
-///                            (renamed to the logical name in place) - hidden by default
+///                            its virtual name in Metadata responses instead of being hidden
+///                            (renamed to the virtual name in place) - hidden by default
 public record VirtualTopicConfig(String topic, VirtualTopicFilterConfig filter, boolean exposePhysicalTopic) {
 
     public VirtualTopicConfig(String topic) {

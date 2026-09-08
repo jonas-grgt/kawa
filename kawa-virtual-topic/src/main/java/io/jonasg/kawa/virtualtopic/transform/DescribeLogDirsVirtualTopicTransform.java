@@ -31,10 +31,10 @@ public final class DescribeLogDirsVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (DescribeLogDirsRequestData.DescribableLogDirTopic topic : data.topics()) {
-            String logical = topic.topic();
-            String physical = virtualTopics.toPhysical(logical);
-            if (!Objects.equals(physical, logical)) {
-                state.record(physical, logical);
+            String virtual = topic.topic();
+            String physical = virtualTopics.toPhysical(virtual);
+            if (!Objects.equals(physical, virtual)) {
+                state.record(physical, virtual);
                 topic.setTopic(physical);
             }
         }
@@ -48,9 +48,9 @@ public final class DescribeLogDirsVirtualTopicTransform
         VirtualTopicState state = VirtualTopicState.from(context);
         for (DescribeLogDirsResponseData.DescribeLogDirsResult result : data.results()) {
             for (DescribeLogDirsResponseData.DescribeLogDirsTopic topic : result.topics()) {
-                String logical = state.logicalFor(topic.name());
-                if (logical != null) {
-                    topic.setName(logical);
+                String virtual = state.virtualFor(topic.name());
+                if (virtual != null) {
+                    topic.setName(virtual);
                 }
             }
         }

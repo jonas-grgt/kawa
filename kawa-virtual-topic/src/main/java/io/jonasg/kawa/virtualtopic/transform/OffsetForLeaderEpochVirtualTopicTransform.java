@@ -31,10 +31,10 @@ public final class OffsetForLeaderEpochVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (OffsetForLeaderEpochRequestData.OffsetForLeaderTopic topic : data.topics()) {
-            String logical = topic.topic();
-            String physical = virtualTopics.toPhysical(logical);
-            if (!Objects.equals(physical, logical)) {
-                state.record(physical, logical);
+            String virtual = topic.topic();
+            String physical = virtualTopics.toPhysical(virtual);
+            if (!Objects.equals(physical, virtual)) {
+                state.record(physical, virtual);
                 topic.setTopic(physical);
             }
         }
@@ -47,9 +47,9 @@ public final class OffsetForLeaderEpochVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (OffsetForLeaderEpochResponseData.OffsetForLeaderTopicResult topic : data.topics()) {
-            String logical = state.logicalFor(topic.topic());
-            if (logical != null) {
-                topic.setTopic(logical);
+            String virtual = state.virtualFor(topic.topic());
+            if (virtual != null) {
+                topic.setTopic(virtual);
             }
         }
     }

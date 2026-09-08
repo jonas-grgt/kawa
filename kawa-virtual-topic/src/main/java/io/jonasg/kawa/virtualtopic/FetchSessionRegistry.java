@@ -6,12 +6,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-/// Tracks the logical/physical topic mapping of active fetch sessions (KIP-227, Fetch v7+).
+/// Tracks the virtual/physical topic mapping of active fetch sessions (KIP-227, Fetch v7+).
 ///
 /// Incremental session fetches omit the topics list once a partition is caught up, so the
 /// per-request [VirtualTopicState] is empty and the response transform has nothing to rename
 /// response topics against. This registry remembers the mapping per (client, broker-assigned
-/// session id) so idle incremental responses can still be renamed back to logical names.
+/// session id) so idle incremental responses can still be renamed back to virtual names.
 ///
 /// Entries are bound when a session is created (full fetch response) and updated while it is
 /// alive. They are dropped when the client closes the session (final epoch), when the broker
@@ -23,7 +23,7 @@ public final class FetchSessionRegistry {
 
     private static final class Entry {
 
-        private final Map<String, String> physicalToLogical = new HashMap<>();
+        private final Map<String, String> physicalToVirtual = new HashMap<>();
         private volatile long lastSeenNanos;
 
         private Entry(long nowNanos) {
@@ -39,7 +39,7 @@ public final class FetchSessionRegistry {
     /// Applies a fetch request to an existing session: merges newly renamed topics, forgets
     /// the given physical topics and records activity. No-op for full fetches (session not yet
     /// created) or unknown sessions.
-    public void onFetchRequest(Object client, int sessionId, Map<String, String> physicalToLogical,
+    public void onFetchRequest(Object client, int sessionId, Map<String, String> physicalToVirtual,
                         List<String> forgottenPhysical) {
         if (sessionId == 0) {
             return;
@@ -52,23 +52,23 @@ public final class FetchSessionRegistry {
             return;
         }
         entry.lastSeenNanos = now;
-        entry.physicalToLogical.putAll(physicalToLogical);
-        forgottenPhysical.forEach(entry.physicalToLogical::remove);
+        entry.physicalToVirtual.putAll(physicalToVirtual);
+        forgottenPhysical.forEach(entry.physicalToVirtual::remove);
     }
 
     /// Binds a freshly created session (full-fetch response) to the request's topic mapping.
     public void bindSession(
             Object client,
             int sessionId,
-            Map<String, String> physicalToLogical
+            Map<String, String> physicalToVirtual
     ) {
         long now = System.nanoTime();
         maybePrune(now);
-        if (sessionId == 0 || physicalToLogical.isEmpty()) {
+        if (sessionId == 0 || physicalToVirtual.isEmpty()) {
             return;
         }
         Entry entry = sessions.computeIfAbsent(new Key(client, sessionId), k -> new Entry(now));
-        entry.physicalToLogical.putAll(physicalToLogical);
+        entry.physicalToVirtual.putAll(physicalToVirtual);
     }
 
     public boolean hasSession(
@@ -78,8 +78,8 @@ public final class FetchSessionRegistry {
         return sessionId != 0 && sessions.containsKey(new Key(client, sessionId));
     }
 
-    /// The logical (client-visible) name for `physical` on this session, or `null`.
-    public String logicalFor(
+    /// The virtual (client-visible) name for `physical` on this session, or `null`.
+    public String virtualFor(
             Object client,
             int sessionId,
             String physical
@@ -91,7 +91,7 @@ public final class FetchSessionRegistry {
             return null;
         }
         entry.lastSeenNanos = now;
-        return entry.physicalToLogical.get(physical);
+        return entry.physicalToVirtual.get(physical);
     }
 
     /// Drops one session (closed by the client or reported unknown by the broker).

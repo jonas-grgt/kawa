@@ -364,7 +364,7 @@ class VirtualTopicInterceptorTest {
 
         interceptor.onResponse(context, response(METADATA, data));
 
-        // physical topics backing a virtual topic are hidden: renamed to their logical name in
+        // physical topics backing a virtual topic are hidden: renamed to their virtual name in
         // place rather than exposed alongside it. Non-virtual topics pass through untouched.
         assertThat(data.topics()).extracting("name")
                 .containsExactly("orders", "customers", "internal-hidden-topic");
@@ -419,7 +419,7 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void filtersFetchResponseRecordsByHeader() {
-        // given a fetch request for the logical topic, binding the per-request mapping
+        // given a fetch request for the virtual topic, binding the per-request mapping
         var requestData = new FetchRequestData();
         requestData.topics().add(new FetchRequestData.FetchTopic().setTopic("events"));
         interceptor.onRequest(context, request(FETCH, requestData));
@@ -739,7 +739,7 @@ class VirtualTopicInterceptorTest {
     }
 
     @Test
-    void offsetFetchAllTopicsResponseShouldStillUseLogicalNames() {
+    void offsetFetchAllTopicsResponseShouldStillUseVirtualNames() {
         var requestData = new OffsetFetchRequestData().setGroupId("g1");
         requestData.setTopics(null);
 
@@ -817,12 +817,12 @@ class VirtualTopicInterceptorTest {
         interceptor.onRequest(context, request(CREATE_PARTITIONS, data));
 
         assertThat(first(data.topics()).name()).isEqualTo("orders-v2");
-        assertThat(VirtualTopicState.from(context).physicalToLogical()).isEmpty();
+        assertThat(VirtualTopicState.from(context).physicalToVirtual()).isEmpty();
     }
 
     @Test
     void rewritesDescribeConfigsTopicResourcesRequestAndResponse() {
-        // given a describe-configs request for the logical topic "orders"
+        // given a describe-configs request for the virtual topic "orders"
         var requestData = new DescribeConfigsRequestData();
         requestData.resources().add(new DescribeConfigsRequestData.DescribeConfigsResource()
                 .setResourceType(ConfigResource.Type.TOPIC.id())
@@ -850,7 +850,7 @@ class VirtualTopicInterceptorTest {
         // when
         interceptor.onResponse(context, response(DESCRIBE_CONFIGS, responseData));
 
-        // then the result carries the logical name and its config entries back to the client
+        // then the result carries the virtual name and its config entries back to the client
         DescribeConfigsResponseData.DescribeConfigsResult result = first(responseData.results());
         assertThat(result.resourceName()).isEqualTo("orders");
         assertThat(result.configs()).hasSize(1);
@@ -860,7 +860,7 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void describeConfigsNonTopicResourcesPassThroughUnchanged() {
-        // given a broker-resource request whose name collides with a logical topic name
+        // given a broker-resource request whose name collides with a virtual topic name
         var requestData = new DescribeConfigsRequestData();
         requestData.resources().add(new DescribeConfigsRequestData.DescribeConfigsResource()
                 .setResourceType(ConfigResource.Type.BROKER.id())
@@ -872,7 +872,7 @@ class VirtualTopicInterceptorTest {
 
         // then the non-topic resource is untouched and nothing is recorded for the response
         assertThat(first(requestData.resources()).resourceName()).isEqualTo("orders");
-        assertThat(VirtualTopicState.from(requestContext).physicalToLogical()).isEmpty();
+        assertThat(VirtualTopicState.from(requestContext).physicalToVirtual()).isEmpty();
 
         // given a broker response for that resource
         var responseData = new DescribeConfigsResponseData();
@@ -924,7 +924,7 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void createAclsResponseStatusesPassThroughUnchanged() {
-        // given a create-acls request for the logical topic
+        // given a create-acls request for the virtual topic
         var requestData = new CreateAclsRequestData();
         requestData.creations().add(new CreateAclsRequestData.AclCreation()
                 .setResourceType(ResourceType.TOPIC.code())
@@ -978,7 +978,7 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void rewritesDeleteAclsMatchingAclTopicNamesInResponse() {
-        // given a delete-acls request for the logical topic
+        // given a delete-acls request for the virtual topic
         var requestData = new DeleteAclsRequestData();
         requestData.filters().add(new DeleteAclsRequestData.DeleteAclsFilter()
                 .setResourceTypeFilter(ResourceType.TOPIC.code())
@@ -1026,7 +1026,7 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void rewritesDescribeAclsTopicFilterNameInRequest() {
-        // given a describe-acls request filtering the logical topic by name
+        // given a describe-acls request filtering the virtual topic by name
         var requestData = new DescribeAclsRequestData()
                 .setResourceTypeFilter(ResourceType.TOPIC.code())
                 .setResourceNameFilter("orders")
@@ -1047,7 +1047,7 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void describeAclsNonTopicFiltersPassThroughUnchanged() {
-        // given a describe-acls request filtering groups by a logical topic-like name
+        // given a describe-acls request filtering groups by a virtual topic-like name
         var requestData = new DescribeAclsRequestData()
                 .setResourceTypeFilter(ResourceType.GROUP.code())
                 .setResourceNameFilter("orders");
@@ -1059,12 +1059,12 @@ class VirtualTopicInterceptorTest {
 
         // then the filter is untouched and nothing is recorded for the response
         assertThat(requestData.resourceNameFilter()).isEqualTo("orders");
-        assertThat(VirtualTopicState.from(requestContext).physicalToLogical()).isEmpty();
+        assertThat(VirtualTopicState.from(requestContext).physicalToVirtual()).isEmpty();
     }
 
     @Test
     void rewritesDescribeAclsResourceTopicNamesInResponse() {
-        // given a describe-acls request for the logical topic
+        // given a describe-acls request for the virtual topic
         var requestData = new DescribeAclsRequestData()
                 .setResourceTypeFilter(ResourceType.TOPIC.code())
                 .setResourceNameFilter("orders");
@@ -1102,7 +1102,7 @@ class VirtualTopicInterceptorTest {
     }
 
     @Test
-    void rewritesDescribeTransactionsResponseTopicsToLogicalNames() {
+    void rewritesDescribeTransactionsResponseTopicsToVirtualNames() {
         // given a describe-transactions request carrying only transactional ids
         var requestData = new DescribeTransactionsRequestData()
                 .setTransactionalIds(List.of("txn-1"));
@@ -1141,7 +1141,7 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void rewritesAddPartitionsToTxnTopicNamesInRequestAndResponse() {
-        // given an add-partitions-to-txn request for the logical topic and an unmapped topic
+        // given an add-partitions-to-txn request for the virtual topic and an unmapped topic
         var requestData = new AddPartitionsToTxnRequestData()
                 .setV3AndBelowTransactionalId("txn-1")
                 .setV3AndBelowProducerId(42L)
@@ -1178,7 +1178,7 @@ class VirtualTopicInterceptorTest {
         // when
         interceptor.onResponse(context, response(ADD_PARTITIONS_TO_TXN, responseData));
 
-        // then the result carries the logical name and its partition results back to the client
+        // then the result carries the virtual name and its partition results back to the client
         AddPartitionsToTxnResponseData.AddPartitionsToTxnTopicResult result =
                 first(responseData.resultsByTopicV3AndBelow());
         assertThat(result.name()).isEqualTo("orders");
@@ -1189,7 +1189,7 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void rewritesOffsetDeleteTopicNamesInRequestAndResponse() {
-        // given an offset-delete request for the logical topic
+        // given an offset-delete request for the virtual topic
         var requestData = new OffsetDeleteRequestData().setGroupId("group-1");
         requestData.topics().add(new OffsetDeleteRequestData.OffsetDeleteRequestTopic()
                 .setName("orders")
@@ -1217,7 +1217,7 @@ class VirtualTopicInterceptorTest {
         // when
         interceptor.onResponse(context, response(OFFSET_DELETE, responseData));
 
-        // then the result carries the logical name and its partition statuses back to the client
+        // then the result carries the virtual name and its partition statuses back to the client
         OffsetDeleteResponseData.OffsetDeleteResponseTopic result = first(responseData.topics());
         assertThat(result.name()).isEqualTo("orders");
         assertThat(result.partitions()).hasSize(1);
@@ -1227,7 +1227,7 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void rewritesAlterConfigsTopicResourcesInRequestAndResponse() {
-        // given an alter-configs request for the logical topic plus a broker resource
+        // given an alter-configs request for the virtual topic plus a broker resource
         var requestData = new AlterConfigsRequestData();
         AlterConfigsRequestData.AlterConfigsResource topicResource =
                 new AlterConfigsRequestData.AlterConfigsResource()
@@ -1269,14 +1269,14 @@ class VirtualTopicInterceptorTest {
         // when
         interceptor.onResponse(context, response(ALTER_CONFIGS, responseData));
 
-        // then only the topic result carries the logical name back to the client
+        // then only the topic result carries the virtual name back to the client
         assertThat(responseData.responses()).extracting("resourceName")
                 .containsExactly("orders", "orders");
     }
 
     @Test
     void rewritesIncrementalAlterConfigsTopicResourcesInRequestAndResponse() {
-        // given an incremental-alter-configs request setting a config on the logical topic
+        // given an incremental-alter-configs request setting a config on the virtual topic
         var requestData = new IncrementalAlterConfigsRequestData();
         IncrementalAlterConfigsRequestData.AlterConfigsResource resource =
                 new IncrementalAlterConfigsRequestData.AlterConfigsResource()
@@ -1307,14 +1307,14 @@ class VirtualTopicInterceptorTest {
         // when
         interceptor.onResponse(context, response(INCREMENTAL_ALTER_CONFIGS, responseData));
 
-        // then the result carries the logical name back to the client
+        // then the result carries the virtual name back to the client
         assertThat(first(responseData.responses()).resourceName()).isEqualTo("orders");
         assertThat(first(responseData.responses()).errorCode()).isEqualTo(Errors.NONE.code());
     }
 
     @Test
     void rewritesDeleteRecordsTopicNamesInRequestAndResponse() {
-        // given a delete-records request truncating the logical topic's partition
+        // given a delete-records request truncating the virtual topic's partition
         var requestData = new DeleteRecordsRequestData().setTimeoutMs(5000);
         requestData.topics().add(new DeleteRecordsRequestData.DeleteRecordsTopic()
                 .setName("orders")
@@ -1343,7 +1343,7 @@ class VirtualTopicInterceptorTest {
         // when
         interceptor.onResponse(context, response(DELETE_RECORDS, responseData));
 
-        // then the result carries the logical name and its low watermark back to the client
+        // then the result carries the virtual name and its low watermark back to the client
         DeleteRecordsResponseData.DeleteRecordsTopicResult result = first(responseData.topics());
         assertThat(result.name()).isEqualTo("orders");
         assertThat(first(result.partitions()).partitionIndex()).isZero();
@@ -1373,7 +1373,7 @@ class VirtualTopicInterceptorTest {
 
         interceptor.onResponse(context, response(METADATA, data));
 
-        // unmapped topics pass through unchanged; the virtualized one is renamed to its logical
+        // unmapped topics pass through unchanged; the virtualized one is renamed to its virtual
         // name in place, not exposed alongside its physical name
         assertThat(data.topics()).extracting("name").containsExactly("orders", "unmapped-topic");
     }
@@ -1387,7 +1387,7 @@ class VirtualTopicInterceptorTest {
         interceptor.onResponse(context, response(METADATA, data));
 
         // "orders-v2" is hidden (renamed in place) as usual; "legacy-v1" opted in via
-        // exposePhysicalTopic: true, so it keeps its physical entry AND gets a logical one added
+        // exposePhysicalTopic: true, so it keeps its physical entry AND gets a virtual one added
         assertThat(data.topics()).extracting("name")
                 .containsExactly("orders", "legacy-v1", "legacy");
     }
@@ -1454,7 +1454,7 @@ class VirtualTopicInterceptorTest {
         sessionInterceptor.onRequest(freshContext(), request(FETCH, forget));
 
         assertThat(first(forget.forgottenTopicsData()).topic()).isEqualTo("customers-v2");
-        assertThat(sessions.logicalFor("test", 42, "customers-v2")).isNull();
+        assertThat(sessions.virtualFor("test", 42, "customers-v2")).isNull();
     }
 
     private static void bindSession(

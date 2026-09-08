@@ -8,7 +8,7 @@ import org.apache.kafka.common.message.DeleteRecordsResponseData;
 
 import java.util.Objects;
 
-/// Rewrites DeleteRecords topic names between logical and physical names. The timeout,
+/// Rewrites DeleteRecords topic names between virtual and physical names. The timeout,
 /// partition indexes, record offsets and per-partition low watermarks are left untouched.
 public final class DeleteRecordsVirtualTopicTransform
         implements VirtualTopicTransform<DeleteRecordsRequestData, DeleteRecordsResponseData> {
@@ -48,9 +48,9 @@ public final class DeleteRecordsVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (DeleteRecordsResponseData.DeleteRecordsTopicResult result : data.topics()) {
-            String logical = state.logicalFor(result.name());
-            if (logical != null) {
-                result.setName(logical);
+            String virtual = state.virtualFor(result.name());
+            if (virtual != null) {
+                result.setName(virtual);
             }
         }
     }

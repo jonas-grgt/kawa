@@ -5,7 +5,7 @@ import io.jonasg.kawa.core.VirtualTopicManager;
 import org.apache.kafka.common.message.DescribeTransactionsRequestData;
 import org.apache.kafka.common.message.DescribeTransactionsResponseData;
 
-/// Rewrites the topics an in-flight transaction touches from physical to logical names. The
+/// Rewrites the topics an in-flight transaction touches from physical to virtual names. The
 /// request carries only transactional ids, so there is no per-request mapping to consult and
 /// the rewrite falls back to the configured virtual-topic map.
 public final class DescribeTransactionsVirtualTopicTransform
@@ -38,7 +38,7 @@ public final class DescribeTransactionsVirtualTopicTransform
     ) {
         for (DescribeTransactionsResponseData.TransactionState state : data.transactionStates()) {
             for (DescribeTransactionsResponseData.TopicData topic : state.topics()) {
-                topic.setTopic(virtualTopics.toLogical(topic.topic()));
+                topic.setTopic(virtualTopics.toVirtual(topic.topic()));
             }
         }
     }

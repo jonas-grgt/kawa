@@ -11,7 +11,7 @@
 
   <artifactId>kawa-http-admin</artifactId>
   <name>Kawa HTTP Admin</name>
-  <description>Admin HTTP surface exposing gateway state (e.g. logical and physical topics) to a UI.</description>
+  <description>Admin HTTP surface exposing gateway state (e.g. virtual and physical topics) to a UI.</description>
 
   <dependencies>
     <dependency>

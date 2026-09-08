@@ -44,9 +44,9 @@ public final class TxnOffsetCommitVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (TxnOffsetCommitResponseData.TxnOffsetCommitResponseTopic topic : data.topics()) {
-            String logical = state.logicalFor(topic.name());
-            if (logical != null) {
-                topic.setName(logical);
+            String virtual = state.virtualFor(topic.name());
+            if (virtual != null) {
+                topic.setName(virtual);
             }
         }
     }

@@ -28,15 +28,15 @@ When `prometheusPort` is set, a Prometheus text-format endpoint is served at
 | `gateway.bytes.out` | counter | — | Bytes sent to clients |
 | `gateway.connections.client.active` | gauge | — | Currently open client connections |
 | `gateway.connections.broker.active` | gauge | — | Currently open upstream broker connections |
-| `gateway.virtual_topic.hits` | counter | `direction`, `logical`, `physical` | Virtual topic rewrites |
+| `gateway.virtual_topic.hits` | counter | `direction`, `virtual`, `physical` | Virtual topic rewrites |
 
 ### Tag values
 
 - **`api`** — Kafka API name, e.g. `Produce`, `Fetch`, `Metadata`.
 - **`result`** — request/response outcome as classified by the transport layer.
-- **`direction`** — rewrite direction: `request` (client→broker, logical→physical) or
-  `response` (broker→client, physical→logical).
-- **`logical` / `physical`** — virtual topic names involved in the rewrite.
+- **`direction`** — rewrite direction: `request` (client→broker, virtual→physical) or
+  `response` (broker→client, physical→virtual).
+- **`virtual` / `physical`** — virtual topic names involved in the rewrite.
 
 ## Example PromQL
 
@@ -48,6 +48,6 @@ rate(gateway_requests_total[5m])
 histogram_quantile(0.99,
   rate(gateway_request_latency_seconds_bucket{api="Produce"}[5m]))
 
-# Rewrites per logical topic
-sum by (logical) (rate(gateway_virtual_topic_hits_total[5m]))
+# Rewrites per virtual topic
+sum by (virtual) (rate(gateway_virtual_topic_hits_total[5m]))
 ```

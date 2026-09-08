@@ -62,7 +62,7 @@ class AdminGetTopicsIT extends GatewayTestSupport {
 							.isEqualTo("""
 									[
 										{
-											"type": "logical",
+											"type": "virtual",
 											"name": "orders",
 											"partitions": 1,
 											"replicationFactor": 1,

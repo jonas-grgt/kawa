@@ -13,12 +13,12 @@ class FetchSessionRegistryTest {
     private final FetchSessionRegistry registry = new FetchSessionRegistry();
 
     @Test
-    void bindsSessionAndResolvesLogicalNames() {
+    void bindsSessionAndResolvesVirtualNames() {
         registry.bindSession(client, 1, Map.of("customers-v2", "customers"));
 
         assertThat(registry.hasSession(client, 1)).isTrue();
-        assertThat(registry.logicalFor(client, 1, "customers-v2")).isEqualTo("customers");
-        assertThat(registry.logicalFor(client, 1, "orders-v2")).isNull();
+        assertThat(registry.virtualFor(client, 1, "customers-v2")).isEqualTo("customers");
+        assertThat(registry.virtualFor(client, 1, "orders-v2")).isNull();
     }
 
     @Test
@@ -35,10 +35,10 @@ class FetchSessionRegistryTest {
         registry.bindSession(client, 1, Map.of("customers-v2", "customers"));
 
         registry.onFetchRequest(client, 1, Map.of("orders-v2", "orders"), List.of());
-        assertThat(registry.logicalFor(client, 1, "orders-v2")).isEqualTo("orders");
+        assertThat(registry.virtualFor(client, 1, "orders-v2")).isEqualTo("orders");
 
         registry.onFetchRequest(client, 1, Map.of(), List.of("customers-v2"));
-        assertThat(registry.logicalFor(client, 1, "customers-v2")).isNull();
+        assertThat(registry.virtualFor(client, 1, "customers-v2")).isNull();
     }
 
     @Test

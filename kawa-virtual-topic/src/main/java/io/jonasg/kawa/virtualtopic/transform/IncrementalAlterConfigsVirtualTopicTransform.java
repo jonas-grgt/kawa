@@ -9,7 +9,7 @@ import org.apache.kafka.common.message.IncrementalAlterConfigsResponseData;
 
 import java.util.Objects;
 
-/// Rewrites IncrementalAlterConfigs topic-resource names between logical and physical names.
+/// Rewrites IncrementalAlterConfigs topic-resource names between virtual and physical names.
 /// Non-topic resources (brokers, broker loggers) pass through unchanged. Config entries and
 /// their operation types (SET/DELETE/APPEND/SUBTRACT) are left untouched.
 public final class IncrementalAlterConfigsVirtualTopicTransform
@@ -56,9 +56,9 @@ public final class IncrementalAlterConfigsVirtualTopicTransform
             if (response.resourceType() != ConfigResource.Type.TOPIC.id()) {
                 continue;
             }
-            String logical = state.logicalFor(response.resourceName());
-            if (logical != null) {
-                response.setResourceName(logical);
+            String virtual = state.virtualFor(response.resourceName());
+            if (virtual != null) {
+                response.setResourceName(virtual);
             }
         }
     }

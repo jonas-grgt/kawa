@@ -9,7 +9,7 @@ import org.apache.kafka.common.message.DescribeConfigsResponseData;
 
 import java.util.Objects;
 
-/// Rewrites DescribeConfigs topic-resource names between logical and physical topic names.
+/// Rewrites DescribeConfigs topic-resource names between virtual and physical topic names.
 /// Non-topic resources (brokers, broker loggers) pass through unchanged.
 public final class DescribeConfigsVirtualTopicTransform
         implements VirtualTopicTransform<DescribeConfigsRequestData, DescribeConfigsResponseData> {
@@ -55,9 +55,9 @@ public final class DescribeConfigsVirtualTopicTransform
             if (result.resourceType() != ConfigResource.Type.TOPIC.id()) {
                 continue;
             }
-            String logical = state.logicalFor(result.resourceName());
-            if (logical != null) {
-                result.setResourceName(logical);
+            String virtual = state.virtualFor(result.resourceName());
+            if (virtual != null) {
+                result.setResourceName(virtual);
             }
         }
     }

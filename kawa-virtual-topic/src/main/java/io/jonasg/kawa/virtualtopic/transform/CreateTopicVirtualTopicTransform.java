@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/// Guards the virtual-topic namespace: a CreateTopics request that names a logical (virtual)
+/// Guards the virtual-topic namespace: a CreateTopics request that names a virtual
 /// topic is answered locally with a per-topic [Errors.INVALID_REQUEST] error instead of
 /// being forwarded to a broker, so clients cannot create topics that shadow the virtual map.
 /// Non-alias topics in the same request are forwarded unchanged (aliases dropped), mirroring
@@ -77,7 +77,7 @@ public final class CreateTopicVirtualTopicTransform
         return new CreateTopicsResponseData.CreatableTopicResult()
                 .setName(name)
                 .setErrorCode(Errors.INVALID_REQUEST.code())
-                .setErrorMessage("logical topic '" + name + "' is reserved; use '"
+                .setErrorMessage("virtual topic '" + name + "' is reserved; use '"
                         + virtualTopics.toPhysical(name) + "'");
     }
 }

@@ -8,7 +8,7 @@ import org.apache.kafka.common.message.AddPartitionsToTxnResponseData;
 
 import java.util.Objects;
 
-/// Rewrites the partition-list topic names of AddPartitionsToTxn between logical and physical
+/// Rewrites the partition-list topic names of AddPartitionsToTxn between virtual and physical
 /// names. Registered for versions 0-3 only: those are the versions clients use; v4+ carries a
 /// different, broker-internal schema. Transactional metadata (transactional id, producer id and
 /// epoch) is left untouched.
@@ -51,9 +51,9 @@ public final class AddPartitionsToTxnVirtualTopicTransform
         VirtualTopicState state = VirtualTopicState.from(context);
         for (AddPartitionsToTxnResponseData.AddPartitionsToTxnTopicResult result
                 : data.resultsByTopicV3AndBelow()) {
-            String logical = state.logicalFor(result.name());
-            if (logical != null) {
-                result.setName(logical);
+            String virtual = state.virtualFor(result.name());
+            if (virtual != null) {
+                result.setName(virtual);
             }
         }
     }

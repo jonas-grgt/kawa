@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
-/// Maintains the logical-to-physical virtual-topic map, along with each virtual topic's
+/// Maintains the virtual-to-physical virtual-topic map, along with each virtual topic's
 /// optional consume filter configuration.
 ///
 /// The whole mapping is an immutable [Snapshot] swapped atomically via a single `volatile`
@@ -18,15 +18,15 @@ import java.util.Optional;
 /// Topic names that are not virtualized map to themselves (identity) and carry no filter.
 public final class VirtualTopicManager {
 
-    private record Entry(String logical, String physical, VirtualTopicFilterConfig filter, boolean exposePhysicalTopic) {
+    private record Entry(String virtual, String physical, VirtualTopicFilterConfig filter, boolean exposePhysicalTopic) {
     }
 
     /// Immutable snapshot of all three lookup maps. Published as a unit so a reload can never
     /// be observed half-applied.
     private record Snapshot(
-            Map<String, Entry> byLogical,
+            Map<String, Entry> byVirtual,
             Map<String, Entry> byPhysical,
-            Map<String, String> logicalToPhysical) {
+            Map<String, String> virtualToPhysical) {
     }
 
     private volatile Snapshot snapshot;
@@ -41,31 +41,31 @@ public final class VirtualTopicManager {
     /// `volatile` reference, so readers see either the previous or the new mapping, never a
     /// partially-applied one.
     public void reload(Map<String, VirtualTopicConfig> virtualTopics) {
-        Map<String, Entry> logical = new LinkedHashMap<>();
+        Map<String, Entry> virtual = new LinkedHashMap<>();
         Map<String, Entry> physical = new LinkedHashMap<>();
         Map<String, String> names = new LinkedHashMap<>();
         virtualTopics.forEach((l, config) -> {
             Entry entry = new Entry(l, config.topic(), config.filter(), config.exposePhysicalTopic());
-            logical.put(l, entry);
+            virtual.put(l, entry);
             physical.put(config.topic(), entry);
             names.put(l, config.topic());
         });
         this.snapshot = new Snapshot(
-                Collections.unmodifiableMap(logical),
+                Collections.unmodifiableMap(virtual),
                 Collections.unmodifiableMap(physical),
                 Collections.unmodifiableMap(names));
     }
 
     /// Maps a client-visible name to the physical topic name the broker must see.
-    public String toPhysical(String logical) {
-        Entry entry = snapshot.byLogical().get(logical);
-        return entry == null ? logical : entry.physical();
+    public String toPhysical(String virtual) {
+        Entry entry = snapshot.byVirtual().get(virtual);
+        return entry == null ? virtual : entry.physical();
     }
 
-    /// Maps a physical topic name back to the client-visible (logical) name.
-    public String toLogical(String physical) {
+    /// Maps a physical topic name back to the client-visible (virtual) name.
+    public String toVirtual(String physical) {
         Entry entry = snapshot.byPhysical().get(physical);
-        return entry == null ? physical : entry.logical();
+        return entry == null ? physical : entry.virtual();
     }
 
     public boolean hasVirtualTopic(String physical) {
@@ -73,34 +73,34 @@ public final class VirtualTopicManager {
     }
 
     public int size() {
-        return snapshot.byLogical().size();
+        return snapshot.byVirtual().size();
     }
 
-    /// Logical-to-physical virtual-topic map (unmodifiable).
+    /// Virtual-to-physical virtual-topic map (unmodifiable).
     public Map<String, String> virtualTopics() {
-        return snapshot.logicalToPhysical();
+        return snapshot.virtualToPhysical();
     }
 
-    /// The configured consume filter for a virtual topic, looked up by either its logical or
+    /// The configured consume filter for a virtual topic, looked up by either its virtual or
     /// physical name, or [Optional#empty] if the topic isn't virtualized or has no
     /// filter configured.
-    public Optional<VirtualTopicFilterConfig> filterFor(String logicalOrPhysical) {
+    public Optional<VirtualTopicFilterConfig> filterFor(String virtualOrPhysical) {
         Snapshot snap = snapshot;
-        Entry entry = snap.byLogical().get(logicalOrPhysical);
+        Entry entry = snap.byVirtual().get(virtualOrPhysical);
         if (entry == null) {
-            entry = snap.byPhysical().get(logicalOrPhysical);
+            entry = snap.byPhysical().get(virtualOrPhysical);
         }
         return entry == null ? Optional.empty() : Optional.ofNullable(entry.filter());
     }
 
-    /// Whether this virtual topic's physical name should still be listed alongside its logical
-    /// name in Metadata responses. `false` (hidden - physical renamed to logical in place)
+    /// Whether this virtual topic's physical name should still be listed alongside its virtual
+    /// name in Metadata responses. `false` (hidden - physical renamed to virtual in place)
     /// for non-virtualized topics and for virtual topics that don't opt in.
-    public boolean exposesPhysicalTopic(String logicalOrPhysical) {
+    public boolean exposesPhysicalTopic(String virtualOrPhysical) {
         Snapshot snap = snapshot;
-        Entry entry = snap.byLogical().get(logicalOrPhysical);
+        Entry entry = snap.byVirtual().get(virtualOrPhysical);
         if (entry == null) {
-            entry = snap.byPhysical().get(logicalOrPhysical);
+            entry = snap.byPhysical().get(virtualOrPhysical);
         }
         return entry != null && entry.exposePhysicalTopic();
     }

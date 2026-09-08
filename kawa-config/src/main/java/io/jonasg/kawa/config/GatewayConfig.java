@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 /// @param name gateway name
 /// @param listeners client-facing listeners
 /// @param clusters upstream Kafka clusters
-/// @param virtualTopics logical virtual topic config map
+/// @param virtualTopics virtual topic config map
 /// @param advertised the endpoint advertised to clients in rewritten metadata
 /// @param metrics observability settings
 /// @param auth client SASL authentication configuration

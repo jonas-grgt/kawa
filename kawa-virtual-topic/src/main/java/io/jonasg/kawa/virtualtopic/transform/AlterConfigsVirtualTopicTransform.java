@@ -9,7 +9,7 @@ import org.apache.kafka.common.message.AlterConfigsResponseData;
 
 import java.util.Objects;
 
-/// Rewrites AlterConfigs topic-resource names between logical and physical names. Non-topic
+/// Rewrites AlterConfigs topic-resource names between virtual and physical names. Non-topic
 /// resources (brokers, broker loggers) pass through unchanged. Config entries and the
 /// validate-only flag are left untouched.
 public final class AlterConfigsVirtualTopicTransform
@@ -56,9 +56,9 @@ public final class AlterConfigsVirtualTopicTransform
             if (response.resourceType() != ConfigResource.Type.TOPIC.id()) {
                 continue;
             }
-            String logical = state.logicalFor(response.resourceName());
-            if (logical != null) {
-                response.setResourceName(logical);
+            String virtual = state.virtualFor(response.resourceName());
+            if (virtual != null) {
+                response.setResourceName(virtual);
             }
         }
     }

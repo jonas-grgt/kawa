@@ -8,7 +8,7 @@ import java.util.Map;
 
 public final class VirtualTopicState {
 
-    private final Map<String, String> physicalToLogical = new LinkedHashMap<>();
+    private final Map<String, String> physicalToVirtual = new LinkedHashMap<>();
     private int fetchSessionId;
     private boolean offsetFetchAllTopics;
     private short apiVersion;
@@ -26,17 +26,17 @@ public final class VirtualTopicState {
 
     public void record(
             String physical,
-            String logical
+            String virtual
     ) {
-        physicalToLogical.put(physical, logical);
+        physicalToVirtual.put(physical, virtual);
     }
 
-    public String logicalFor(String physical) {
-        return physicalToLogical.get(physical);
+    public String virtualFor(String physical) {
+        return physicalToVirtual.get(physical);
     }
 
-    public Map<String, String> physicalToLogical() {
-        return Map.copyOf(physicalToLogical);
+    public Map<String, String> physicalToVirtual() {
+        return Map.copyOf(physicalToVirtual);
     }
 
     public int fetchSessionId() {

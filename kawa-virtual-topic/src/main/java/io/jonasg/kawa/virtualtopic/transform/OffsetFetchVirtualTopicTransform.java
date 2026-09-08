@@ -48,11 +48,11 @@ public final class OffsetFetchVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (OffsetFetchResponseData.OffsetFetchResponseTopic topic : data.topics()) {
-            String logical = state.logicalFor(topic.name());
-            if (logical != null) {
-                topic.setName(logical);
+            String virtual = state.virtualFor(topic.name());
+            if (virtual != null) {
+                topic.setName(virtual);
             } else if (state.offsetFetchAllTopics()) {
-                topic.setName(virtualTopics.toLogical(topic.name()));
+                topic.setName(virtualTopics.toVirtual(topic.name()));
             }
         }
     }

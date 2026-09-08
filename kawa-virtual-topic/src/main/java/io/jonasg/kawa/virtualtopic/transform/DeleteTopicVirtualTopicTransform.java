@@ -11,7 +11,7 @@ import org.apache.kafka.common.protocol.Errors;
 import java.util.ArrayList;
 import java.util.List;
 
-/// Guards the virtual-topic namespace for DeleteTopics: logical names are reserved and must
+/// Guards the virtual-topic namespace for DeleteTopics: virtual names are reserved and must
 /// be rejected locally, while physical topic names are forwarded to the broker unchanged.
 public final class DeleteTopicVirtualTopicTransform
         implements VirtualTopicTransform<DeleteTopicsRequestData, DeleteTopicsResponseData> {
@@ -79,7 +79,7 @@ public final class DeleteTopicVirtualTopicTransform
         return new DeleteTopicsResponseData.DeletableTopicResult()
                 .setName(name)
                 .setErrorCode(Errors.INVALID_REQUEST.code())
-                .setErrorMessage("logical topic '" + name + "' is reserved; use '"
+                .setErrorMessage("virtual topic '" + name + "' is reserved; use '"
                         + virtualTopics.toPhysical(name) + "'");
     }
 }

@@ -70,7 +70,7 @@ public final class FetchVirtualTopicTransform
             forgottenPhysical.add(forgotten.topic());
         }
         fetchSessions.onFetchRequest(
-                context.source(), data.sessionId(), state.physicalToLogical(), forgottenPhysical
+                context.source(), data.sessionId(), state.physicalToVirtual(), forgottenPhysical
         );
     }
 
@@ -85,24 +85,24 @@ public final class FetchVirtualTopicTransform
             fetchSessions.removeSession(context.source(), sessionId);
         }
         if (sessionId != 0 && state.fetchSessionId() == 0) {
-            fetchSessions.bindSession(context.source(), sessionId, state.physicalToLogical());
+            fetchSessions.bindSession(context.source(), sessionId, state.physicalToVirtual());
         }
         if (sessionId != 0 && fetchSessions.hasSession(context.source(), sessionId)) {
             for (FetchResponseData.FetchableTopicResponse topic : data.responses()) {
-                String logical = fetchSessions.logicalFor(
+                String virtual = fetchSessions.virtualFor(
                         context.source(), sessionId, topic.topic()
                 );
-                if (logical != null) {
-                    topic.setTopic(logical);
+                if (virtual != null) {
+                    topic.setTopic(virtual);
                 }
             }
             applyConsumeFilters(data);
             return;
         }
         for (FetchResponseData.FetchableTopicResponse topic : data.responses()) {
-            String logical = state.logicalFor(topic.topic());
-            if (logical != null) {
-                topic.setTopic(logical);
+            String virtual = state.virtualFor(topic.topic());
+            if (virtual != null) {
+                topic.setTopic(virtual);
             }
         }
 

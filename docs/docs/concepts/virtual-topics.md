@@ -5,13 +5,13 @@ sidebar_position: 1
 
 # Virtual topics
 
-Virtual topics let clients use **logical topic names** while the cluster only ever
+Virtual topics let clients use **virtual topic names** while the cluster only ever
 sees **physical topics**. The gateway rewrites names in both directions, request and
 response, for every API it decodes.
 
 ```yaml
 virtualTopics:
-  orders.eu:          # logical name — what clients see
+  orders.eu:          # virtual name — what clients see
     topic: orders-v2  # physical name — what exists on the cluster
 ```
 
@@ -20,13 +20,13 @@ virtualTopics:
 - A producer sends to `orders.eu`; kawa rewrites the Produce request to `orders-v2`
   before forwarding.
 - Metadata requests never list `orders-v2`. Instead, the physical entry is renamed to
-  its logical name in place — from the client's view, `orders.eu` is a normal topic
+  its virtual name in place — from the client's view, `orders.eu` is a normal topic
   with real partitions and leaders.
 - Consumers subscribe to `orders.eu` and receive records as if nothing happened;
   Fetch requests are rewritten to `orders-v2` under the hood.
 
 Set `exposePhysicalTopic: true` if you *do* want the physical topic to remain listed
-alongside its logical name in Metadata responses (hidden by default).
+alongside its virtual name in Metadata responses (hidden by default).
 
 ## Covered operations
 
@@ -66,7 +66,7 @@ Behaviour details worth knowing:
   offset sequence — consumers see the same offsets they would on a compacted stream,
   which keeps offset commits and rebalances working normally.
 - The filter applies per partition of the mapped physical topic; producers can still
-  write everything to `orders-v2`, and each logical view filters independently.
+  write everything to `orders-v2`, and each virtual view filters independently.
 
 ### CEL expressions
 

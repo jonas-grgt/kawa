@@ -44,9 +44,9 @@ public final class OffsetCommitVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (OffsetCommitResponseData.OffsetCommitResponseTopic topic : data.topics()) {
-            String logical = state.logicalFor(topic.name());
-            if (logical != null) {
-                topic.setName(logical);
+            String virtual = state.virtualFor(topic.name());
+            if (virtual != null) {
+                topic.setName(virtual);
             }
         }
     }

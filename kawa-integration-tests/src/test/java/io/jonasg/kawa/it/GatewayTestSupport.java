@@ -239,8 +239,8 @@ abstract class GatewayTestSupport {
 	/// startup-only and come from the static bootstrap.
 	private GatewayConfig buildDynamicConfig() {
 		Map<String, VirtualTopicConfig> typedVirtualTopics = new java.util.HashMap<>();
-		virtualTopics().forEach((logical, physical) ->
-				typedVirtualTopics.put(logical, new VirtualTopicConfig(physical)));
+		virtualTopics().forEach((virtual, physical) ->
+				typedVirtualTopics.put(virtual, new VirtualTopicConfig(physical)));
 		typedVirtualTopics.putAll(filteredVirtualTopics());
 		return new GatewayConfig(
 				"test-gateway",

@@ -9,7 +9,7 @@ import org.apache.kafka.common.resource.ResourceType;
 
 import java.util.Objects;
 
-/// Rewrites DescribeAcls topic-resource filters and descriptions between logical and physical
+/// Rewrites DescribeAcls topic-resource filters and descriptions between virtual and physical
 /// topic names. Non-topic resources pass through unchanged; a null resource-name filter (any
 /// name) is left untouched.
 public final class DescribeAclsVirtualTopicTransform
@@ -53,9 +53,9 @@ public final class DescribeAclsVirtualTopicTransform
             if (resource.resourceType() != ResourceType.TOPIC.code()) {
                 continue;
             }
-            String logical = state.logicalFor(resource.resourceName());
-            if (logical != null) {
-                resource.setResourceName(logical);
+            String virtual = state.virtualFor(resource.resourceName());
+            if (virtual != null) {
+                resource.setResourceName(virtual);
             }
         }
     }

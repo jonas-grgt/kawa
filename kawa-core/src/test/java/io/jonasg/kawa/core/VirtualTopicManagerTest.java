@@ -19,21 +19,21 @@ class VirtualTopicManagerTest {
             "legacy", new VirtualTopicConfig("legacy-v1", null, true)));
 
     @Test
-    void mapsLogicalToPhysical() {
+    void mapsVirtualToPhysical() {
         assertThat(virtualTopics.toPhysical("orders")).isEqualTo("orders-v2");
         assertThat(virtualTopics.toPhysical("customers")).isEqualTo("crm.customers");
     }
 
     @Test
-    void mapsPhysicalToLogical() {
-        assertThat(virtualTopics.toLogical("orders-v2")).isEqualTo("orders");
-        assertThat(virtualTopics.toLogical("crm.customers")).isEqualTo("customers");
+    void mapsPhysicalToVirtual() {
+        assertThat(virtualTopics.toVirtual("orders-v2")).isEqualTo("orders");
+        assertThat(virtualTopics.toVirtual("crm.customers")).isEqualTo("customers");
     }
 
     @Test
     void identityForNonVirtualTopics() {
         assertThat(virtualTopics.toPhysical("plain")).isEqualTo("plain");
-        assertThat(virtualTopics.toLogical("plain")).isEqualTo("plain");
+        assertThat(virtualTopics.toVirtual("plain")).isEqualTo("plain");
     }
 
     @Test
@@ -43,7 +43,7 @@ class VirtualTopicManagerTest {
     }
 
     @Test
-    void filterForReturnsConfiguredFilterByLogicalOrPhysicalName() {
+    void filterForReturnsConfiguredFilterByVirtualOrPhysicalName() {
         var expected = new HeaderEqualsFilterConfig("tenant", "acme");
 
         assertThat(virtualTopics.filterFor("customers")).contains(expected);
@@ -143,8 +143,8 @@ class VirtualTopicManagerTest {
                 for (int i = 0; i < 10_000; i++) {
                     manager.toPhysical("orders");
                     manager.toPhysical("customers");
-                    manager.toLogical("orders-v2");
-                    manager.toLogical("crm.customers");
+                    manager.toVirtual("orders-v2");
+                    manager.toVirtual("crm.customers");
                     manager.filterFor("customers");
                     manager.exposesPhysicalTopic("legacy-v1");
                 }

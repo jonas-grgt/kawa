@@ -27,11 +27,11 @@ public final class CreatePartitionsVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (CreatePartitionsRequestData.CreatePartitionsTopic topic : data.topics()) {
-            String logical = topic.name();
-            String physical = virtualTopics.toPhysical(logical);
-            if (!physical.equals(logical)) {
+            String virtual = topic.name();
+            String physical = virtualTopics.toPhysical(virtual);
+            if (!physical.equals(virtual)) {
                 topic.setName(physical);
-                state.record(physical, logical);
+                state.record(physical, virtual);
             }
         }
     }
@@ -43,9 +43,9 @@ public final class CreatePartitionsVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (CreatePartitionsResponseData.CreatePartitionsTopicResult topic : data.results()) {
-            String logical = state.logicalFor(topic.name());
-            if (logical != null) {
-                topic.setName(logical);
+            String virtual = state.virtualFor(topic.name());
+            if (virtual != null) {
+                topic.setName(virtual);
             }
         }
     }

@@ -133,8 +133,8 @@ class MetadataAuthorizationCheckTest {
     }
 
     @Test
-    void filtersListAllResponseAgainstLogicalNameForVirtualTopic() {
-        // The broker returns the physical name; the check must translate it to the logical name
+    void filtersListAllResponseAgainstVirtualNameForVirtualTopic() {
+        // The broker returns the physical name; the check must translate it to the virtual name
         // (via VirtualTopicManager) before checking the ACL, since this runs before
         // VirtualTopicInterceptor's rename step.
         var interceptor = new AuthorizationInterceptor(

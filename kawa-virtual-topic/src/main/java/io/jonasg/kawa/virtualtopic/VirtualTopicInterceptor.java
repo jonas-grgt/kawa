@@ -35,7 +35,7 @@ import io.jonasg.kawa.virtualtopic.transform.VirtualTopicTransformRegistry;
 
 import java.util.List;
 
-/// On the client-to-broker path it rewrites logical (virtual)
+/// On the client-to-broker path it rewrites virtual
 /// topic names to their physical topics; on the broker-to-client path it maps them back and
 /// points every broker/coordinator endpoint at the gateway's advertised listener.
 ///

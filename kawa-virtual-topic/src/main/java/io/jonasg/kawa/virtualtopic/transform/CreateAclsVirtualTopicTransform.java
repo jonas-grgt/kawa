@@ -9,7 +9,7 @@ import org.apache.kafka.common.resource.ResourceType;
 
 import java.util.Objects;
 
-/// Rewrites CreateAcls topic-resource names between logical and physical topic names. Non-topic
+/// Rewrites CreateAcls topic-resource names between virtual and physical topic names. Non-topic
 /// resources pass through unchanged; the response carries only per-entry statuses.
 public final class CreateAclsVirtualTopicTransform
         implements VirtualTopicTransform<CreateAclsRequestData, CreateAclsResponseData> {

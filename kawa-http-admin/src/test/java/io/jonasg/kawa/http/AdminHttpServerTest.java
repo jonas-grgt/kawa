@@ -58,7 +58,7 @@ class AdminHttpServerTest {
         // then
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).contains(
-                "\"type\":\"logical\"",
+                "\"type\":\"virtual\"",
                 "\"name\":\"orders\"",
                 "\"partitions\":1",
                 "\"physicalTopic\":\"orders-v2\"",

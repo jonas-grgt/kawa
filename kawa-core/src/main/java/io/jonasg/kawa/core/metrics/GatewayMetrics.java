@@ -70,10 +70,10 @@ public final class GatewayMetrics {
 
     public void virtualTopicHit(
             String direction,
-            String logical,
+            String virtual,
             String physical
     ) {
-        registry.counter("gateway.virtual_topic.hits", "direction", direction, "logical", logical, "physical", physical)
+        registry.counter("gateway.virtual_topic.hits", "direction", direction, "virtual", virtual, "physical", physical)
                 .increment();
     }
 }

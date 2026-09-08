@@ -10,8 +10,8 @@ import io.jonasg.kawa.core.cluster.TopicMetadata;
 import java.util.ArrayList;
 import java.util.List;
 
-/// Projects the logical and physical topics served by `GET /topics` from the [VirtualTopicManager]
-/// (logical config) and the [MetadataCache] (live physical topology). Plain handler with no Netty
+/// Projects the virtual and physical topics served by `GET /topics` from the [VirtualTopicManager]
+/// (virtual config) and the [MetadataCache] (live physical topology). Plain handler with no Netty
 /// imports; the [HttpRouterHandler] dispatcher serializes the result and writes the response.
 public final class GetTopicsHandler implements Router.Handler {
 
@@ -30,8 +30,8 @@ public final class GetTopicsHandler implements Router.Handler {
             boolean virtualized = virtualTopics.hasVirtualTopic(tm.name());
             if (virtualized) {
                 views.add(new TopicView(
-                        "logical",
-                        virtualTopics.toLogical(tm.name()),
+                        "virtual",
+                        virtualTopics.toVirtual(tm.name()),
                         cache.partitionCount(tm.name()),
                         cache.replicationFactor(tm.name()),
                         toFilterView(virtualTopics.filterFor(tm.name()).orElse(null)),

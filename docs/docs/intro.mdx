@@ -24,7 +24,7 @@ kawa sits between your clients and your Kafka cluster:
 
 - **Transparent proxying** — clients connect to kawa on a regular Kafka listener;
   every request is decoded, forwarded to the right broker and the response is mapped back.
-- **Virtual topics** — clients use logical topic names (e.g. `orders.eu`) that are
+- **Virtual topics** — clients use virtual topic names (e.g. `orders.eu`) that are
   rewritten to physical topics (e.g. `orders-v2`) in both directions. Physical topics
   stay hidden from Metadata responses by default.
 - **Server-side consume filters** — drop records during Fetch based on record headers
@@ -44,7 +44,7 @@ kawa sits between your clients and your Kafka cluster:
 2. kawa decodes each request using its built-in Kafka protocol codecs.
 3. Interceptors rewrite the request (virtual topic mapping, filters).
 4. The request is forwarded over a dedicated connection to the partition leader.
-5. The response is decoded, mapped back (logical names restored, endpoints rewritten)
+5. The response is decoded, mapped back (virtual names restored, endpoints rewritten)
    and returned to the client.
 
 APIs outside kawa's decode set pass through untouched.

@@ -41,10 +41,10 @@ which defines:
 
 ## Produce and consume through the gateway
 
-Point any Kafka client at `localhost:9092` and use the logical topic name:
+Point any Kafka client at `localhost:9092` and use the virtual topic name:
 
 ```bash
-# Produce to the LOGICAL topic via the gateway
+# Produce to the VIRTUAL topic via the gateway
 docker compose exec kafka /opt/kafka/bin/kafka-console-producer.sh \
   --bootstrap-server kafka:9092 \
   --topic orders.eu <<'EOF'
@@ -53,7 +53,7 @@ EOF
 ```
 
 ```bash
-# Consume from the logical topic via the host-published broker port,
+# Consume from the virtual topic via the host-published broker port,
 # bypassing the gateway, to see that only the PHYSICAL topic exists
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server kafka:9092 --list

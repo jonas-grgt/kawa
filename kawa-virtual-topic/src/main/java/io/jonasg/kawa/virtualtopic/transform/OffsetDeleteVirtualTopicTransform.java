@@ -8,7 +8,7 @@ import org.apache.kafka.common.message.OffsetDeleteResponseData;
 
 import java.util.Objects;
 
-/// Rewrites OffsetDelete topic names between logical and physical names. The group id and
+/// Rewrites OffsetDelete topic names between virtual and physical names. The group id and
 /// partition indexes are left untouched.
 public final class OffsetDeleteVirtualTopicTransform
         implements VirtualTopicTransform<OffsetDeleteRequestData, OffsetDeleteResponseData> {
@@ -48,9 +48,9 @@ public final class OffsetDeleteVirtualTopicTransform
     ) {
         VirtualTopicState state = VirtualTopicState.from(context);
         for (OffsetDeleteResponseData.OffsetDeleteResponseTopic topic : data.topics()) {
-            String logical = state.logicalFor(topic.name());
-            if (logical != null) {
-                topic.setName(logical);
+            String virtual = state.virtualFor(topic.name());
+            if (virtual != null) {
+                topic.setName(virtual);
             }
         }
     }

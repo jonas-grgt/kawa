@@ -44,9 +44,9 @@ public final class ListOffsetsVirtualTopicTransform
     ) {
         var state = VirtualTopicState.from(context);
         for (ListOffsetsResponseData.ListOffsetsTopicResponse topic : data.topics()) {
-            String logical = state.logicalFor(topic.name());
-            if (logical != null) {
-                topic.setName(logical);
+            String virtual = state.virtualFor(topic.name());
+            if (virtual != null) {
+                topic.setName(virtual);
             }
         }
     }

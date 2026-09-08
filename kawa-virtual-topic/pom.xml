@@ -11,7 +11,7 @@
 
   <artifactId>kawa-virtual-topic</artifactId>
   <name>Kawa Virtual Topic</name>
-  <description>Topic alias interceptor: rewrites logical to physical topic names.</description>
+  <description>Topic alias interceptor: rewrites virtual to physical topic names.</description>
 
   <dependencies>
     <dependency>

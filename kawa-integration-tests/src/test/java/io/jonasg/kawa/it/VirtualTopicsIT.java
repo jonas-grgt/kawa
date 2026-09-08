@@ -80,7 +80,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /// End-to-end test for virtual topics: a producer talks to the gateway, which rewrites the
-/// logical topic name to its physical topic before forwarding to the broker.
+/// virtual topic name to its physical topic before forwarding to the broker.
 class VirtualTopicsIT extends GatewayTestSupport {
 
 	@Override
@@ -156,7 +156,7 @@ class VirtualTopicsIT extends GatewayTestSupport {
 	}
 
 	@Test
-	void creatingLogicalVirtualTopicNameFails() throws Exception {
+	void creatingVirtualTopicNameFails() throws Exception {
 		var result = gatewayAdmin.createTopics(List.of(new NewTopic("foo", 1, (short) 1)));
 		assertThatThrownBy(() -> result.values().get("foo").get())
 				.hasCauseInstanceOf(InvalidRequestException.class);
@@ -170,12 +170,12 @@ class VirtualTopicsIT extends GatewayTestSupport {
     }
 
     @Test
-    void deletingLogicalVirtualTopicNameFails() throws Exception {
+    void deletingVirtualTopicNameFails() throws Exception {
         var result = gatewayAdmin.deleteTopics(List.of("foo"));
 
         assertThatThrownBy(() -> result.all().get(5, TimeUnit.SECONDS))
                 .hasCauseInstanceOf(InvalidRequestException.class)
-                .hasRootCauseMessage("logical topic 'foo' is reserved; use 'foo-v2'");
+                .hasRootCauseMessage("virtual topic 'foo' is reserved; use 'foo-v2'");
     }
 
     @Test
@@ -188,7 +188,7 @@ class VirtualTopicsIT extends GatewayTestSupport {
     }
 
     @Test
-    void creatingPartitionsOnLogicalVirtualTopicUpdatesPhysicalTopic() throws Exception {
+    void creatingPartitionsOnVirtualTopicUpdatesPhysicalTopic() throws Exception {
         String physical = "foo-v2";
         int current = brokerAdmin.describeTopics(List.of(physical)).allTopicNames().get()
                 .get(physical).partitions().size();
@@ -202,33 +202,33 @@ class VirtualTopicsIT extends GatewayTestSupport {
     }
 
     @Test
-    void describeConfigsByLogicalTopicNameReturnsPhysicalTopicConfigs() throws Exception {
+    void describeConfigsByVirtualTopicNameReturnsPhysicalTopicConfigs() throws Exception {
         // given the physical topic foo-v2 carries retention.ms=987654321
-        ConfigResource logical = new ConfigResource(ConfigResource.Type.TOPIC, "foo");
+        ConfigResource virtual = new ConfigResource(ConfigResource.Type.TOPIC, "foo");
 
-        // when describing configs for the logical topic through the gateway
+        // when describing configs for the virtual topic through the gateway
         Map<ConfigResource, Config> configs = gatewayAdmin
-                .describeConfigs(List.of(logical))
+                .describeConfigs(List.of(virtual))
                 .all().get(5, TimeUnit.SECONDS);
 
-        // then the physical topic's config is returned under the logical name
-        assertThat(configs).containsKey(logical);
-        assertThat(configs.get(logical).get("retention.ms").value())
-                .describedAs("configs returned under the logical name must be the physical topic's configs")
+        // then the physical topic's config is returned under the virtual name
+        assertThat(configs).containsKey(virtual);
+        assertThat(configs.get(virtual).get("retention.ms").value())
+                .describedAs("configs returned under the virtual name must be the physical topic's configs")
                 .isEqualTo("987654321");
     }
 
     @Test
-    void creatingAclForLogicalTopicAppliesToPhysicalTopic() throws Exception {
-        // given an acl binding for the logical topic foo
-        AclBinding logicalBinding = new AclBinding(
+    void creatingAclForVirtualTopicAppliesToPhysicalTopic() throws Exception {
+        // given an acl binding for the virtual topic foo
+        AclBinding virtualBinding = new AclBinding(
                 new ResourcePattern(ResourceType.TOPIC, "foo", PatternType.LITERAL),
                 new AccessControlEntry("User:alice", "*", AclOperation.READ, AclPermissionType.ALLOW));
 
         // when creating the acl through the gateway
-        gatewayAdmin.createAcls(List.of(logicalBinding)).all().get(5, TimeUnit.SECONDS);
+        gatewayAdmin.createAcls(List.of(virtualBinding)).all().get(5, TimeUnit.SECONDS);
 
-        // then the acl is stored under the physical topic name, not the logical one
+        // then the acl is stored under the physical topic name, not the virtual one
         Collection<AclBinding> physical = brokerAdmin.describeAcls(new AclBindingFilter(
                         new ResourcePatternFilter(ResourceType.TOPIC, "foo-v2", PatternType.LITERAL),
                         AccessControlEntryFilter.ANY))
@@ -237,28 +237,28 @@ class VirtualTopicsIT extends GatewayTestSupport {
         assertThat(physical.iterator().next().pattern().name()).isEqualTo("foo-v2");
         assertThat(physical.iterator().next().entry().principal()).isEqualTo("User:alice");
 
-        Collection<AclBinding> logical = brokerAdmin.describeAcls(new AclBindingFilter(
+        Collection<AclBinding> virtual = brokerAdmin.describeAcls(new AclBindingFilter(
                         new ResourcePatternFilter(ResourceType.TOPIC, "foo", PatternType.LITERAL),
                         AccessControlEntryFilter.ANY))
                 .values().get(5, TimeUnit.SECONDS);
-        assertThat(logical).isEmpty();
+        assertThat(virtual).isEmpty();
     }
 
     @Test
-    void describingAclsWithLogicalTopicFilterReturnsLogicalTopicNames() throws Exception {
+    void describingAclsWithVirtualTopicFilterReturnsVirtualTopicNames() throws Exception {
         // given an acl on the physical topic foo-v2
         brokerAdmin.createAcls(List.of(new AclBinding(
                 new ResourcePattern(ResourceType.TOPIC, "foo-v2", PatternType.LITERAL),
                 new AccessControlEntry("User:alice", "*", AclOperation.READ, AclPermissionType.ALLOW))))
                 .all().get(5, TimeUnit.SECONDS);
 
-        // when describing acls for the logical topic through the gateway
+        // when describing acls for the virtual topic through the gateway
         Collection<AclBinding> described = gatewayAdmin.describeAcls(new AclBindingFilter(
                         new ResourcePatternFilter(ResourceType.TOPIC, "foo", PatternType.LITERAL),
                         AccessControlEntryFilter.ANY))
                 .values().get(5, TimeUnit.SECONDS);
 
-        // then the acl is returned under the logical topic name
+        // then the acl is returned under the virtual topic name
         assertThat(described).hasSize(1);
         AclBinding binding = described.iterator().next();
         assertThat(binding.pattern().name()).isEqualTo("foo");
@@ -268,7 +268,7 @@ class VirtualTopicsIT extends GatewayTestSupport {
     }
 
     @Test
-    void deletingAclsByLogicalTopicFilterRemovesPhysicalTopicAcl() throws Exception {
+    void deletingAclsByVirtualTopicFilterRemovesPhysicalTopicAcl() throws Exception {
         // given acls on the physical topic foo-v2 and on group "orders"
         brokerAdmin.createAcls(List.of(
                 new AclBinding(
@@ -279,13 +279,13 @@ class VirtualTopicsIT extends GatewayTestSupport {
                         new AccessControlEntry("User:bob", "*", AclOperation.READ, AclPermissionType.ALLOW))))
                 .all().get(5, TimeUnit.SECONDS);
 
-        // when deleting acls filtered by the logical topic name through the gateway
+        // when deleting acls filtered by the virtual topic name through the gateway
         Collection<AclBinding> deleted = gatewayAdmin.deleteAcls(List.of(new AclBindingFilter(
                         new ResourcePatternFilter(ResourceType.TOPIC, "foo", PatternType.LITERAL),
                         AccessControlEntryFilter.ANY)))
                 .all().get(5, TimeUnit.SECONDS);
 
-        // then the deleted bindings are reported under the logical name and removed physically
+        // then the deleted bindings are reported under the virtual name and removed physically
         assertThat(deleted).hasSize(1);
         assertThat(deleted.iterator().next().pattern().name()).isEqualTo("foo");
 
@@ -297,7 +297,7 @@ class VirtualTopicsIT extends GatewayTestSupport {
     }
 
     @Test
-    void describeTransactionsReportsLogicalTopicNames() throws Exception {
+    void describeTransactionsReportsVirtualTopicNames() throws Exception {
         // given an open transaction on the physical topic, created directly against the broker
         String transactionalId = "describe-txn-" + System.nanoTime();
         Properties producerProps = new Properties();
@@ -317,10 +317,10 @@ class VirtualTopicsIT extends GatewayTestSupport {
                     .describeTransactions(List.of(transactionalId))
                     .all().get(5, TimeUnit.SECONDS);
 
-            // then the touched topic is reported under its logical name
+            // then the touched topic is reported under its virtual name
             TransactionDescription description = described.get(transactionalId);
             assertThat(description.topicPartitions())
-                    .describedAs("in-flight transaction must report the logical topic name")
+                    .describedAs("in-flight transaction must report the virtual topic name")
                     .containsExactly(new TopicPartition("foo", 0));
 
             txnProducer.abortTransaction();
@@ -328,7 +328,7 @@ class VirtualTopicsIT extends GatewayTestSupport {
     }
 
     @Test
-    void transactionalProduceToLogicalTopicCommitsAndIsConsumable() throws Exception {
+    void transactionalProduceToVirtualTopicCommitsAndIsConsumable() throws Exception {
         // given a transactional producer pointed at the gateway
         String transactionalId = "txn-produce-" + System.nanoTime();
         Properties producerProps = saslProps(gatewayBootstrap);
@@ -343,14 +343,14 @@ class VirtualTopicsIT extends GatewayTestSupport {
                     .get(5, TimeUnit.SECONDS);
             txnProducer.commitTransaction();
 
-            // when consuming the logical topic through the gateway
+            // when consuming the virtual topic through the gateway
             Kassertions.consume(newGatewayConsumer())
                     .assignedTo("foo", 0)
                     .fromBeginning()
                     .within(5, TimeUnit.SECONDS)
                     .filter(rec -> "committed-via-gateway".equals(rec.value()))
                     .anySatisfy(rec -> assertThat(rec.topic())
-                            .describedAs("consumed records must carry the logical topic name")
+                            .describedAs("consumed records must carry the virtual topic name")
                             .isEqualTo("foo"));
 
             // then describing the committed transaction reports no in-flight partitions
@@ -362,15 +362,15 @@ class VirtualTopicsIT extends GatewayTestSupport {
     }
 
     @Test
-    void deletingOffsetsForLogicalTopicDeletesPhysicalTopicOffsets() throws Exception {
-        // given a group with a committed offset on the logical topic, stored via the gateway
+    void deletingOffsetsForVirtualTopicDeletesPhysicalTopicOffsets() throws Exception {
+        // given a group with a committed offset on the virtual topic, stored via the gateway
         String group = "offset-delete-" + System.nanoTime();
-        TopicPartition logical = new TopicPartition("session", 0);
-        gatewayAdmin.alterConsumerGroupOffsets(group, Map.of(logical, new OffsetAndMetadata(2L)))
+        TopicPartition virtual = new TopicPartition("session", 0);
+        gatewayAdmin.alterConsumerGroupOffsets(group, Map.of(virtual, new OffsetAndMetadata(2L)))
                 .all().get(5, TimeUnit.SECONDS);
 
-        // when deleting the offset for the logical topic through the gateway
-        gatewayAdmin.deleteConsumerGroupOffsets(group, java.util.Set.of(logical))
+        // when deleting the offset for the virtual topic through the gateway
+        gatewayAdmin.deleteConsumerGroupOffsets(group, java.util.Set.of(virtual))
                 .all().get(5, TimeUnit.SECONDS);
 
         // then the physical topic's offset is gone on the broker
@@ -378,15 +378,15 @@ class VirtualTopicsIT extends GatewayTestSupport {
                 .listConsumerGroupOffsets(group)
                 .partitionsToOffsetAndMetadata(group).get(5, TimeUnit.SECONDS);
         assertThat(remaining)
-                .describedAs("offset deleted under the logical name must be gone for the physical topic")
+                .describedAs("offset deleted under the virtual name must be gone for the physical topic")
                 .isEmpty();
     }
 
     @Test
-    void alteringConfigsByLogicalTopicNameAffectsPhysicalTopic() throws Exception {
-        // when altering configs for the logical topic through the gateway
-        ConfigResource logical = new ConfigResource(ConfigResource.Type.TOPIC, "session");
-        gatewayAdmin.incrementalAlterConfigs(Map.of(logical, List.of(
+    void alteringConfigsByVirtualTopicNameAffectsPhysicalTopic() throws Exception {
+        // when altering configs for the virtual topic through the gateway
+        ConfigResource virtual = new ConfigResource(ConfigResource.Type.TOPIC, "session");
+        gatewayAdmin.incrementalAlterConfigs(Map.of(virtual, List.of(
                         new AlterConfigOp(new ConfigEntry("retention.ms", "111111111"),
                                 AlterConfigOp.OpType.SET))))
                 .all().get(5, TimeUnit.SECONDS);
@@ -397,15 +397,15 @@ class VirtualTopicsIT extends GatewayTestSupport {
                 .all().get(5, TimeUnit.SECONDS);
         assertThat(configs.get(new ConfigResource(ConfigResource.Type.TOPIC, "session-v3"))
                 .get("retention.ms").value())
-                .describedAs("config altered under the logical name must land on the physical topic")
+                .describedAs("config altered under the virtual name must land on the physical topic")
                 .isEqualTo("111111111");
     }
 
     @Test
-    void incrementallyAlteringConfigsByLogicalTopicNameAffectsPhysicalTopic() throws Exception {
-        // when incrementally setting a config on the logical topic through the gateway
-        ConfigResource logical = new ConfigResource(ConfigResource.Type.TOPIC, "session");
-        gatewayAdmin.incrementalAlterConfigs(Map.of(logical, List.of(
+    void incrementallyAlteringConfigsByVirtualTopicNameAffectsPhysicalTopic() throws Exception {
+        // when incrementally setting a config on the virtual topic through the gateway
+        ConfigResource virtual = new ConfigResource(ConfigResource.Type.TOPIC, "session");
+        gatewayAdmin.incrementalAlterConfigs(Map.of(virtual, List.of(
                         new AlterConfigOp(new ConfigEntry("retention.ms", "222222222"),
                                 AlterConfigOp.OpType.SET))))
                 .all().get(5, TimeUnit.SECONDS);
@@ -421,14 +421,14 @@ class VirtualTopicsIT extends GatewayTestSupport {
     }
 
     @Test
-    void deletingRecordsByLogicalTopicTruncatesPhysicalTopic() throws Exception {
-        // given five records produced to the logical topic through the gateway
+    void deletingRecordsByVirtualTopicTruncatesPhysicalTopic() throws Exception {
+        // given five records produced to the virtual topic through the gateway
         for (int i = 0; i < 5; i++) {
             gatewayProducer.send(new ProducerRecord<>("session", "k" + i, "truncate-" + i))
                     .get(5, TimeUnit.SECONDS);
         }
 
-        // when deleting records up to offset 3 via the logical name through the gateway
+        // when deleting records up to offset 3 via the virtual name through the gateway
         var lowWatermarks = gatewayAdmin
                 .deleteRecords(Map.of(new TopicPartition("session", 0),
                         RecordsToDelete.beforeOffset(3L)))
@@ -436,9 +436,9 @@ class VirtualTopicsIT extends GatewayTestSupport {
         long lowWatermark = lowWatermarks.get(new TopicPartition("session", 0))
                 .get(5, TimeUnit.SECONDS).lowWatermark();
 
-        // then the response reports the logical name and the physical topic is truncated
+        // then the response reports the virtual name and the physical topic is truncated
         assertThat(lowWatermark)
-                .describedAs("delete-records must succeed under the logical topic name")
+                .describedAs("delete-records must succeed under the virtual topic name")
                 .isEqualTo(3L);
         long beginning = brokerAdmin
                 .listOffsets(Map.of(new TopicPartition("session-v3", 0),
@@ -473,15 +473,15 @@ class VirtualTopicsIT extends GatewayTestSupport {
             rawProducer.send(acme2).get(5, TimeUnit.SECONDS);
         }
 
-        // when consuming the logical topic through the gateway
+        // when consuming the virtual topic through the gateway
         java.util.List<String> values = new java.util.ArrayList<>();
         Properties consumerProps = saslProps(gatewayBootstrap);
         consumerProps.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         consumerProps.put(VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps)) {
-            TopicPartition logical = new TopicPartition("events", 0);
-            consumer.assign(List.of(logical));
-            consumer.seekToBeginning(List.of(logical));
+            TopicPartition virtual = new TopicPartition("events", 0);
+            consumer.assign(List.of(virtual));
+            consumer.seekToBeginning(List.of(virtual));
             long deadline = System.currentTimeMillis() + 5000;
             while (System.currentTimeMillis() < deadline
                     && values.stream().noneMatch(v -> v.startsWith(marker))) {
@@ -511,7 +511,7 @@ class VirtualTopicsIT extends GatewayTestSupport {
 	}
 
 	@Test
-	void idleIncrementalFetchResponseCarriesLogicalTopicName() throws Exception {
+	void idleIncrementalFetchResponseCarriesVirtualTopicName() throws Exception {
 		String value = "wire-" + System.nanoTime();
 		TopicPartition session = new TopicPartition("session", 0);
 
@@ -534,13 +534,13 @@ class VirtualTopicsIT extends GatewayTestSupport {
 					.isNotEmpty();
 			FetchResponseData.FetchableTopicResponse response = incremental.data().responses().get(0);
 			assertThat(response.topic())
-					.describedAs("idle incremental fetch response must rename physical topic back to logical topic")
+					.describedAs("idle incremental fetch response must rename physical topic back to virtual topic")
 					.isEqualTo("session");
 		}
 	}
 
 	@Test
-	void transactionalOffsetCommitRewritesLogicalTopicToPhysical() throws Exception {
+	void transactionalOffsetCommitRewritesVirtualTopicToPhysical() throws Exception {
 		String transactionalId = "txn-" + System.nanoTime();
 		String group = "txn-group-" + System.nanoTime();
 
@@ -567,13 +567,13 @@ class VirtualTopicsIT extends GatewayTestSupport {
 				.describedAs("broker must see the transactional offset commit under the physical topic name")
 				.isEqualTo(5L);
 
-		TopicPartition logicalPartition = new TopicPartition("foo", 0);
-		Map<TopicPartition, OffsetAndMetadata> logicalOffsets = gatewayAdmin
+		TopicPartition virtualPartition = new TopicPartition("foo", 0);
+		Map<TopicPartition, OffsetAndMetadata> virtualOffsets = gatewayAdmin
 				.listConsumerGroupOffsets(Map.of(group,
-						new ListConsumerGroupOffsetsSpec().topicPartitions(List.of(logicalPartition))))
+						new ListConsumerGroupOffsetsSpec().topicPartitions(List.of(virtualPartition))))
 				.partitionsToOffsetAndMetadata(group).get(5, TimeUnit.SECONDS);
-		assertThat(logicalOffsets.get(logicalPartition).offset())
-				.describedAs("gateway client must see the committed offset under the logical topic name")
+		assertThat(virtualOffsets.get(virtualPartition).offset())
+				.describedAs("gateway client must see the committed offset under the virtual topic name")
 				.isEqualTo(5L);
 	}
 

@@ -23,7 +23,7 @@ const FeatureList: FeatureItem[] = [
     title: 'Virtual topics',
     description: (
       <>
-        Clients use logical topic names that kawa rewrites to physical topics
+        Clients use virtual topic names that kawa rewrites to physical topics
         in both directions. Physical topics stay hidden in Metadata; consume
         filters drop records server-side with offsets preserved.
       </>
