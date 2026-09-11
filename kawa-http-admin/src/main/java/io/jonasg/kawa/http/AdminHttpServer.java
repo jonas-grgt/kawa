@@ -22,9 +22,11 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 
 /// Netty HTTP server exposing the gateway's admin/UI surface: `GET /topics` reads the
-/// [VirtualTopicManager] and [MetadataCache], and the `/config/...` endpoints read and write
-/// the dynamic config through the [GatewayConfigRepository]. It never talks to the broker
-/// directly - config writes go to the config topic and are applied by the consumer.
+/// [VirtualTopicManager] and [MetadataCache], `POST /topics` and `DELETE /topics/{name}`
+/// create/delete physical topics on the broker through the [TopicAdmin], and the
+/// `/rbac/...`, `/auth/...` and `/governance` endpoints read and write the dynamic config
+/// through the [GatewayConfigRepository]. Config writes go to the config topic and are
+/// applied by the consumer.
 public final class AdminHttpServer {
 
     private static final Logger log = LoggerFactory.getLogger(AdminHttpServer.class);
@@ -55,21 +57,20 @@ public final class AdminHttpServer {
         this.topicAdmin = topicAdmin;
         this.router = new Router()
                 .get("/topics", new GetTopicsHandler(virtualTopics, cache))
-                .get("/config/virtual-topics", new VirtualTopicsConfigHandler(configRepository))
-                .put("/config/virtual-topics/{name}", new VirtualTopicsConfigHandler(configRepository))
-                .delete("/config/virtual-topics/{name}", new VirtualTopicsConfigHandler(configRepository))
-                .get("/config/rbac/roles", new RbacRolesConfigHandler(configRepository))
-                .put("/config/rbac/roles/{name}", new RbacRolesConfigHandler(configRepository))
-                .delete("/config/rbac/roles/{name}", new RbacRolesConfigHandler(configRepository))
-                .get("/config/rbac/groups", new RbacGroupsConfigHandler(configRepository))
-                .put("/config/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
-                .delete("/config/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
-                .get("/config/auth/users", new AuthUsersConfigHandler(configRepository))
-                .put("/config/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
-                .delete("/config/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
-                .get("/config/governance", new GovernanceConfigHandler(configRepository, governance))
-                .put("/config/governance", new GovernanceConfigHandler(configRepository, governance))
-                .post("/topics", new CreateTopicHandler(governance, configRepository, topicAdmin));
+                .post("/topics", new CreateTopicHandler(governance, configRepository, topicAdmin))
+                .put("/topics/{name}", new UpdateTopicHandler(configRepository))
+                .delete("/topics/{name}", new DeleteTopicHandler(configRepository, cache, topicAdmin))
+                .get("/rbac/roles", new RbacRolesConfigHandler(configRepository))
+                .put("/rbac/roles/{name}", new RbacRolesConfigHandler(configRepository))
+                .delete("/rbac/roles/{name}", new RbacRolesConfigHandler(configRepository))
+                .get("/rbac/groups", new RbacGroupsConfigHandler(configRepository))
+                .put("/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
+                .delete("/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
+                .get("/auth/users", new AuthUsersConfigHandler(configRepository))
+                .put("/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
+                .delete("/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
+                .get("/governance", new GovernanceConfigHandler(configRepository, governance))
+                .put("/governance", new GovernanceConfigHandler(configRepository, governance));
     }
 
     public void start() throws InterruptedException {
@@ -104,6 +105,7 @@ public final class AdminHttpServer {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }
+        topicAdmin.close();
     }
 
     public int boundPort() {

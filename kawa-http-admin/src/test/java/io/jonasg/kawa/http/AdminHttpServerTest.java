@@ -159,12 +159,12 @@ class AdminHttpServerTest {
 
         // when
         HttpResponse<String> put = HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/config/auth/users/alice"))
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/auth/users/alice"))
                         .PUT(HttpRequest.BodyPublishers.ofString("{\"mechanism\":\"PLAIN\",\"password\":\"secret\"}"))
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
         HttpResponse<String> get = HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/config/auth/users"))
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/auth/users"))
                         .GET()
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
@@ -187,14 +187,14 @@ class AdminHttpServerTest {
 
         // when
         HttpResponse<String> put = HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/config/governance"))
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/governance"))
                         .PUT(HttpRequest.BodyPublishers.ofString(
                                 "{\"topicRules\":{\"min-replication\":{\"message\":\"replication factor must be at least 3\","
                                         + "\"expression\":\"topic.replicationFactor >= 3\"}}}"))
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
         HttpResponse<String> get = HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/config/governance"))
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/governance"))
                         .GET()
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
@@ -230,5 +230,123 @@ class AdminHttpServerTest {
         // then
         assertThat(response.statusCode()).isEqualTo(403);
         assertThat(response.body()).contains("replication factor must be at least 3");
+    }
+
+    @Test
+    void createsPhysicalTopicOverHttp() throws Exception {
+        // given
+        var topicAdmin = new FakeTopicAdmin();
+        server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null),
+                new VirtualTopicManager(Map.of()), new MetadataCache(),
+                new FakeGatewayConfigRepository(GatewayConfig.empty()),
+                new GovernancePolicy(new GovernanceConfig(null, null)), topicAdmin);
+        server.start();
+
+        // when
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/topics"))
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                "{\"type\":\"physical\",\"name\":\"orders\",\"partitions\":3,\"replicationFactor\":3}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(topicAdmin.created).hasSize(1);
+    }
+
+    @Test
+    void createsVirtualTopicOverHttp() throws Exception {
+        // given
+        var repository = new FakeGatewayConfigRepository(GatewayConfig.empty());
+        server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null),
+                new VirtualTopicManager(Map.of()), new MetadataCache(), repository,
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
+        server.start();
+
+        // when
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/topics"))
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                "{\"type\":\"virtual\",\"name\":\"orders\",\"topic\":\"orders-v2\"}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(repository.current().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
+    }
+
+    @Test
+    void updatesVirtualTopicOverHttp() throws Exception {
+        // given
+        var repository = new FakeGatewayConfigRepository(GatewayConfig.empty());
+        server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null),
+                new VirtualTopicManager(Map.of()), new MetadataCache(), repository,
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
+        server.start();
+
+        // when
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/topics/orders"))
+                        .PUT(HttpRequest.BodyPublishers.ofString("{\"type\":\"virtual\",\"topic\":\"orders-v2\"}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.current().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
+    }
+
+    @Test
+    void deletesPhysicalTopicOverHttp() throws Exception {
+        // given
+        var topicAdmin = new FakeTopicAdmin();
+        MetadataCache cache = new MetadataCache();
+        cache.update(MetadataSnapshot.of(
+                Map.of("orders", TopicMetadata.of("orders",
+                        List.of(PartitionMetadata.of(0, 1, List.of(1), List.of(1), List.of())))),
+                Map.of(1, BrokerNode.of(1, "localhost", 9092, null)),
+                "test-cluster"));
+        server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null),
+                new VirtualTopicManager(Map.of()), cache,
+                new FakeGatewayConfigRepository(GatewayConfig.empty()),
+                new GovernancePolicy(new GovernanceConfig(null, null)), topicAdmin);
+        server.start();
+
+        // when
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/topics/orders"))
+                        .DELETE()
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(topicAdmin.deleted).containsExactly("orders");
+    }
+
+    @Test
+    void deletesVirtualTopicOverHttp() throws Exception {
+        // given
+        var repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+        server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null),
+                new VirtualTopicManager(Map.of()), new MetadataCache(), repository,
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
+        server.start();
+
+        // when
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/topics/orders"))
+                        .DELETE()
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(repository.current().virtualTopics()).isEmpty();
     }
 }
