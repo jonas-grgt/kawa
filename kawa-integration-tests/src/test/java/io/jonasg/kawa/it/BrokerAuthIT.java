@@ -153,7 +153,7 @@ class BrokerAuthIT {
                 new AuthConfig(null, null, new BrokerAuthConfig("PLAIN", BROKER_USER, BROKER_PASSWORD)),
                 null,
                 null,
-                CONFIG_TOPIC);
+                CONFIG_TOPIC, null);
 
         gateway = new KafkaGateway(bootstrap);
         try {
@@ -244,7 +244,7 @@ class BrokerAuthIT {
                 auth,
                 rbac,
                 null,
-                CONFIG_TOPIC);
+                CONFIG_TOPIC, null);
         var mapper = JsonMapper.builder().build();
         String json = mapper.writeValueAsString(fullConfig);
         Properties props = saslBrokerProps(brokerBootstrap);

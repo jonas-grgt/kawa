@@ -59,7 +59,7 @@ class EmptyConfigTopicIT {
                 new AuthConfig(null, null, null),
                 null,
                 null,
-                CONFIG_TOPIC);
+                CONFIG_TOPIC, null);
 
         gateway = new KafkaGateway(bootstrap);
         gateway.start();

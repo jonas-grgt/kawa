@@ -4,6 +4,9 @@ import io.jonasg.kawa.config.AclConfig;
 import io.jonasg.kawa.config.AuthConfig;
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
+import io.jonasg.kawa.config.GovernanceConfig;
+import io.jonasg.kawa.config.GovernanceExemptionConfig;
+import io.jonasg.kawa.config.GovernanceRuleConfig;
 import io.jonasg.kawa.config.GroupConfig;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
@@ -11,6 +14,9 @@ import io.jonasg.kawa.config.RoleConfig;
 import io.jonasg.kawa.config.UserConfig;
 import io.jonasg.kawa.config.VirtualTopicConfig;
 import io.jonasg.kawa.core.VirtualTopicManager;
+import io.jonasg.kawa.governance.GovernancePolicy;
+import io.jonasg.kawa.governance.TopicSpec;
+import io.jonasg.kawa.governance.Violation;
 import io.jonasg.kawa.rbac.RbacAuthorizer;
 import io.jonasg.kawa.server.auth.AuthenticationResult;
 import io.jonasg.kawa.server.auth.SaslAuthenticator;
@@ -36,9 +42,10 @@ class DynamicConfigManagerTest {
     private static GatewayConfig config(
             Map<String, VirtualTopicConfig> virtualTopics,
             RbacConfig rbac,
-            AuthConfig auth
+            AuthConfig auth,
+            GovernanceConfig governance
     ) {
-        return new GatewayConfig("test", null, null, virtualTopics, null, null, auth, rbac, null, null);
+        return new GatewayConfig("test", null, null, virtualTopics, null, null, auth, rbac, null, null, governance);
     }
 
     private static RbacConfig rbacAllowingReadOnOrders() {
@@ -53,6 +60,10 @@ class DynamicConfigManagerTest {
         return new AuthConfig(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")), null);
     }
 
+    private static GovernancePolicy emptyGovernance() {
+        return new GovernancePolicy(new GovernanceConfig(null, null));
+    }
+
     @Test
     void appliesSnapshotToAllConsumers() {
         // given
@@ -60,8 +71,8 @@ class DynamicConfigManagerTest {
         var authorizer = new RbacAuthorizer(new RbacConfig(Map.of(), Map.of()));
         var sasl = new SaslAuthenticator(Set.of());
         var manager = new DynamicConfigManager("localhost:9092", "__kawa", "test-group",
-                virtualTopics, authorizer, sasl);
-        var config = config(Map.of("orders", new VirtualTopicConfig("orders-v2")), rbacAllowingReadOnOrders(), plainAuth());
+                virtualTopics, authorizer, sasl, emptyGovernance());
+        var config = config(Map.of("orders", new VirtualTopicConfig("orders-v2")), rbacAllowingReadOnOrders(), plainAuth(), null);
 
         // when
         manager.apply(config);
@@ -84,13 +95,13 @@ class DynamicConfigManagerTest {
         var authorizer = new RbacAuthorizer(new RbacConfig(Map.of(), Map.of()));
         var sasl = new SaslAuthenticator(Set.of());
         var manager = new DynamicConfigManager("localhost:9092", "__kawa", "test-group",
-                virtualTopics, authorizer, sasl);
-        var good = config(Map.of("orders", new VirtualTopicConfig("orders-v2")), rbacAllowingReadOnOrders(), plainAuth());
+                virtualTopics, authorizer, sasl, emptyGovernance());
+        var good = config(Map.of("orders", new VirtualTopicConfig("orders-v2")), rbacAllowingReadOnOrders(), plainAuth(), null);
         manager.apply(good);
         var broken = config(
                 Map.of("customers", new VirtualTopicConfig("crm.customers")),
                 new RbacConfig(Map.of(), Map.of("team", new GroupConfig(List.of("alice"), List.of("missing-role")))),
-                plainAuth());
+                plainAuth(), null);
 
         // when / then
         assertThatThrownBy(() -> manager.apply(broken))
@@ -108,7 +119,8 @@ class DynamicConfigManagerTest {
         var manager = new DynamicConfigManager("localhost:9092", "__kawa", "test-group",
                 new VirtualTopicManager(Map.of()),
                 new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
-                new SaslAuthenticator(Set.of()));
+                new SaslAuthenticator(Set.of()),
+                emptyGovernance());
 
         // when / then
         // An empty config topic on first boot is valid: no snapshot has been applied, so the
@@ -140,9 +152,10 @@ class DynamicConfigManagerTest {
         var manager = new DynamicConfigManager(writeRepository,
                 new VirtualTopicManager(Map.of()),
                 new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
-                new SaslAuthenticator(Set.of()));
-        var first = config(Map.of("orders", new VirtualTopicConfig("orders-v2")), rbacAllowingReadOnOrders(), plainAuth());
-        var second = config(Map.of("customers", new VirtualTopicConfig("crm.customers")), rbacAllowingReadOnOrders(), plainAuth());
+                new SaslAuthenticator(Set.of()),
+                emptyGovernance());
+        var first = config(Map.of("orders", new VirtualTopicConfig("orders-v2")), rbacAllowingReadOnOrders(), plainAuth(), null);
+        var second = config(Map.of("customers", new VirtualTopicConfig("crm.customers")), rbacAllowingReadOnOrders(), plainAuth(), null);
 
         // when - two snapshots are persisted before the consumer has applied either
         manager.write(first);
@@ -159,9 +172,78 @@ class DynamicConfigManagerTest {
         var manager = new DynamicConfigManager("localhost:9092", "__kawa", "test-group",
                 new VirtualTopicManager(Map.of()),
                 new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
-                new SaslAuthenticator(Set.of()));
+                new SaslAuthenticator(Set.of()),
+                emptyGovernance());
 
         // when / then
         manager.close();
+    }
+
+    @Test
+    void appliesGovernanceConfigToPolicy() {
+        // given
+        var governancePolicy = new GovernancePolicy(new GovernanceConfig(null, null));
+        var manager = new DynamicConfigManager("localhost:9092", "__kawa", "test-group",
+                new VirtualTopicManager(Map.of()),
+                new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
+                new SaslAuthenticator(Set.of()),
+                governancePolicy);
+        var governance = new GovernanceConfig(Map.of(
+                "min-partitions", new GovernanceRuleConfig("must have partitions", "topic.partitions >= 1")), null);
+
+        // when
+        manager.apply(config(Map.of(), new RbacConfig(Map.of(), Map.of()), plainAuth(), governance));
+
+        // then
+        assertThat(governancePolicy.evaluate("alice", "payments", new TopicSpec("orders", 0, 3, Map.of())))
+                .extracting(Violation::rule)
+                .containsExactly("min-partitions");
+        assertThat(governancePolicy.evaluate("alice", "payments", new TopicSpec("orders", 6, 3, Map.of()))).isEmpty();
+    }
+
+    @Test
+    void rejectedGovernanceSnapshotLeavesPreviousStateIntact() {
+        // given
+        var governancePolicy = new GovernancePolicy(new GovernanceConfig(null, null));
+        var manager = new DynamicConfigManager("localhost:9092", "__kawa", "test-group",
+                new VirtualTopicManager(Map.of()),
+                new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
+                new SaslAuthenticator(Set.of()),
+                governancePolicy);
+        var good = config(Map.of(), new RbacConfig(Map.of(), Map.of()), plainAuth(),
+                new GovernanceConfig(Map.of(
+                        "min-partitions", new GovernanceRuleConfig("must have partitions", "topic.partitions >= 1")), null));
+        manager.apply(good);
+        var broken = config(Map.of(), new RbacConfig(Map.of(), Map.of()), plainAuth(),
+                new GovernanceConfig(Map.of(
+                        "broken", new GovernanceRuleConfig("broken rule", "topic.partitions >=")), null));
+
+        // when / then
+        assertThatThrownBy(() -> manager.apply(broken))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("broken");
+        assertThat(governancePolicy.evaluate("alice", "payments", new TopicSpec("orders", 0, 3, Map.of())))
+                .extracting(Violation::rule)
+                .containsExactly("min-partitions");
+    }
+
+    @Test
+    void appliesExemptionsToPolicy() {
+        // given
+        var governancePolicy = new GovernancePolicy(new GovernanceConfig(null, null));
+        var manager = new DynamicConfigManager("localhost:9092", "__kawa", "test-group",
+                new VirtualTopicManager(Map.of()),
+                new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
+                new SaslAuthenticator(Set.of()),
+                governancePolicy);
+        var governance = new GovernanceConfig(null, Map.of(
+                "streams-internal", new GovernanceExemptionConfig("^streams-.*", ".*-changelog$")));
+
+        // when
+        manager.apply(config(Map.of(), new RbacConfig(Map.of(), Map.of()), plainAuth(), governance));
+
+        // then
+        assertThat(governancePolicy.exempt("streams-app", "orders-changelog")).isTrue();
+        assertThat(governancePolicy.exempt("other-app", "orders-changelog")).isFalse();
     }
 }

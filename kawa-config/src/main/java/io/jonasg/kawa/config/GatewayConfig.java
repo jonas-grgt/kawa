@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 /// @param rbac role-based access control configuration
 /// @param admin admin HTTP listener configuration
 /// @param configTopic the topic that holds the dynamic gateway config (defaults to `__kawa`)
+/// @param governance topic governance configuration
 public record GatewayConfig(
         String name,
         List<ListenerConfig> listeners,
@@ -29,7 +30,8 @@ public record GatewayConfig(
         AuthConfig auth,
         RbacConfig rbac,
         AdminConfig admin,
-        String configTopic) {
+        String configTopic,
+        GovernanceConfig governance) {
 
     public GatewayConfig {
         if (name == null) {
@@ -51,13 +53,16 @@ public record GatewayConfig(
             auth = new AuthConfig(null, null, null);
         }
         if (rbac == null) {
-            rbac = new RbacConfig(null, null);
+            rbac = new RbacConfig();
         }
         if (admin == null) {
             admin = new AdminConfig(false, null, null, null);
         }
         if (configTopic == null) {
             configTopic = "__kawa";
+        }
+        if (governance == null) {
+            governance = new GovernanceConfig(null, null);
         }
         if (advertised == null) {
             ListenerConfig first = listeners.getFirst();
@@ -69,7 +74,7 @@ public record GatewayConfig(
     /// Used as the base for the admin config endpoints before the first snapshot has been
     /// applied (an empty config topic on first boot).
     public static GatewayConfig empty() {
-        return new GatewayConfig(null, null, null, null, null, null, null, null, null, null);
+        return new GatewayConfig(null, null, null, null, null, null, null, null, null, null, null);
     }
 
     /// Convenience factory for programmatic configuration.
@@ -87,7 +92,7 @@ public record GatewayConfig(
                         .collect(Collectors.toUnmodifiableMap(
                                 Map.Entry::getKey,
                                 entry -> new VirtualTopicConfig(entry.getValue())));
-        return new GatewayConfig(name, listeners, clusters, typedVirtualTopics, advertised, metrics, auth, null, null, null);
+        return new GatewayConfig(name, listeners, clusters, typedVirtualTopics, advertised, metrics, auth, null, null, null, null);
     }
 
     /// The default cluster (first entry), or `null` if none is configured.
@@ -100,38 +105,44 @@ public record GatewayConfig(
 
     /// Returns a new [GatewayConfig] with the [AuthConfig] section replaced.
     public GatewayConfig updateAuth(AuthConfig auth) {
-        return copyWith(virtualTopics, auth, rbac);
+        return copyWith(virtualTopics, auth, rbac, governance);
     }
 
     /// Returns a new [GatewayConfig] with the [RbacConfig] section replaced.
     public GatewayConfig updateRbac(RbacConfig rbac) {
-        return copyWith(virtualTopics, auth, rbac);
+        return copyWith(virtualTopics, auth, rbac, governance);
+    }
+
+    /// Returns a new [GatewayConfig] with the [GovernanceConfig] section replaced.
+    public GatewayConfig updateGovernance(GovernanceConfig governance) {
+        return copyWith(virtualTopics, auth, rbac, governance);
     }
 
     /// Returns a new [GatewayConfig] with the virtual topics map replaced.
     public GatewayConfig updateVirtualTopics(Map<String, VirtualTopicConfig> virtualTopics) {
-        return copyWith(virtualTopics, auth, rbac);
+        return copyWith(virtualTopics, auth, rbac, governance);
     }
 
     /// Returns a new [GatewayConfig] with the given virtual topic added or replaced.
     public GatewayConfig putVirtualTopic(String topicName, VirtualTopicConfig topic) {
         var newTopics = new HashMap<>(virtualTopics);
         newTopics.put(topicName, topic);
-        return copyWith(Map.copyOf(newTopics), auth, rbac);
+        return copyWith(Map.copyOf(newTopics), auth, rbac, governance);
     }
 
     /// Returns a new [GatewayConfig] with the given virtual topic removed.
     public GatewayConfig removeVirtualTopic(String topicName) {
         var newTopics = new HashMap<>(virtualTopics);
         newTopics.remove(topicName);
-        return copyWith(Map.copyOf(newTopics), auth, rbac);
+        return copyWith(Map.copyOf(newTopics), auth, rbac, governance);
     }
 
     private GatewayConfig copyWith(
             Map<String, VirtualTopicConfig> virtualTopics,
             AuthConfig auth,
-            RbacConfig rbac
+            RbacConfig rbac,
+            GovernanceConfig governance
     ) {
-        return new GatewayConfig(name, listeners, clusters, virtualTopics, advertised, metrics, auth, rbac, admin, configTopic);
+        return new GatewayConfig(name, listeners, clusters, virtualTopics, advertised, metrics, auth, rbac, admin, configTopic, governance);
     }
 }

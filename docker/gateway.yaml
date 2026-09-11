@@ -47,6 +47,16 @@ virtualTopics:
       header: region
       value: eu
 
+governance:
+  topicRules:
+    min-replication:
+      message: replication factor must be at least 3
+      expression: topic.replicationFactor >= 3
+  exemptions:
+    ops-internal:
+      principal: "ops-.*"
+      topicPattern: ".*-changelog"
+
 advertised:
   nodeId: 1
   host: localhost

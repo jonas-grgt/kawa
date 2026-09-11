@@ -24,7 +24,7 @@ class ConfigTopicRepositoryTest {
                     null, null,
                     new AuthConfig(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")), null),
                     new RbacConfig(Map.of("reader", new RoleConfig(List.of())), null),
-                    null, null);
+                    null, null, null);
 
             // when
             String json = repository.serialize(config);
@@ -45,7 +45,7 @@ class ConfigTopicRepositoryTest {
                     null, null,
                     new AuthConfig(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")), null),
                     new RbacConfig(Map.of("reader", new RoleConfig(List.of())), null),
-                    null, null);
+                    null, null, null);
 
             // when
             String json = repository.serialize(config);

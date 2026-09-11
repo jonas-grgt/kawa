@@ -100,6 +100,31 @@ class RouterTest {
     }
 
     @Test
+    void routesPostToRegisteredHandler() {
+        // given
+        var router = new Router().post("/topics", request -> Router.Response.ok(List.of()));
+        var handler = new HttpRouterHandler(router);
+
+        // when
+        FullHttpResponse response = request(handler, HttpMethod.POST, "/topics");
+
+        // then
+        assertThat(response.status()).isEqualTo(HttpResponseStatus.OK);
+    }
+
+    @Test
+    void returnsMethodNotAllowedForGetOnPostOnlyPath() {
+        // given
+        var handler = new HttpRouterHandler(new Router().post("/topics", request -> Router.Response.ok(List.of())));
+
+        // when
+        FullHttpResponse response = request(handler, HttpMethod.GET, "/topics");
+
+        // then
+        assertThat(response.status()).isEqualTo(HttpResponseStatus.METHOD_NOT_ALLOWED);
+    }
+
+    @Test
     void capturesPathParameters() {
         // given
         var router = new Router().delete("/configs/virtual-topics/{name}", request ->

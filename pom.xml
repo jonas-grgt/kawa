@@ -18,6 +18,7 @@
     <module>kawa-protocol-kafka</module>
     <module>kawa-virtual-topic</module>
     <module>kawa-rbac</module>
+    <module>kawa-governance</module>
     <module>kawa-http-admin</module>
     <module>kawa-server</module>
     <module>kawa-integration-tests</module>

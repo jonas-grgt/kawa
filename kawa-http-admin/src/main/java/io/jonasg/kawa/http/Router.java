@@ -59,6 +59,10 @@ public final class Router {
             return error(409, message);
         }
 
+        public static Response<Map<String, String>> forbidden(String message) {
+            return error(403, message);
+        }
+
         public static Response<Map<String, String>> internalError(String message) {
             return error(500, message);
         }
@@ -85,6 +89,11 @@ public final class Router {
     /// Registers a handler for `PUT path` and returns `this` for chaining.
     public Router put(String path, Handler handler) {
         return route(HttpMethod.PUT, path, handler);
+    }
+
+    /// Registers a handler for `POST path` and returns `this` for chaining.
+    public Router post(String path, Handler handler) {
+        return route(HttpMethod.POST, path, handler);
     }
 
     /// Registers a handler for `DELETE path` and returns `this` for chaining.

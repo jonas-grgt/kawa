@@ -22,13 +22,31 @@ class GatewayConfigTest {
         assertThat(config.auth().users()).isEmpty();
         assertThat(config.rbac().roles()).isEmpty();
         assertThat(config.rbac().groups()).isEmpty();
+        assertThat(config.governance().topicRules()).isEmpty();
+        assertThat(config.governance().exemptions()).isEmpty();
         assertThat(config.configTopic()).isEqualTo("__kawa");
+    }
+
+    @Test
+    void updateGovernanceReplacesGovernanceConfig() {
+        // given
+        var config = new GatewayConfig(null, null, null, null, null, null, null, null, null, null, null);
+        var newGovernance = new GovernanceConfig(
+                Map.of("min-partitions",
+                        new GovernanceRuleConfig("must have partitions", "topic.partitions >= 1")),
+                null);
+
+        // when
+        var updated = config.updateGovernance(newGovernance);
+
+        // then
+        assertThat(updated.governance()).isEqualTo(newGovernance);
     }
 
     @Test
     void putVirtualTopicAddsNewEntry() {
         // given
-        var config = new GatewayConfig(null, null, null, null, null, null, null, null, null, null);
+        var config = new GatewayConfig(null, null, null, null, null, null, null, null, null, null, null);
 
         // when
         var updated = config.putVirtualTopic("orders", new VirtualTopicConfig("raw-orders"));
@@ -42,7 +60,7 @@ class GatewayConfigTest {
         // given
         var config = new GatewayConfig(null, null, null,
                 Map.of("orders", new VirtualTopicConfig("raw-old")),
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
 
         // when
         var updated = config.putVirtualTopic("orders", new VirtualTopicConfig("raw-new"));
@@ -57,7 +75,7 @@ class GatewayConfigTest {
         // given
         var config = new GatewayConfig(null, null, null,
                 Map.of("orders", new VirtualTopicConfig("raw-orders")),
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
 
         // when
         var updated = config.removeVirtualTopic("orders");
@@ -70,7 +88,7 @@ class GatewayConfigTest {
     void updateAuthReplacesAuthConfig() {
         // given
         var config = new GatewayConfig(null, null, null, null, null, null,
-                new AuthConfig(null, null, null), null, null, null);
+                new AuthConfig(null, null, null), null, null, null, null);
         var newAuth = new AuthConfig(
                 java.util.Set.of("PLAIN"),
                 Map.of("alice", new UserConfig("PLAIN", "secret")),
@@ -87,7 +105,7 @@ class GatewayConfigTest {
     void updateRbacReplacesRbacConfig() {
         // given
         var config = new GatewayConfig(null, null, null, null, null, null, null,
-                new RbacConfig(null, null), null, null);
+                new RbacConfig(null, null), null, null, null);
         var newRbac = new RbacConfig(
                 Map.of("admin", new RoleConfig(java.util.List.of())),
                 null);
@@ -104,7 +122,7 @@ class GatewayConfigTest {
         // given
         var config = new GatewayConfig(null, null, null,
                 Map.of("old-topic", new VirtualTopicConfig("raw-old")),
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
         var newTopics = Map.of("new-topic", new VirtualTopicConfig("raw-new"));
 
         // when
@@ -119,7 +137,7 @@ class GatewayConfigTest {
         // given
         var config = new GatewayConfig(null, null, null,
                 Map.of("existing", new VirtualTopicConfig("raw-existing")),
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
 
         // when
         var updated = config.putVirtualTopic("new-topic", new VirtualTopicConfig("raw-new"));

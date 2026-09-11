@@ -14,6 +14,10 @@ public record RbacConfig(
         Map<String, GroupConfig> groups
 ) {
 
+    public RbacConfig() {
+        this(Map.of(), Map.of());
+    }
+
     public RbacConfig {
         roles = roles == null ? Map.of() : Map.copyOf(roles);
         groups = groups == null ? Map.of() : Map.copyOf(groups);

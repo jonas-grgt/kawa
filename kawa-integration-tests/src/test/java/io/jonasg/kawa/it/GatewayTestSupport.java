@@ -231,7 +231,7 @@ abstract class GatewayTestSupport {
 				new AuthConfig(null, null, null),
 				null,
 				adminConfig(),
-				CONFIG_TOPIC);
+				CONFIG_TOPIC, null);
 	}
 
 	/// The full dynamic config written to the config topic before the gateway starts. Only
@@ -252,7 +252,7 @@ abstract class GatewayTestSupport {
 				authConfig(),
 				rbacConfig(),
 				null,
-				CONFIG_TOPIC);
+				CONFIG_TOPIC, null);
 	}
 
 	/// Serializes the full dynamic config as JSON and writes it to the config topic, so the

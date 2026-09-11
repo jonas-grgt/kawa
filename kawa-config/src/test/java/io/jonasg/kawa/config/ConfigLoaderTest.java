@@ -358,6 +358,41 @@ class ConfigLoaderTest {
     }
 
     @Test
+    void loadsGovernanceConfiguration() {
+        GatewayConfig config = loader.loadFromYaml("""
+                governance:
+                  topicRules:
+                    min-partitions:
+                      message: must have at least one partition
+                      expression: topic.partitions >= 1
+                    max-partitions:
+                      message: too many partitions
+                      expression: topic.partitions <= 12
+                  exemptions:
+                    streams-internal:
+                      principal: ^streams-.*
+                      topicPattern: .*-changelog$
+                listeners:
+                  - port: 9092
+                """);
+
+        assertThat(config.governance().topicRules()).containsEntry("min-partitions",
+                new GovernanceRuleConfig("must have at least one partition", "topic.partitions >= 1"));
+        assertThat(config.governance().topicRules()).containsEntry("max-partitions",
+                new GovernanceRuleConfig("too many partitions", "topic.partitions <= 12"));
+        assertThat(config.governance().exemptions()).containsEntry("streams-internal",
+                new GovernanceExemptionConfig("^streams-.*", ".*-changelog$"));
+    }
+
+    @Test
+    void governanceDefaultsToEmpty() {
+        GatewayConfig config = loader.loadFromYaml("listeners:\n  - port: 9092\n");
+
+        assertThat(config.governance().topicRules()).isEmpty();
+        assertThat(config.governance().exemptions()).isEmpty();
+    }
+
+    @Test
     void loadsAdminConfiguration() {
         GatewayConfig config = loader.loadFromYaml("""
                 admin:
