@@ -25,6 +25,15 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
+      <groupId>io.jonasg</groupId>
+      <artifactId>kawa-governance</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>kafka-clients</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-codec-http</artifactId>
     </dependency>
