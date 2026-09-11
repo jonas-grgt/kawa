@@ -39,7 +39,7 @@
     <assertj.version>3.26.3</assertj.version>
     <kassert.version>0.1.0</kassert.version>
     <testcontainers.version>1.21.4</testcontainers.version>
-    <awaitility.version>4.2.2</awaitility.version>
+    <awaitility.version>4.3.0</awaitility.version>
     <jsonunit.version>6.2.0</jsonunit.version>
     <cel.version>0.13.1</cel.version>
     <openapi-generator.version>7.25.0</openapi-generator.version>
