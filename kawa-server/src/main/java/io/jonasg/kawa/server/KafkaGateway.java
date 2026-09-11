@@ -4,6 +4,7 @@ import io.jonasg.kawa.config.AdvertisedListener;
 import io.jonasg.kawa.config.BrokerAuthConfig;
 import io.jonasg.kawa.config.ClusterConfig;
 import io.jonasg.kawa.config.GatewayConfig;
+import io.jonasg.kawa.config.GovernanceConfig;
 import io.jonasg.kawa.config.ListenerConfig;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.core.Gateway;
@@ -13,12 +14,14 @@ import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.core.cluster.MetadataCache;
 import io.jonasg.kawa.core.metrics.GatewayMetrics;
 import io.jonasg.kawa.http.AdminHttpServer;
+import io.jonasg.kawa.http.KafkaTopicAdmin;
 import io.jonasg.kawa.protocol.kafka.ApiVersionsResponseBuilder;
 import io.jonasg.kawa.protocol.kafka.KafkaApiRegistry;
 import io.jonasg.kawa.protocol.kafka.KafkaBodyCodec;
 import io.jonasg.kawa.protocol.kafka.SupportedVersions;
 import io.jonasg.kawa.rbac.AuthorizationInterceptor;
 import io.jonasg.kawa.rbac.RbacAuthorizer;
+import io.jonasg.kawa.governance.GovernancePolicy;
 import io.jonasg.kawa.server.auth.SaslAuthenticator;
 import io.jonasg.kawa.server.broker.BrokerClientPool;
 import io.jonasg.kawa.server.broker.MetadataClient;
@@ -104,6 +107,7 @@ public final class KafkaGateway implements Gateway {
         var virtualTopics = new VirtualTopicManager(Map.of());
         var authorizer = new RbacAuthorizer(new RbacConfig(Map.of(), Map.of()));
         var saslAuthenticator = new SaslAuthenticator(Set.of());
+        var governance = new GovernancePolicy(new GovernanceConfig(null, null));
 
         // A fresh consumer group per boot: each gateway instance must read the full config
         // topic, and the catch-up model re-reads from the earliest offset anyway.
@@ -112,7 +116,7 @@ public final class KafkaGateway implements Gateway {
                 config.configTopic(),
                 "kawa-config-" + UUID.randomUUID(),
                 configTopicProps(config.auth().brokerAuth()),
-                virtualTopics, authorizer, saslAuthenticator);
+                virtualTopics, authorizer, saslAuthenticator, governance);
         dynamicConfig.start();
         log.info("waiting for initial config load from topic '{}' on {}", config.configTopic(), bootstrapServers);
         dynamicConfig.awaitInitialLoad();
@@ -165,7 +169,8 @@ public final class KafkaGateway implements Gateway {
         // until the gateway can actually route.
         holder.set(dispatcher);
         if (config.admin().enabled()) {
-            adminServer = new AdminHttpServer(config.admin(), virtualTopics, cache, dynamicConfig);
+            var topicAdmin = new KafkaTopicAdmin(bootstrapServers, config.auth().brokerAuth());
+            adminServer = new AdminHttpServer(config.admin(), virtualTopics, cache, dynamicConfig, governance, topicAdmin);
             adminServer.start();
         }
         running = true;

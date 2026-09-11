@@ -4,6 +4,7 @@ import io.jonasg.kawa.config.AdminConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
 import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.core.cluster.MetadataCache;
+import io.jonasg.kawa.governance.GovernancePolicy;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -31,6 +32,8 @@ public final class AdminHttpServer {
     private final AdminConfig config;
     private final VirtualTopicManager virtualTopics;
     private final MetadataCache cache;
+    private final GovernancePolicy governance;
+    private final TopicAdmin topicAdmin;
     private final Router router;
 
     private EventLoopGroup bossGroup;
@@ -41,11 +44,15 @@ public final class AdminHttpServer {
             AdminConfig config,
             VirtualTopicManager virtualTopics,
             MetadataCache cache,
-            GatewayConfigRepository configRepository
+            GatewayConfigRepository configRepository,
+            GovernancePolicy governance,
+            TopicAdmin topicAdmin
     ) {
         this.config = config;
         this.virtualTopics = virtualTopics;
         this.cache = cache;
+        this.governance = governance;
+        this.topicAdmin = topicAdmin;
         this.router = new Router()
                 .get("/topics", new GetTopicsHandler(virtualTopics, cache))
                 .get("/config/virtual-topics", new VirtualTopicsConfigHandler(configRepository))
@@ -59,7 +66,10 @@ public final class AdminHttpServer {
                 .delete("/config/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
                 .get("/config/auth/users", new AuthUsersConfigHandler(configRepository))
                 .put("/config/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
-                .delete("/config/auth/users/{name}", new AuthUsersConfigHandler(configRepository));
+                .delete("/config/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
+                .get("/config/governance", new GovernanceConfigHandler(configRepository, governance))
+                .put("/config/governance", new GovernanceConfigHandler(configRepository, governance))
+                .post("/topics", new CreateTopicHandler(governance, configRepository, topicAdmin));
     }
 
     public void start() throws InterruptedException {

@@ -3,6 +3,8 @@ package io.jonasg.kawa.http;
 import io.jonasg.kawa.config.AdminConfig;
 import io.jonasg.kawa.config.CorsConfig;
 import io.jonasg.kawa.config.GatewayConfig;
+import io.jonasg.kawa.config.GovernanceConfig;
+import io.jonasg.kawa.config.GovernanceRuleConfig;
 import io.jonasg.kawa.config.VirtualTopicConfig;
 import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.core.cluster.BrokerNode;
@@ -10,6 +12,7 @@ import io.jonasg.kawa.core.cluster.MetadataCache;
 import io.jonasg.kawa.core.cluster.MetadataSnapshot;
 import io.jonasg.kawa.core.cluster.PartitionMetadata;
 import io.jonasg.kawa.core.cluster.TopicMetadata;
+import io.jonasg.kawa.governance.GovernancePolicy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +48,8 @@ class AdminHttpServerTest {
                 Map.of(1, BrokerNode.of(1, "localhost", 9092, null)),
                 "test-cluster"));
         server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null), virtualTopics, cache,
-                new FakeGatewayConfigRepository(GatewayConfig.empty()));
+                new FakeGatewayConfigRepository(GatewayConfig.empty()),
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
         server.start();
 
         // when
@@ -73,7 +77,8 @@ class AdminHttpServerTest {
         MetadataCache cache = new MetadataCache();
         var cors = new CorsConfig(List.of("http://localhost:8080"), null, null, null, null);
         server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, cors), virtualTopics, cache,
-                new FakeGatewayConfigRepository(GatewayConfig.empty()));
+                new FakeGatewayConfigRepository(GatewayConfig.empty()),
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
         server.start();
 
         // when
@@ -102,7 +107,8 @@ class AdminHttpServerTest {
         MetadataCache cache = new MetadataCache();
         var cors = new CorsConfig(List.of("http://localhost:8080"), null, null, null, null);
         server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, cors), virtualTopics, cache,
-                new FakeGatewayConfigRepository(GatewayConfig.empty()));
+                new FakeGatewayConfigRepository(GatewayConfig.empty()),
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
         server.start();
 
         // when
@@ -125,7 +131,8 @@ class AdminHttpServerTest {
         var virtualTopics = new VirtualTopicManager(Map.of());
         MetadataCache cache = new MetadataCache();
         server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null), virtualTopics, cache,
-                new FakeGatewayConfigRepository(GatewayConfig.empty()));
+                new FakeGatewayConfigRepository(GatewayConfig.empty()),
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
         server.start();
 
         // when
@@ -146,7 +153,8 @@ class AdminHttpServerTest {
         // given
         var repository = new FakeGatewayConfigRepository(GatewayConfig.empty());
         server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null),
-                new VirtualTopicManager(Map.of()), new MetadataCache(), repository);
+                new VirtualTopicManager(Map.of()), new MetadataCache(), repository,
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
         server.start();
 
         // when
@@ -166,5 +174,61 @@ class AdminHttpServerTest {
         assertThat(get.statusCode()).isEqualTo(200);
         assertThat(get.body()).contains("\"alice\"", "\"PLAIN\"");
         assertThat(repository.current().auth().users()).containsKey("alice");
+    }
+
+    @Test
+    void servesGovernanceConfigOverHttp() throws Exception {
+        // given
+        var repository = new FakeGatewayConfigRepository(GatewayConfig.empty());
+        server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null),
+                new VirtualTopicManager(Map.of()), new MetadataCache(), repository,
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
+        server.start();
+
+        // when
+        HttpResponse<String> put = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/config/governance"))
+                        .PUT(HttpRequest.BodyPublishers.ofString(
+                                "{\"topicRules\":{\"min-replication\":{\"message\":\"replication factor must be at least 3\","
+                                        + "\"expression\":\"topic.replicationFactor >= 3\"}}}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> get = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/config/governance"))
+                        .GET()
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        // then
+        assertThat(put.statusCode()).isEqualTo(200);
+        assertThat(get.statusCode()).isEqualTo(200);
+        assertThat(get.body()).contains("\"min-replication\"", "\"topic.replicationFactor >= 3\"");
+        assertThat(repository.current().governance().topicRules()).containsKey("min-replication");
+    }
+
+    @Test
+    void rejectsTopicOverHttpWhenGovernanceRuleViolated() throws Exception {
+        // given
+        var governance = new GovernanceConfig(
+                Map.of("min-replication",
+                        new GovernanceRuleConfig("replication factor must be at least 3", "topic.replicationFactor >= 3")),
+                Map.of());
+        server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null),
+                new VirtualTopicManager(Map.of()), new MetadataCache(),
+                new FakeGatewayConfigRepository(GatewayConfig.empty()),
+                new GovernancePolicy(governance), new FakeTopicAdmin());
+        server.start();
+
+        // when
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/topics"))
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                "{\"type\":\"physical\",\"name\":\"orders\",\"partitions\":3,\"replicationFactor\":1}"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(403);
+        assertThat(response.body()).contains("replication factor must be at least 3");
     }
 }
