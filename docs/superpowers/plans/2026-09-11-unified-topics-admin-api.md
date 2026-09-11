@@ -39,7 +39,7 @@
 **Interfaces:**
 - Produces: `TopicAdmin` interface with `void createTopic(TopicSpec spec) throws Exception`, `void deleteTopic(String name) throws Exception`, `void close()`; `KafkaTopicAdmin implements TopicAdmin` with constructor `KafkaTopicAdmin(String bootstrapServers, BrokerAuthConfig brokerAuth)` and package-private static `Properties props(String bootstrapServers, BrokerAuthConfig brokerAuth)`. Later tasks consume `TopicAdmin` (Tasks 3, 5, 6) and `KafkaTopicAdmin` (Task 7).
 
-- [ ] **Step 1: Add the kafka-clients dependency to `kawa-http-admin/pom.xml`**
+- [x] **Step 1: Add the kafka-clients dependency to `kawa-http-admin/pom.xml`**
 
 Add inside `<dependencies>` (after the `kawa-governance` dependency):
 
@@ -52,7 +52,7 @@ Add inside `<dependencies>` (after the `kawa-governance` dependency):
 
 No `<version>` — managed by the parent.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `KafkaTopicAdminTest.java`:
 
@@ -94,12 +94,12 @@ class KafkaTopicAdminTest {
 }
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=KafkaTopicAdminTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: FAIL — `KafkaTopicAdmin` does not exist (compile error).
 
-- [ ] **Step 4: Write the minimal implementation**
+- [x] **Step 4: Write the minimal implementation**
 
 Create `TopicAdmin.java`:
 
@@ -190,12 +190,12 @@ public final class KafkaTopicAdmin implements TopicAdmin {
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=KafkaTopicAdminTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS (2 tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add kawa-http-admin/pom.xml kawa-http-admin/src/main/java/io/jonasg/kawa/http/TopicAdmin.java kawa-http-admin/src/main/java/io/jonasg/kawa/http/KafkaTopicAdmin.java kawa-http-admin/src/test/java/io/jonasg/kawa/http/KafkaTopicAdminTest.java
@@ -214,7 +214,7 @@ git commit -m "feat: add TopicAdmin broker client for the admin HTTP surface"
 - Consumes: `VirtualTopicManager.virtualTopics()` (returns `Map<String, String>` virtual→physical), `VirtualTopicManager.filterFor(String)` (returns `Optional<VirtualTopicFilterConfig>`), `MetadataCache.partitionCount(String)` / `MetadataCache.replicationFactor(String)` / `MetadataCache.topics()`.
 - Produces: unchanged `GetTopicsHandler(VirtualTopicManager, MetadataCache)` — but now lists every configured virtual topic (from the manager) even when its physical backing is absent from the cache, followed by every physical topic from the cache. Existing output for virtualized physical topics is unchanged.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `GetTopicsHandlerTest.java`:
 
@@ -235,12 +235,12 @@ Add to `GetTopicsHandlerTest.java`:
     }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=GetTopicsHandlerTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: FAIL — `topics` is empty (current handler only emits virtual views for physical topics present in the cache).
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Replace the body of `GetTopicsHandler.handle` with:
 
@@ -272,12 +272,12 @@ Replace the body of `GetTopicsHandler.handle` with:
     }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=GetTopicsHandlerTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS — all 4 tests (the 3 existing ones still pass because virtualized physical topics produce the same virtual+physical pair).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add kawa-http-admin/src/main/java/io/jonasg/kawa/http/GetTopicsHandler.java kawa-http-admin/src/test/java/io/jonasg/kawa/http/GetTopicsHandlerTest.java
@@ -298,7 +298,7 @@ git commit -m "feat: list virtual topics in GET /topics independent of physical 
 - Consumes: `TopicAdmin` (Task 1), `GovernancePolicy.exempt(String, String)` / `GovernancePolicy.evaluate(String, String, TopicSpec)` (existing), `GatewayConfigRepository.current()` / `write(GatewayConfig)` (existing), `GatewayConfig.putVirtualTopic(String, VirtualTopicConfig)` (existing), `TopicSpec(String, int, int, Map<String,String>)` (existing).
 - Produces: `TopicCreateRequest(String type, String name, Integer partitions, Short replicationFactor, Map<String,String> configs, String topic, VirtualTopicFilterConfig filter, Boolean exposePhysicalTopic)`; `CreateTopicHandler(GovernancePolicy, GatewayConfigRepository, TopicAdmin)`. `POST /topics` with `"type":"virtual"` writes config and returns `201` with the `VirtualTopicConfig`; with `"type":"physical"` runs governance then `topicAdmin.createTopic(spec)` and returns `201` with the `TopicSpec`; `403` on governance violation; `409` when the topic already exists; `400` on invalid body/type/missing fields.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `FakeTopicAdmin.java`:
 
@@ -519,12 +519,12 @@ class CreateTopicHandlerTest {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=CreateTopicHandlerTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: FAIL — `TopicCreateRequest` does not exist; `CreateTopicHandler` constructor signature changed.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Create `TopicCreateRequest.java`:
 
@@ -674,12 +674,12 @@ public final class CreateTopicHandler implements Router.Handler {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=CreateTopicHandlerTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS (9 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add kawa-http-admin/src/main/java/io/jonasg/kawa/http/TopicCreateRequest.java kawa-http-admin/src/main/java/io/jonasg/kawa/http/CreateTopicHandler.java kawa-http-admin/src/test/java/io/jonasg/kawa/http/FakeTopicAdmin.java kawa-http-admin/src/test/java/io/jonasg/kawa/http/CreateTopicHandlerTest.java
@@ -698,7 +698,7 @@ git commit -m "feat: unify POST /topics with type discriminator and broker creat
 - Consumes: `GatewayConfigRepository.current()` / `write(GatewayConfig)`, `GatewayConfig.putVirtualTopic(String, VirtualTopicConfig)`, `TopicCreateRequest` (Task 3).
 - Produces: `UpdateTopicHandler(GatewayConfigRepository)` handling `PUT /topics/{name}` — upserts the `VirtualTopicConfig` for the path `name` (same semantics as the old `PUT /config/virtual-topics/{name}`), returns `200` with the stored config, `400` on invalid body. **Decision (2026-09-11, option B):** the body uses the same `type` discriminator as `POST /topics` — only `"type": "virtual"` is accepted; `"type": "physical"` and missing `type` return `400` ("only 'virtual' topics can be updated"), and a virtual body without a physical `topic` returns `400`. This keeps the unified surface self-describing and prevents a physical-looking body from being silently stored as a broken virtual config.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `UpdateTopicHandlerTest.java`:
 
@@ -797,12 +797,12 @@ class UpdateTopicHandlerTest {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=UpdateTopicHandlerTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: FAIL — `UpdateTopicHandler` does not exist.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Create `UpdateTopicHandler.java`:
 
@@ -853,12 +853,12 @@ public final class UpdateTopicHandler implements Router.Handler {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=UpdateTopicHandlerTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS (5 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add kawa-http-admin/src/main/java/io/jonasg/kawa/http/UpdateTopicHandler.java kawa-http-admin/src/test/java/io/jonasg/kawa/http/UpdateTopicHandlerTest.java
@@ -877,7 +877,7 @@ git commit -m "feat: add PUT /topics/{name} for virtual topic config"
 - Consumes: `GatewayConfigRepository.current()` / `write(GatewayConfig)`, `GatewayConfig.virtualTopics()` / `removeVirtualTopic(String)`, `MetadataCache.topics()`, `TopicAdmin.deleteTopic(String)`.
 - Produces: `DeleteTopicHandler(GatewayConfigRepository, MetadataCache, TopicAdmin)` handling `DELETE /topics/{name}` — removes the virtual topic config when `name` is a virtual topic (no broker call), otherwise deletes the physical topic on the broker; `204` on success, `404` when the name is neither, `500` on broker failure. A name that is both virtual and physical resolves to the virtual config removal.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `DeleteTopicHandlerTest.java`:
 
@@ -980,12 +980,12 @@ class DeleteTopicHandlerTest {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=DeleteTopicHandlerTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: FAIL — `DeleteTopicHandler` does not exist.
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Create `DeleteTopicHandler.java`:
 
@@ -1037,12 +1037,12 @@ public final class DeleteTopicHandler implements Router.Handler {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=DeleteTopicHandlerTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add kawa-http-admin/src/main/java/io/jonasg/kawa/http/DeleteTopicHandler.java kawa-http-admin/src/test/java/io/jonasg/kawa/http/DeleteTopicHandlerTest.java
@@ -1064,7 +1064,7 @@ git commit -m "feat: add DELETE /topics/{name} for virtual config and physical b
 - Consumes: `CreateTopicHandler(GovernancePolicy, GatewayConfigRepository, TopicAdmin)` (Task 3), `UpdateTopicHandler(GatewayConfigRepository)` (Task 4), `DeleteTopicHandler(GatewayConfigRepository, MetadataCache, TopicAdmin)` (Task 5), `KafkaTopicAdmin(String, BrokerAuthConfig)` (Task 1).
 - Produces: `AdminHttpServer(AdminConfig, VirtualTopicManager, MetadataCache, GatewayConfigRepository, GovernancePolicy, TopicAdmin)` — new `TopicAdmin` parameter; `stop()` closes it. Route table: `/topics` GET/POST, `/topics/{name}` PUT/DELETE, `/rbac/roles`, `/rbac/groups`, `/auth/users`, `/governance` (no `/config` prefix). `KafkaGateway.start()` constructs `new KafkaTopicAdmin(bootstrapServers, config.auth().brokerAuth())` and passes it when admin is enabled.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Update `AdminHttpServerTest.java`:
 
@@ -1195,12 +1195,12 @@ Update `AdminHttpServerTest.java`:
     }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `./mvnw -pl kawa-http-admin -am test -Dtest=AdminHttpServerTest -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: FAIL — `AdminHttpServer` constructor has no `TopicAdmin` parameter (compile error).
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Modify `AdminHttpServer.java`:
 
@@ -1271,7 +1271,7 @@ Delete `VirtualTopicsConfigHandler.java` and `VirtualTopicsConfigHandlerTest.jav
 rm kawa-http-admin/src/main/java/io/jonasg/kawa/http/VirtualTopicsConfigHandler.java kawa-http-admin/src/test/java/io/jonasg/kawa/http/VirtualTopicsConfigHandlerTest.java
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `./mvnw -pl kawa-http-admin -am test`
 Expected: PASS — all kawa-http-admin tests (AdminHttpServerTest now 12 tests; VirtualTopicsConfigHandlerTest removed).
@@ -1279,7 +1279,7 @@ Expected: PASS — all kawa-http-admin tests (AdminHttpServerTest now 12 tests; 
 Run: `./mvnw -pl kawa-server -am test`
 Expected: PASS — KafkaGateway compiles with the new constructor.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add kawa-http-admin/src/main/java/io/jonasg/kawa/http/AdminHttpServer.java kawa-http-admin/src/test/java/io/jonasg/kawa/http/AdminHttpServerTest.java kawa-server/src/main/java/io/jonasg/kawa/server/KafkaGateway.java
@@ -1297,7 +1297,7 @@ git commit -m "feat: wire unified /topics routes and flatten /config paths in ad
 **Interfaces:**
 - Consumes: the final route table from Task 6.
 
-- [ ] **Step 1: Update the Admin API section**
+- [x] **Step 1: Update the Admin API section**
 
 In `docs/docs/configuration.md`, replace the `### GET /topics` + `### Config endpoints` + `### POST /topics` sections (lines ~485-545) with:
 
@@ -1385,12 +1385,12 @@ nothing is written.
 Also update the "Dynamic config" section if it references `/config/...` paths (search for
 `/config/` in the file and update any remaining references to the flattened paths).
 
-- [ ] **Step 2: Verify the docs build**
+- [x] **Step 2: Verify the docs build**
 
 Run: `npm run build` in `docs/`
 Expected: SUCCESS.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/docs/configuration.md
@@ -1409,7 +1409,7 @@ git commit -m "docs: document unified /topics admin API and flattened config pat
 **Interfaces:**
 - Consumes: the final route table from Task 6; `KafkaGateway.adminBoundPort()` (existing).
 
-- [ ] **Step 1: Update the existing ITs' paths**
+- [x] **Step 1: Update the existing ITs' paths**
 
 In `AdminConfigApiIT.java`, replace the three request paths:
 - `/config/auth/users/alice` → `/auth/users/alice`
@@ -1418,7 +1418,7 @@ In `AdminConfigApiIT.java`, replace the three request paths:
 
 In `GovernanceAdminApiIT.java`, replace both `/config/governance` paths (PUT and GET) with `/governance`.
 
-- [ ] **Step 2: Write the failing IT**
+- [x] **Step 2: Write the failing IT**
 
 Create `TopicsAdminApiIT.java`:
 
@@ -1595,17 +1595,17 @@ class TopicsAdminApiIT {
 }
 ```
 
-- [ ] **Step 3: Run the ITs to verify they pass**
+- [x] **Step 3: Run the ITs to verify they pass**
 
 Run: `./mvnw -pl kawa-integration-tests -am verify -Dit.test=TopicsAdminApiIT,AdminConfigApiIT,GovernanceAdminApiIT -DfailIfNoTests=false`
 Expected: PASS — all three ITs (Docker must be running).
 
-- [ ] **Step 4: Full reactor verification**
+- [x] **Step 4: Full reactor verification**
 
 Run: `./mvnw test`
 Expected: BUILD SUCCESS (all unit tests; ITs are skipped in surefire).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add kawa-integration-tests/src/test/java/io/jonasg/kawa/it/AdminConfigApiIT.java kawa-integration-tests/src/test/java/io/jonasg/kawa/it/GovernanceAdminApiIT.java kawa-integration-tests/src/test/java/io/jonasg/kawa/it/TopicsAdminApiIT.java
