@@ -9,6 +9,7 @@ import io.jonasg.kawa.core.cluster.TopicMetadata;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /// Projects the virtual and physical topics served by `GET /topics` from the [VirtualTopicManager]
 /// (virtual config) and the [MetadataCache] (live physical topology). Plain handler with no Netty
@@ -26,17 +27,18 @@ public final class GetTopicsHandler implements Router.Handler {
     @Override
     public Router.Response<List<TopicView>> handle(Router.Request request) {
         List<TopicView> views = new ArrayList<>();
+        for (Map.Entry<String, String> entry : virtualTopics.virtualTopics().entrySet()) {
+            String virtual = entry.getKey();
+            String physical = entry.getValue();
+            views.add(new TopicView(
+                    "virtual",
+                    virtual,
+                    cache.partitionCount(physical),
+                    cache.replicationFactor(physical),
+                    toFilterView(virtualTopics.filterFor(virtual).orElse(null)),
+                    physical));
+        }
         for (TopicMetadata tm : cache.topics()) {
-            boolean virtualized = virtualTopics.hasVirtualTopic(tm.name());
-            if (virtualized) {
-                views.add(new TopicView(
-                        "virtual",
-                        virtualTopics.toVirtual(tm.name()),
-                        cache.partitionCount(tm.name()),
-                        cache.replicationFactor(tm.name()),
-                        toFilterView(virtualTopics.filterFor(tm.name()).orElse(null)),
-                        tm.name()));
-            }
             views.add(new TopicView(
                     "physical",
                     tm.name(),

@@ -75,6 +75,21 @@ class GetTopicsHandlerTest {
                         assertThat(view.filter()).isEqualTo(new TopicFilterView("cel", "headers.tenant == \"acme\"")));
     }
 
+    @Test
+    void listsVirtualTopicWithoutPhysicalBacking() {
+        // given
+        var virtualTopics = new VirtualTopicManager(Map.of(
+                "orders", new VirtualTopicConfig("orders-v2")));
+        var handler = new GetTopicsHandler(virtualTopics, new MetadataCache());
+
+        // when
+        List<TopicView> topics = topics(handler);
+
+        // then
+        assertThat(topics).containsExactly(
+                new TopicView("virtual", "orders", 0, 0, null, "orders-v2"));
+    }
+
     private static List<TopicView> topics(GetTopicsHandler handler) {
         Router.Response<List<TopicView>> response = handler.handle(new Router.Request("GET", "/topics", Map.of(), new byte[0]));
         return response.body();
