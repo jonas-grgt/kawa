@@ -69,7 +69,7 @@ class AdminConfigApiIT {
                 new AuthConfig(null, null, null),
                 null,
                 new AdminConfig(true, "127.0.0.1", 0, null),
-                CONFIG_TOPIC);
+                CONFIG_TOPIC, null);
 
         gateway = new KafkaGateway(bootstrap);
         gateway.start();
@@ -90,12 +90,12 @@ class AdminConfigApiIT {
 
         // when - the first user, role and group are added through the admin API
         HttpResponse<String> userPut = http.send(
-                HttpRequest.newBuilder(URI.create(base + "/config/auth/users/alice"))
+                HttpRequest.newBuilder(URI.create(base + "/auth/users/alice"))
                         .PUT(HttpRequest.BodyPublishers.ofString("{\"mechanism\":\"PLAIN\",\"password\":\"secret\"}"))
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
         HttpResponse<String> rolePut = http.send(
-                HttpRequest.newBuilder(URI.create(base + "/config/rbac/roles/allow-all"))
+                HttpRequest.newBuilder(URI.create(base + "/rbac/roles/allow-all"))
                         .PUT(HttpRequest.BodyPublishers.ofString("""
                                 {"acls":[
                                   {"resource":{"type":"TOPIC","pattern":"","patternType":"PREFIXED"},"operation":"ALL"},
@@ -107,7 +107,7 @@ class AdminConfigApiIT {
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
         HttpResponse<String> groupPut = http.send(
-                HttpRequest.newBuilder(URI.create(base + "/config/rbac/groups/admins"))
+                HttpRequest.newBuilder(URI.create(base + "/rbac/groups/admins"))
                         .PUT(HttpRequest.BodyPublishers.ofString("{\"members\":[\"alice\"],\"roles\":[\"allow-all\"]}"))
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
