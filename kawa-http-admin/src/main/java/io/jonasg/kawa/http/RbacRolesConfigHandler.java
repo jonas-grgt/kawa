@@ -4,9 +4,10 @@ import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
 import io.jonasg.kawa.config.RoleConfig;
 
+import java.util.Comparator;
 import java.util.Map;
 
-/// Serves `/config/rbac/roles`: lists the role map, upserts one entry via
+/// Serves `/config/rbac/roles`: lists the roles, upserts one entry via
 /// `PUT /config/rbac/roles/{name}` and removes it via `DELETE /config/rbac/roles/{name}`.
 /// Each write persists a full [GatewayConfig] snapshot through the [GatewayConfigRepository].
 public final class RbacRolesConfigHandler extends ConfigSectionHandler<RoleConfig> {
@@ -18,6 +19,14 @@ public final class RbacRolesConfigHandler extends ConfigSectionHandler<RoleConfi
     @Override
     protected Map<String, RoleConfig> entries(GatewayConfig config) {
         return config.rbac().roles();
+    }
+
+    @Override
+    protected Object listView(GatewayConfig config) {
+        return entries(config).entrySet().stream()
+                .map(entry -> new RoleView(entry.getKey(), entry.getValue().acls()))
+                .sorted(Comparator.comparing(RoleView::name))
+                .toList();
     }
 
     @Override

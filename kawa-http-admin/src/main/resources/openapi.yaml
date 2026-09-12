@@ -119,16 +119,16 @@ paths:
   /rbac/roles:
     get:
       summary: List RBAC roles
-      description: The named roles from the dynamic config, each a list of ACLs.
+      description: The roles from the dynamic config, each a list of ACLs.
       responses:
         '200':
-          description: The roles keyed by name
+          description: The roles, each with its name and ACLs
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  $ref: '#/components/schemas/RoleConfig'
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoleView'
         '404':
           $ref: '#/components/responses/NotFound'
         '405':
@@ -179,16 +179,16 @@ paths:
   /rbac/groups:
     get:
       summary: List RBAC groups
-      description: The named groups from the dynamic config, each a member list plus the roles those members inherit.
+      description: The groups from the dynamic config, each a member list plus the roles those members inherit.
       responses:
         '200':
-          description: The groups keyed by name
+          description: The groups, each with its name, members and roles
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  $ref: '#/components/schemas/GroupConfig'
+                type: array
+                items:
+                  $ref: '#/components/schemas/GroupView'
         '404':
           $ref: '#/components/responses/NotFound'
         '405':
@@ -239,16 +239,16 @@ paths:
   /auth/users:
     get:
       summary: List auth users
-      description: The SASL users from the dynamic config, keyed by username.
+      description: The SASL users from the dynamic config.
       responses:
         '200':
-          description: The users keyed by username
+          description: The users, each with its username, mechanism and password
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  $ref: '#/components/schemas/UserConfig'
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserView'
         '404':
           $ref: '#/components/responses/NotFound'
         '405':
@@ -606,6 +606,21 @@ components:
         password:
           type: string
           description: Password; may reference environment variables as ${VAR} or ${VAR:-default}.
+    UserView:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: The SASL username.
+        mechanism:
+          type: string
+          description: SASL mechanism (e.g. PLAIN, SCRAM-SHA-256).
+        password:
+          type: string
+          description: Password; may reference environment variables as ${VAR} or ${VAR:-default}.
     RoleConfig:
       type: object
       properties:
@@ -614,9 +629,40 @@ components:
           items:
             $ref: '#/components/schemas/AclConfig'
           description: The ACLs making up this role.
+    RoleView:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The role name.
+        acls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AclConfig'
+          description: The ACLs making up this role.
     GroupConfig:
       type: object
       properties:
+        members:
+          type: array
+          items:
+            type: string
+          description: The usernames in this group.
+        roles:
+          type: array
+          items:
+            type: string
+          description: The roles whose ACLs every member inherits.
+    GroupView:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The group name.
         members:
           type: array
           items:

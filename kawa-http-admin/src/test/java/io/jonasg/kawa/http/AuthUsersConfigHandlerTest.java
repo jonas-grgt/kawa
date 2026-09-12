@@ -5,6 +5,7 @@ import io.jonasg.kawa.config.UserConfig;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,11 +25,30 @@ class AuthUsersConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo(Map.of("alice", new UserConfig("PLAIN", "secret")));
+        assertThat(response.body()).isEqualTo(List.of(new UserView("alice", "PLAIN", "secret")));
     }
 
     @Test
-    void getReturnsEmptyMapWhenNoSnapshotApplied() {
+    void getListsUsersSortedByUsername() {
+        // given
+        var repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateAuth(GatewayConfig.empty().auth()
+                        .withUser("bob", new UserConfig("PLAIN", "bob-secret"))
+                        .withUser("alice", new UserConfig("PLAIN", "alice-secret"))));
+        var handler = new AuthUsersConfigHandler(repository);
+
+        // when
+        Router.Response<?> response = handler.handle(
+                new Router.Request("GET", "/config/auth/users", Map.of(), new byte[0]));
+
+        // then
+        assertThat(response.body()).isEqualTo(List.of(
+                new UserView("alice", "PLAIN", "alice-secret"),
+                new UserView("bob", "PLAIN", "bob-secret")));
+    }
+
+    @Test
+    void getReturnsEmptyListWhenNoSnapshotApplied() {
         // given
         var handler = new AuthUsersConfigHandler(new FakeGatewayConfigRepository(null));
 
@@ -38,7 +58,7 @@ class AuthUsersConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo(Map.of());
+        assertThat(response.body()).isEqualTo(List.of());
     }
 
     @Test

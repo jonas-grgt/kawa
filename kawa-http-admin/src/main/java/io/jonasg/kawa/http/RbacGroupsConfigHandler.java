@@ -4,9 +4,10 @@ import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
 import io.jonasg.kawa.config.GroupConfig;
 
+import java.util.Comparator;
 import java.util.Map;
 
-/// Serves `/config/rbac/groups`: lists the group map, upserts one entry via
+/// Serves `/config/rbac/groups`: lists the groups, upserts one entry via
 /// `PUT /config/rbac/groups/{name}` and removes it via `DELETE /config/rbac/groups/{name}`.
 /// Each write persists a full [GatewayConfig] snapshot through the [GatewayConfigRepository].
 public final class RbacGroupsConfigHandler extends ConfigSectionHandler<GroupConfig> {
@@ -18,6 +19,14 @@ public final class RbacGroupsConfigHandler extends ConfigSectionHandler<GroupCon
     @Override
     protected Map<String, GroupConfig> entries(GatewayConfig config) {
         return config.rbac().groups();
+    }
+
+    @Override
+    protected Object listView(GatewayConfig config) {
+        return entries(config).entrySet().stream()
+                .map(entry -> new GroupView(entry.getKey(), entry.getValue().members(), entry.getValue().roles()))
+                .sorted(Comparator.comparing(GroupView::name))
+                .toList();
     }
 
     @Override

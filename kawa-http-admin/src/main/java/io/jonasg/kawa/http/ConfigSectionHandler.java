@@ -31,6 +31,12 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
     /// The section's entries from a snapshot.
     protected abstract Map<String, T> entries(GatewayConfig config);
 
+    /// The GET response body for the section. Defaults to the raw entries map; subclasses
+    /// override to project entries into a list of view records carrying the entry name.
+    protected Object listView(GatewayConfig config) {
+        return entries(config);
+    }
+
     /// A new snapshot with the given entry added or replaced.
     protected abstract GatewayConfig upsert(GatewayConfig config, String name, T value);
 
@@ -42,7 +48,7 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
         GatewayConfig base = repository.getActiveConfigOrEmpty();
         String name = request.pathParams().get("name");
         return switch (request.method()) {
-            case "GET" -> Router.Response.ok(entries(base));
+            case "GET" -> Router.Response.ok(listView(base));
             case "PUT" -> {
                 T value;
                 try {

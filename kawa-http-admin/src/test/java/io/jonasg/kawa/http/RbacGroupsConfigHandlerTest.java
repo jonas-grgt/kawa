@@ -5,6 +5,7 @@ import io.jonasg.kawa.config.GroupConfig;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,11 +25,30 @@ class RbacGroupsConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo(Map.of("producers", new GroupConfig(null, null)));
+        assertThat(response.body()).isEqualTo(List.of(new GroupView("producers", List.of(), List.of())));
     }
 
     @Test
-    void getReturnsEmptyMapWhenNoSnapshotApplied() {
+    void getListsGroupsSortedByName() {
+        // given
+        var repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("writers", new GroupConfig(null, null))
+                        .withGroup("producers", new GroupConfig(null, null))));
+        var handler = new RbacGroupsConfigHandler(repository);
+
+        // when
+        Router.Response<?> response = handler.handle(
+                new Router.Request("GET", "/config/rbac/groups", Map.of(), new byte[0]));
+
+        // then
+        assertThat(response.body()).isEqualTo(List.of(
+                new GroupView("producers", List.of(), List.of()),
+                new GroupView("writers", List.of(), List.of())));
+    }
+
+    @Test
+    void getReturnsEmptyListWhenNoSnapshotApplied() {
         // given
         var handler = new RbacGroupsConfigHandler(new FakeGatewayConfigRepository(null));
 
@@ -38,7 +58,7 @@ class RbacGroupsConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo(Map.of());
+        assertThat(response.body()).isEqualTo(List.of());
     }
 
     @Test

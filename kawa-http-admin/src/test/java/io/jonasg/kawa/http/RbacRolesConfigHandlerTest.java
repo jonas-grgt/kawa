@@ -5,6 +5,7 @@ import io.jonasg.kawa.config.RoleConfig;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,11 +25,30 @@ class RbacRolesConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo(Map.of("reader", new RoleConfig(null)));
+        assertThat(response.body()).isEqualTo(List.of(new RoleView("reader", List.of())));
     }
 
     @Test
-    void getReturnsEmptyMapWhenNoSnapshotApplied() {
+    void getListsRolesSortedByName() {
+        // given
+        var repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withRole("writer", new RoleConfig(null))
+                        .withRole("reader", new RoleConfig(null))));
+        var handler = new RbacRolesConfigHandler(repository);
+
+        // when
+        Router.Response<?> response = handler.handle(
+                new Router.Request("GET", "/config/rbac/roles", Map.of(), new byte[0]));
+
+        // then
+        assertThat(response.body()).isEqualTo(List.of(
+                new RoleView("reader", List.of()),
+                new RoleView("writer", List.of())));
+    }
+
+    @Test
+    void getReturnsEmptyListWhenNoSnapshotApplied() {
         // given
         var handler = new RbacRolesConfigHandler(new FakeGatewayConfigRepository(null));
 
@@ -38,7 +58,7 @@ class RbacRolesConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo(Map.of());
+        assertThat(response.body()).isEqualTo(List.of());
     }
 
     @Test

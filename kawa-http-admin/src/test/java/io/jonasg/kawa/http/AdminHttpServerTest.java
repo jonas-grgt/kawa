@@ -195,7 +195,7 @@ class AdminHttpServerTest {
         // then
         assertThat(put.statusCode()).isEqualTo(200);
         assertThat(get.statusCode()).isEqualTo(200);
-        assertThat(get.body()).contains("\"alice\"", "\"PLAIN\"");
+        assertThat(get.body()).contains("\"username\":\"alice\"", "\"PLAIN\"");
         assertThat(repository.getActiveConfig().auth().users()).containsKey("alice");
     }
 
