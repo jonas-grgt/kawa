@@ -32,19 +32,22 @@ public final class Router {
     }
 
     /// The response a handler returns: an HTTP status plus a body object serialized to JSON by the
-    /// dispatcher. A `null` body serializes to an empty body.
-    public record Response<T>(int status, T body) {
+    /// dispatcher. A `null` body serializes to an empty body. A raw response carries a
+    /// pre-serialized body (e.g. YAML) written verbatim with [Response#contentType].
+    public record Response<T>(int status, T body, String contentType, boolean rawBody) {
+
+        private static final String JSON = "application/json";
 
         public static <T> Response<T> ok(T body) {
-            return new Response<>(200, body);
+            return new Response<>(200, body, JSON, false);
         }
 
         public static <T> Response<T> created(T body) {
-            return new Response<>(201, body);
+            return new Response<>(201, body, JSON, false);
         }
 
         public static Response<Void> noContent() {
-            return new Response<>(204, null);
+            return new Response<>(204, null, JSON, false);
         }
 
         public static Response<Map<String, String>> badRequest(String message) {
@@ -67,8 +70,14 @@ public final class Router {
             return error(500, message);
         }
 
+        /// A raw response: `body` is written verbatim with `contentType` instead of being
+        /// JSON-serialized by the dispatcher.
+        public static Response<String> raw(int status, String body, String contentType) {
+            return new Response<>(status, body, contentType, true);
+        }
+
         private static Response<Map<String, String>> error(int status, String message) {
-            return new Response<>(status, Map.of("error", message));
+            return new Response<>(status, Map.of("error", message), JSON, false);
         }
     }
 

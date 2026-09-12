@@ -42,6 +42,7 @@
     <awaitility.version>4.2.2</awaitility.version>
     <jsonunit.version>6.2.0</jsonunit.version>
     <cel.version>0.13.1</cel.version>
+    <openapi-generator.version>7.25.0</openapi-generator.version>
   </properties>
 
   <dependencyManagement>

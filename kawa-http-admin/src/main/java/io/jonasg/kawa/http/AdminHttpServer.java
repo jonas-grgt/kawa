@@ -70,7 +70,8 @@ public final class AdminHttpServer {
                 .put("/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
                 .delete("/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
                 .get("/governance", new GovernanceConfigHandler(configRepository, governance))
-                .put("/governance", new GovernanceConfigHandler(configRepository, governance));
+                .put("/governance", new GovernanceConfigHandler(configRepository, governance))
+                .get("/docs", new OpenApiDocsHandler());
     }
 
     public void start() throws InterruptedException {

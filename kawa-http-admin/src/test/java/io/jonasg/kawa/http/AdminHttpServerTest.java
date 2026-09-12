@@ -71,6 +71,29 @@ class AdminHttpServerTest {
     }
 
     @Test
+    void servesRenderedOpenApiDocsOverHttp() throws Exception {
+        // given
+        var virtualTopics = new VirtualTopicManager(Map.of());
+        MetadataCache cache = new MetadataCache();
+        server = new AdminHttpServer(new AdminConfig(true, "127.0.0.1", 0, null), virtualTopics, cache,
+                new FakeGatewayConfigRepository(GatewayConfig.empty()),
+                new GovernancePolicy(new GovernanceConfig(null, null)), new FakeTopicAdmin());
+        server.start();
+
+        // when
+        HttpResponse<String> response = HttpClient.newHttpClient().send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + server.boundPort() + "/docs"))
+                        .GET()
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.headers().firstValue("Content-Type")).contains("text/html");
+        assertThat(response.body()).contains("Kawa Admin API");
+    }
+
+    @Test
     void servesPreflightRequestWithCorsHeadersWhenConfigured() throws Exception {
         // given
         var virtualTopics = new VirtualTopicManager(Map.of());

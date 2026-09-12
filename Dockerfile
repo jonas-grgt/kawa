@@ -24,11 +24,12 @@ COPY kawa-protocol-kafka/pom.xml kawa-protocol-kafka/
 COPY kawa-virtual-topic/pom.xml kawa-virtual-topic/
 COPY kawa-server/pom.xml kawa-server/
 COPY kawa-rbac/pom.xml kawa-rbac/
+COPY kawa-governance/pom.xml kawa-governance/
 COPY kawa-http-admin/pom.xml kawa-http-admin/
 COPY kawa-integration-tests/pom.xml kawa-integration-tests/
 
 RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw -q -B -pl kawa-server -am dependency:go-offline || true
+    ./mvnw -B -pl kawa-server -am dependency:go-offline || true
 
 COPY kawa-config/src kawa-config/src
 COPY kawa-core/src kawa-core/src
@@ -36,11 +37,12 @@ COPY kawa-protocol-kafka/src kawa-protocol-kafka/src
 COPY kawa-virtual-topic/src kawa-virtual-topic/src
 COPY kawa-server/src kawa-server/src
 COPY kawa-rbac/src kawa-rbac/src
+COPY kawa-governance/src kawa-governance/src
 COPY kawa-http-admin/src kawa-http-admin/src
 COPY kawa-integration-tests/src kawa-integration-tests/src
 
 RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw -q -B clean package -DskipTests -pl kawa-server -am
+    ./mvnw -B clean package -DskipTests -pl kawa-server -am
 
 # ---- runtime stage ----------------------------------------------------------
 FROM eclipse-temurin:26-jre-alpine AS runtime

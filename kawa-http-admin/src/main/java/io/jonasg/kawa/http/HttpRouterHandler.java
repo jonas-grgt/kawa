@@ -52,15 +52,19 @@ public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHtt
             return;
         }
         byte[] responseBody;
-        try {
-            responseBody = response.body() == null
-                    ? new byte[0]
-                    : mapper.writeValueAsBytes(response.body());
-        } catch (Exception e) {
-            write(ctx, request, HttpResponseStatus.INTERNAL_SERVER_ERROR, "{\"error\":\"serialization failed\"}");
-            return;
+        if (response.rawBody()) {
+            responseBody = ((String) response.body()).getBytes(StandardCharsets.UTF_8);
+        } else {
+            try {
+                responseBody = response.body() == null
+                        ? new byte[0]
+                        : mapper.writeValueAsBytes(response.body());
+            } catch (Exception e) {
+                write(ctx, request, HttpResponseStatus.INTERNAL_SERVER_ERROR, "{\"error\":\"serialization failed\"}");
+                return;
+            }
         }
-        write(ctx, request, HttpResponseStatus.valueOf(response.status()), responseBody);
+        write(ctx, request, HttpResponseStatus.valueOf(response.status()), responseBody, response.contentType());
     }
 
     private static void write(
@@ -69,7 +73,7 @@ public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHtt
             HttpResponseStatus status,
             String body
     ) {
-        write(ctx, request, status, body.getBytes(StandardCharsets.UTF_8));
+        write(ctx, request, status, body.getBytes(StandardCharsets.UTF_8), JSON);
     }
 
     private static void write(
@@ -78,9 +82,19 @@ public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHtt
             HttpResponseStatus status,
             byte[] body
     ) {
+        write(ctx, request, status, body, JSON);
+    }
+
+    private static void write(
+            ChannelHandlerContext ctx,
+            FullHttpRequest request,
+            HttpResponseStatus status,
+            byte[] body,
+            String contentType
+    ) {
         FullHttpResponse response = new DefaultFullHttpResponse(
                 HttpVersion.HTTP_1_1, status, Unpooled.wrappedBuffer(body));
-        response.headers().set(HttpHeaderNames.CONTENT_TYPE, JSON);
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, contentType);
         response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, body.length);
         boolean keepAlive = HttpUtil.isKeepAlive(request);
         if (keepAlive) {
