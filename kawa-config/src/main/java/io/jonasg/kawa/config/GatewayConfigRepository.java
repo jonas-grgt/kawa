@@ -3,9 +3,9 @@ package io.jonasg.kawa.config;
 import java.util.function.UnaryOperator;
 
 /// Read/write access to the dynamic gateway config. [getActiveConfig] returns the most recently
-/// persisted snapshot (falling back to the last applied one before any write); [upsert]
-/// persists a full snapshot to the config topic, which the consumer applies asynchronously
-/// through the normal flow.
+/// persisted snapshot (falling back to the last applied one before any write); [update]
+/// applies a mutation to the active config and persists the result, which the consumer applies
+/// asynchronously through the normal flow.
 public interface GatewayConfigRepository extends AutoCloseable {
 
     /// The most recent config snapshot, or `null` before any snapshot has been persisted or
@@ -19,10 +19,6 @@ public interface GatewayConfigRepository extends AutoCloseable {
         GatewayConfig active = getActiveConfig();
         return active != null ? active : GatewayConfig.empty();
     }
-
-    /// Persists a full config snapshot to the config topic, blocking until the broker
-    /// acknowledges. The change is applied asynchronously once the consumer picks it up.
-    void upsert(GatewayConfig config);
 
     /// Applies mutation to the active config (or an empty config before the first snapshot)
     /// and persists the result. The read-modify-write base is resolved by the repository, so

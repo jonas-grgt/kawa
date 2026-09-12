@@ -4,7 +4,7 @@ import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
 import java.util.function.UnaryOperator;
 
-/// In-memory [GatewayConfigRepository] for handler tests: [upsert] replaces the current
+/// In-memory [GatewayConfigRepository] for handler tests: [update] replaces the current
 /// snapshot synchronously, mirroring what the config-topic consumer does asynchronously.
 final class FakeGatewayConfigRepository implements GatewayConfigRepository {
 
@@ -20,13 +20,8 @@ final class FakeGatewayConfigRepository implements GatewayConfigRepository {
     }
 
     @Override
-    public void upsert(GatewayConfig config) {
-        this.current = config;
-    }
-
-    @Override
     public void update(UnaryOperator<GatewayConfig> mutation) {
-        upsert(mutation.apply(getActiveConfigOrEmpty()));
+        this.current = mutation.apply(getActiveConfigOrEmpty());
     }
 
     @Override

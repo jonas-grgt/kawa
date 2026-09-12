@@ -48,8 +48,7 @@ public final class ConfigTopicRepository implements GatewayConfigRepository, Aut
     }
 
     /// Writes a full config snapshot to the topic, blocking until the broker acknowledges.
-    @Override
-    public void upsert(GatewayConfig config) {
+    private void upsert(GatewayConfig config) {
         try {
             String json = serialize(config);
             producer.send(new ProducerRecord<>(topic, CONFIG_KEY, json)).get();

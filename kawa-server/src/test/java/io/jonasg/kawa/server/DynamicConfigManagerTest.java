@@ -140,8 +140,7 @@ class DynamicConfigManagerTest {
                 return last;
             }
 
-            @Override
-            public void upsert(GatewayConfig config) {
+            private void upsert(GatewayConfig config) {
                 last = config;
             }
 
@@ -164,8 +163,8 @@ class DynamicConfigManagerTest {
         var second = config(Map.of("customers", new VirtualTopicConfig("crm.customers")), rbacAllowingReadOnOrders(), plainAuth(), null);
 
         // when - two snapshots are persisted before the consumer has applied either
-        manager.upsert(first);
-        manager.upsert(second);
+        manager.update(_ -> first);
+        manager.update(_ -> second);
 
         // then - the read-modify-write base is the newest persisted snapshot, so a burst of
         // PUTs builds on each other instead of overwriting from the same stale base
@@ -183,8 +182,7 @@ class DynamicConfigManagerTest {
                 return last;
             }
 
-            @Override
-            public void upsert(GatewayConfig config) {
+            private void upsert(GatewayConfig config) {
                 last = config;
             }
 

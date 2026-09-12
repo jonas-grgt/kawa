@@ -129,16 +129,15 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
         return persisted != null ? persisted : current;
     }
 
-    @Override
-    public void upsert(GatewayConfig config) {
-        writeRepository.upsert(config);
-    }
-
     /// Applies [mutation] to the active config (persisted-or-applied, or empty before the
     /// first snapshot) and persists the result.
     @Override
     public void update(UnaryOperator<GatewayConfig> mutation) {
-        upsert(mutation.apply(getActiveConfigOrEmpty()));
+        // The write repository only knows persisted snapshots, so the read-modify-write base
+        // must be resolved here: before the first persist it falls back to the last applied
+        // config (see getActiveConfig).
+        GatewayConfig base = getActiveConfigOrEmpty();
+        writeRepository.update(ignored -> mutation.apply(base));
     }
 
     @Override
