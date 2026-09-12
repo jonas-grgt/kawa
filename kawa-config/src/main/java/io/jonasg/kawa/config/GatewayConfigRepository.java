@@ -24,7 +24,7 @@ public interface GatewayConfigRepository extends AutoCloseable {
     /// acknowledges. The change is applied asynchronously once the consumer picks it up.
     void upsert(GatewayConfig config);
 
-    /// Applies [mutation] to the active config (or an empty config before the first snapshot)
+    /// Applies mutation to the active config (or an empty config before the first snapshot)
     /// and persists the result. The read-modify-write base is resolved by the repository, so
     /// callers never see the null-before-first-snapshot case.
     void update(UnaryOperator<GatewayConfig> mutation);

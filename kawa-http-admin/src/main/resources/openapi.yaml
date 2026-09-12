@@ -1,0 +1,690 @@
+openapi: 3.0.3
+info:
+  title: Kawa Admin API
+  description: |
+    HTTP surface of the Kafka Access Gateway (kawa) admin server. Exposes gateway state
+    (virtual and physical topics) to a UI and reads/writes the dynamic gateway config
+    (RBAC roles and groups, auth users, governance) through the config topic.
+
+    Config writes are persisted to the config topic and applied asynchronously by the
+    gateway's config consumer: a successful write response means the change is persisted,
+    not necessarily applied yet.
+
+    The server binds to `admin.host`/`admin.port` (defaults `0.0.0.0:8080`). Unknown
+    paths return `404`, known paths hit with the wrong method return `405`, and handler
+    or serialization failures return `500` - all with an `{"error": "..."}` body.
+  version: 0.1.0-SNAPSHOT
+paths:
+  /topics:
+    get:
+      summary: List virtual and physical topics
+      description: |
+        Projects the virtual topics from the gateway's virtual-topic config and the
+        physical topics from the live broker metadata cache.
+      responses:
+        '200':
+          description: The topics currently served by the gateway
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopicView'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      summary: Create a topic
+      description: |
+        Unified topic creation. A `"type": "virtual"` body writes a virtual topic config
+        through the config repository; a `"type": "physical"` body runs the governance
+        admission check and creates the topic on the broker.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopicCreateRequest'
+      responses:
+        '201':
+          description: Topic created
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/VirtualTopicConfig'
+                  - $ref: '#/components/schemas/TopicSpec'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /topics/{name}:
+    put:
+      summary: Upsert a virtual topic config
+      description: |
+        Upserts the virtual topic config for `name`. The body uses the same `type`
+        discriminator as `POST /topics`; only `"type": "virtual"` is supported (physical
+        topic alteration is not implemented).
+      parameters:
+        - $ref: '#/components/parameters/TopicName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopicCreateRequest'
+      responses:
+        '200':
+          description: The stored virtual topic config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VirtualTopicConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: Delete a topic
+      description: |
+        Removes a virtual topic's config when `name` is a virtual topic, otherwise deletes
+        the physical topic on the broker. A name that is both virtual and physical resolves
+        to the virtual config removal (the safer operation - no broker data loss).
+      parameters:
+        - $ref: '#/components/parameters/TopicName'
+      responses:
+        '204':
+          description: Topic deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /rbac/roles:
+    get:
+      summary: List RBAC roles
+      description: The named roles from the dynamic config, each a list of ACLs.
+      responses:
+        '200':
+          description: The roles keyed by name
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/RoleConfig'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /rbac/roles/{name}:
+    put:
+      summary: Upsert an RBAC role
+      description: Adds or replaces the role `name` and persists the new config snapshot.
+      parameters:
+        - $ref: '#/components/parameters/ConfigEntryName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleConfig'
+      responses:
+        '200':
+          description: The stored role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: Delete an RBAC role
+      description: Removes the role `name` and persists the new config snapshot.
+      parameters:
+        - $ref: '#/components/parameters/ConfigEntryName'
+      responses:
+        '204':
+          description: Role deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /rbac/groups:
+    get:
+      summary: List RBAC groups
+      description: The named groups from the dynamic config, each a member list plus the roles those members inherit.
+      responses:
+        '200':
+          description: The groups keyed by name
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/GroupConfig'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /rbac/groups/{name}:
+    put:
+      summary: Upsert an RBAC group
+      description: Adds or replaces the group `name` and persists the new config snapshot.
+      parameters:
+        - $ref: '#/components/parameters/ConfigEntryName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupConfig'
+      responses:
+        '200':
+          description: The stored group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: Delete an RBAC group
+      description: Removes the group `name` and persists the new config snapshot.
+      parameters:
+        - $ref: '#/components/parameters/ConfigEntryName'
+      responses:
+        '204':
+          description: Group deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/users:
+    get:
+      summary: List auth users
+      description: The SASL users from the dynamic config, keyed by username.
+      responses:
+        '200':
+          description: The users keyed by username
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/UserConfig'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/users/{name}:
+    put:
+      summary: Upsert an auth user
+      description: Adds or replaces the user `name` and persists the new config snapshot.
+      parameters:
+        - $ref: '#/components/parameters/ConfigEntryName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserConfig'
+      responses:
+        '200':
+          description: The stored user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      summary: Delete an auth user
+      description: Removes the user `name` and persists the new config snapshot.
+      parameters:
+        - $ref: '#/components/parameters/ConfigEntryName'
+      responses:
+        '204':
+          description: User deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /governance:
+    get:
+      summary: Read the governance configuration
+      description: The whole governance section (named CEL rules and exemptions).
+      responses:
+        '200':
+          description: The governance configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovernanceConfig'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      summary: Replace the governance configuration
+      description: |
+        Replaces the whole governance section (rules + exemptions). Rule expressions are
+        validated before the new snapshot is persisted, so a bad expression is rejected
+        here instead of failing the config-topic consumer later.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovernanceConfig'
+      responses:
+        '200':
+          description: The stored governance configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovernanceConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  parameters:
+    TopicName:
+      name: name
+      in: path
+      required: true
+      description: The topic name - a virtual alias or a physical broker topic.
+      schema:
+        type: string
+    ConfigEntryName:
+      name: name
+      in: path
+      required: true
+      description: The config entry name (role, group, or username).
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Invalid request (malformed body, missing field, or unsupported value)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Topic rejected by governance
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Path, topic, or config entry not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    MethodNotAllowed:
+      description: Path exists but the method is not registered
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Topic already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Handler or serialization failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+    TopicView:
+      type: object
+      required:
+        - type
+        - name
+        - partitions
+        - replicationFactor
+      properties:
+        type:
+          type: string
+          enum:
+            - virtual
+            - physical
+          description: Virtual topics carry an alias; physical topics are raw broker topics.
+        name:
+          type: string
+          description: The display name - virtual alias for virtual topics, physical name otherwise.
+        partitions:
+          type: integer
+          format: int32
+          description: From the live metadata cache.
+        replicationFactor:
+          type: integer
+          format: int32
+          description: From the live metadata cache.
+        filter:
+          allOf:
+            - $ref: '#/components/schemas/TopicFilterView'
+          nullable: true
+          description: Structured consume-filter, or null if none.
+        physicalTopic:
+          type: string
+          nullable: true
+          description: The broker-side topic name, only present when type is virtual.
+    TopicFilterView:
+      type: object
+      required:
+        - kind
+        - expression
+      properties:
+        kind:
+          type: string
+          enum:
+            - cel
+            - header
+        expression:
+          type: string
+          description: The CEL expression, or the header=value pair for header filters.
+    TopicCreateRequest:
+      type: object
+      required:
+        - type
+        - name
+      properties:
+        type:
+          type: string
+          enum:
+            - virtual
+            - physical
+        name:
+          type: string
+        partitions:
+          type: integer
+          format: int32
+          description: Physical topics only; omitted means the broker default.
+        replicationFactor:
+          type: integer
+          format: int32
+          description: Physical topics only; omitted means the broker default.
+        configs:
+          type: object
+          additionalProperties:
+            type: string
+          description: Physical topics only; topic configs keyed by config name.
+        topic:
+          type: string
+          description: Virtual topics only; the physical backing topic.
+        filter:
+          allOf:
+            - $ref: '#/components/schemas/VirtualTopicFilter'
+          description: Virtual topics only; optional consume filter.
+        exposePhysicalTopic:
+          type: boolean
+          description: Virtual topics only; whether the physical topic is also served directly.
+    VirtualTopicConfig:
+      type: object
+      required:
+        - topic
+        - exposePhysicalTopic
+      properties:
+        topic:
+          type: string
+          description: The physical backing topic.
+        filter:
+          allOf:
+            - $ref: '#/components/schemas/VirtualTopicFilter'
+          nullable: true
+        exposePhysicalTopic:
+          type: boolean
+    VirtualTopicFilter:
+      oneOf:
+        - $ref: '#/components/schemas/HeaderEqualsFilter'
+        - $ref: '#/components/schemas/CelFilter'
+      discriminator:
+        propertyName: type
+        mapping:
+          headerEquals: '#/components/schemas/HeaderEqualsFilter'
+          cel: '#/components/schemas/CelFilter'
+    HeaderEqualsFilter:
+      type: object
+      required:
+        - type
+        - header
+        - value
+      properties:
+        type:
+          type: string
+          enum:
+            - headerEquals
+        header:
+          type: string
+          description: Header key to compare.
+        value:
+          type: string
+          description: Expected header value.
+    CelFilter:
+      type: object
+      required:
+        - type
+        - expression
+      properties:
+        type:
+          type: string
+          enum:
+            - cel
+        expression:
+          type: string
+          description: The CEL expression selecting records to keep.
+    TopicSpec:
+      type: object
+      required:
+        - name
+        - partitions
+        - replicationFactor
+      properties:
+        name:
+          type: string
+        partitions:
+          type: integer
+          format: int32
+          description: Requested partitions, or -1 for the broker default.
+        replicationFactor:
+          type: integer
+          format: int32
+          description: Requested replication factor, or -1 for the broker default.
+        configs:
+          type: object
+          additionalProperties:
+            type: string
+    GovernanceConfig:
+      type: object
+      properties:
+        topicRules:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/GovernanceRuleConfig'
+          description: Named rules, each a message plus a CEL expression.
+        exemptions:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/GovernanceExemptionConfig'
+          description: Named exemptions, each a principal regex plus a topic pattern regex.
+    GovernanceRuleConfig:
+      type: object
+      required:
+        - expression
+      properties:
+        message:
+          type: string
+        expression:
+          type: string
+          description: The CEL expression new topics must satisfy.
+    GovernanceExemptionConfig:
+      type: object
+      required:
+        - principal
+        - topicPattern
+      properties:
+        principal:
+          type: string
+          description: Principal regex; matching principals skip governance evaluation.
+        topicPattern:
+          type: string
+          description: Topic pattern regex the exemption applies to.
+    UserConfig:
+      type: object
+      required:
+        - password
+      properties:
+        mechanism:
+          type: string
+          description: SASL mechanism (e.g. PLAIN, SCRAM-SHA-256).
+        password:
+          type: string
+          description: Password; may reference environment variables as ${VAR} or ${VAR:-default}.
+    RoleConfig:
+      type: object
+      properties:
+        acls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AclConfig'
+          description: The ACLs making up this role.
+    GroupConfig:
+      type: object
+      properties:
+        members:
+          type: array
+          items:
+            type: string
+          description: The usernames in this group.
+        roles:
+          type: array
+          items:
+            type: string
+          description: The roles whose ACLs every member inherits.
+    AclConfig:
+      type: object
+      required:
+        - resource
+        - operation
+      properties:
+        resource:
+          $ref: '#/components/schemas/ResourceConfig'
+        operation:
+          type: string
+          enum:
+            - UNKNOWN
+            - ANY
+            - ALL
+            - READ
+            - WRITE
+            - CREATE
+            - DELETE
+            - ALTER
+            - DESCRIBE
+            - CLUSTER_ACTION
+            - DESCRIBE_CONFIGS
+            - ALTER_CONFIGS
+            - IDEMPOTENT_WRITE
+        permission:
+          type: string
+          enum:
+            - ALLOW
+            - DENY
+          default: ALLOW
+          description: Defaults to ALLOW when omitted.
+    ResourceConfig:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - UNKNOWN
+            - ANY
+            - TOPIC
+            - GROUP
+            - CLUSTER
+            - TRANSACTIONAL_ID
+            - DELEGATION_TOKEN
+            - USER
+        pattern:
+          type: string
+          nullable: true
+          description: The resource name; null for CLUSTER, may be empty for PREFIXED.
+        patternType:
+          type: string
+          enum:
+            - UNKNOWN
+            - ANY
+            - MATCH
+            - LITERAL
+            - PREFIXED
+          default: LITERAL
+          description: Defaults to LITERAL when omitted.
