@@ -25,7 +25,7 @@ class UpdateTopicHandlerTest {
         // then
         assertThat(response.status()).isEqualTo(200);
         assertThat(response.body()).isEqualTo(new VirtualTopicConfig("raw-orders"));
-        assertThat(repository.current().virtualTopics())
+        assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("raw-orders"));
     }
 
@@ -43,8 +43,8 @@ class UpdateTopicHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(repository.current().virtualTopics()).hasSize(1);
-        assertThat(repository.current().virtualTopics())
+        assertThat(repository.getActiveConfig().virtualTopics()).hasSize(1);
+        assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("raw-new"));
     }
 

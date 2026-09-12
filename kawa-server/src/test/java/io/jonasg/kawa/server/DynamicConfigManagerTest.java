@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -85,7 +86,7 @@ class DynamicConfigManagerTest {
         var authenticate = sasl.handleAuthenticate(new SaslAuthenticateRequestData()
                 .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8)));
         assertThat(authenticate).isInstanceOf(AuthenticationResult.Success.class);
-        assertThat(manager.current()).isSameAs(config);
+        assertThat(manager.getActiveConfig()).isSameAs(config);
     }
 
     @Test
@@ -110,7 +111,7 @@ class DynamicConfigManagerTest {
         assertThat(virtualTopics.toPhysical("orders")).isEqualTo("orders-v2");
         assertThat(virtualTopics.toPhysical("customers")).isEqualTo("customers");
         assertThat(authorizer.isAuthorized("alice", ResourceType.TOPIC, "orders", AclOperation.READ)).isTrue();
-        assertThat(manager.current()).isSameAs(good);
+        assertThat(manager.getActiveConfig()).isSameAs(good);
     }
 
     @Test
@@ -125,7 +126,7 @@ class DynamicConfigManagerTest {
         // when / then
         // An empty config topic on first boot is valid: no snapshot has been applied, so the
         // manager reports no current config and the consumers stay at their initial empty state.
-        assertThat(manager.current()).isNull();
+        assertThat(manager.getActiveConfig()).isNull();
     }
 
     @Test
@@ -135,13 +136,18 @@ class DynamicConfigManagerTest {
             private GatewayConfig last;
 
             @Override
-            public GatewayConfig current() {
+            public GatewayConfig getActiveConfig() {
                 return last;
             }
 
             @Override
-            public void write(GatewayConfig config) {
+            public void upsert(GatewayConfig config) {
                 last = config;
+            }
+
+            @Override
+            public void update(UnaryOperator<GatewayConfig> mutation) {
+                upsert(mutation.apply(getActiveConfigOrEmpty()));
             }
 
             @Override
@@ -158,12 +164,56 @@ class DynamicConfigManagerTest {
         var second = config(Map.of("customers", new VirtualTopicConfig("crm.customers")), rbacAllowingReadOnOrders(), plainAuth(), null);
 
         // when - two snapshots are persisted before the consumer has applied either
-        manager.write(first);
-        manager.write(second);
+        manager.upsert(first);
+        manager.upsert(second);
 
         // then - the read-modify-write base is the newest persisted snapshot, so a burst of
         // PUTs builds on each other instead of overwriting from the same stale base
-        assertThat(manager.current()).isSameAs(second);
+        assertThat(manager.getActiveConfig()).isSameAs(second);
+    }
+
+    @Test
+    void updateBuildsOnLastAppliedConfigBeforeFirstPersist() {
+        // given - a manager whose write side is an in-memory repository (no broker needed)
+        var writeRepository = new GatewayConfigRepository() {
+            private GatewayConfig last;
+
+            @Override
+            public GatewayConfig getActiveConfig() {
+                return last;
+            }
+
+            @Override
+            public void upsert(GatewayConfig config) {
+                last = config;
+            }
+
+            @Override
+            public void update(UnaryOperator<GatewayConfig> mutation) {
+                upsert(mutation.apply(getActiveConfigOrEmpty()));
+            }
+
+            @Override
+            public void close() {
+                // no resources
+            }
+        };
+        var manager = new DynamicConfigManager(writeRepository,
+                new VirtualTopicManager(Map.of()),
+                new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
+                new SaslAuthenticator(Set.of()),
+                emptyGovernance());
+        var applied = config(Map.of("orders", new VirtualTopicConfig("orders-v2")),
+                rbacAllowingReadOnOrders(), plainAuth(), null);
+        manager.apply(applied);
+
+        // when - a mutation is applied before anything has been persisted through the write side
+        manager.update(c -> c.putVirtualTopic("customers", new VirtualTopicConfig("crm.customers")));
+
+        // then - the base is the last applied config, not an empty one
+        assertThat(manager.getActiveConfig().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v2"))
+                .containsEntry("customers", new VirtualTopicConfig("crm.customers"));
     }
 
     @Test

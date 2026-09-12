@@ -23,7 +23,7 @@ public final class GovernanceConfigHandler implements Router.Handler {
 
     @Override
     public Router.Response<?> handle(Router.Request request) {
-        GatewayConfig base = repository.current() != null ? repository.current() : GatewayConfig.empty();
+        GatewayConfig base = repository.getActiveConfigOrEmpty();
         return switch (request.method()) {
             case "GET" -> Router.Response.ok(base.governance());
             case "PUT" -> {
@@ -40,7 +40,7 @@ public final class GovernanceConfigHandler implements Router.Handler {
                                 "invalid governance rule '" + entry.getKey() + "': " + error.get());
                     }
                 }
-                repository.write(base.updateGovernance(value));
+                repository.update(config -> config.updateGovernance(value));
                 yield Router.Response.ok(value);
             }
             default -> Router.Response.badRequest("unsupported method " + request.method());

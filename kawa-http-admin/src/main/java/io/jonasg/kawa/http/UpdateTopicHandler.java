@@ -1,6 +1,5 @@
 package io.jonasg.kawa.http;
 
-import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
 import io.jonasg.kawa.config.VirtualTopicConfig;
 import tools.jackson.databind.json.JsonMapper;
@@ -37,8 +36,7 @@ public final class UpdateTopicHandler implements Router.Handler {
         }
         var value = new VirtualTopicConfig(
                 body.topic(), body.filter(), body.exposePhysicalTopic() != null && body.exposePhysicalTopic());
-        GatewayConfig base = repository.current() != null ? repository.current() : GatewayConfig.empty();
-        repository.write(base.putVirtualTopic(name, value));
+        repository.update(base -> base.putVirtualTopic(name, value));
         return Router.Response.ok(value);
     }
 }

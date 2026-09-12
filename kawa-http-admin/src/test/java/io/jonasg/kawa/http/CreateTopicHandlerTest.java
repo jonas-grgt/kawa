@@ -156,7 +156,7 @@ class CreateTopicHandlerTest {
         // then
         assertThat(response.status()).isEqualTo(201);
         assertThat(response.body()).isEqualTo(new VirtualTopicConfig("orders-v2"));
-        assertThat(repository.current().virtualTopics())
+        assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
         assertThat(topicAdmin.created).isEmpty();
     }

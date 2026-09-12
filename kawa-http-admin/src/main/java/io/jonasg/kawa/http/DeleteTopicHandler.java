@@ -26,9 +26,9 @@ public final class DeleteTopicHandler implements Router.Handler {
             return Router.Response.badRequest("unsupported method " + request.method());
         }
         String name = request.pathParams().get("name");
-        GatewayConfig base = repository.current() != null ? repository.current() : GatewayConfig.empty();
+        GatewayConfig base = repository.getActiveConfigOrEmpty();
         if (base.virtualTopics().containsKey(name)) {
-            repository.write(base.removeVirtualTopic(name));
+            repository.update(config -> config.removeVirtualTopic(name));
             return Router.Response.noContent();
         }
         boolean physicalExists = cache.topics().stream().anyMatch(t -> t.name().equals(name));

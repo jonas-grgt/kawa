@@ -55,8 +55,8 @@ class RbacRolesConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(repository.current().rbac().roles()).containsKey("reader");
-        assertThat(repository.current().rbac().roles().get("reader").acls()).hasSize(1);
+        assertThat(repository.getActiveConfig().rbac().roles()).containsKey("reader");
+        assertThat(repository.getActiveConfig().rbac().roles().get("reader").acls()).hasSize(1);
     }
 
     @Test
@@ -86,7 +86,7 @@ class RbacRolesConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(204);
-        assertThat(repository.current().rbac().roles()).isEmpty();
+        assertThat(repository.getActiveConfig().rbac().roles()).isEmpty();
     }
 
     @Test

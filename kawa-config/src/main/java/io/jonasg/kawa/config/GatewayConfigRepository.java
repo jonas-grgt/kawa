@@ -1,18 +1,33 @@
 package io.jonasg.kawa.config;
 
-/// Read/write access to the dynamic gateway config. [current] returns the most recently
-/// persisted snapshot (falling back to the last applied one before any write); [write]
+import java.util.function.UnaryOperator;
+
+/// Read/write access to the dynamic gateway config. [getActiveConfig] returns the most recently
+/// persisted snapshot (falling back to the last applied one before any write); [upsert]
 /// persists a full snapshot to the config topic, which the consumer applies asynchronously
 /// through the normal flow.
 public interface GatewayConfigRepository extends AutoCloseable {
 
     /// The most recent config snapshot, or `null` before any snapshot has been persisted or
     /// applied (an empty config topic on first boot).
-    GatewayConfig current();
+    GatewayConfig getActiveConfig();
+
+    /// The active config, or an empty config before the first snapshot has been persisted or
+    /// applied. Convenience for callers that need a non-null base (e.g. the admin API's read
+    /// paths).
+    default GatewayConfig getActiveConfigOrEmpty() {
+        GatewayConfig active = getActiveConfig();
+        return active != null ? active : GatewayConfig.empty();
+    }
 
     /// Persists a full config snapshot to the config topic, blocking until the broker
     /// acknowledges. The change is applied asynchronously once the consumer picks it up.
-    void write(GatewayConfig config);
+    void upsert(GatewayConfig config);
+
+    /// Applies [mutation] to the active config (or an empty config before the first snapshot)
+    /// and persists the result. The read-modify-write base is resolved by the repository, so
+    /// callers never see the null-before-first-snapshot case.
+    void update(UnaryOperator<GatewayConfig> mutation);
 
     /// Releases the repository's resources (e.g. the config-topic producer).
     @Override

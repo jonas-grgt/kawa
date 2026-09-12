@@ -39,7 +39,7 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
 
     @Override
     public Router.Response<?> handle(Router.Request request) {
-        GatewayConfig base = repository.current() != null ? repository.current() : GatewayConfig.empty();
+        GatewayConfig base = repository.getActiveConfigOrEmpty();
         String name = request.pathParams().get("name");
         return switch (request.method()) {
             case "GET" -> Router.Response.ok(entries(base));
@@ -51,7 +51,7 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
                     yield Router.Response.badRequest("invalid " + sectionName + " body: " + e.getMessage());
                 }
                 try {
-                    repository.write(upsert(base, name, value));
+                    repository.update(config -> upsert(config, name, value));
                 } catch (IllegalArgumentException e) {
                     yield Router.Response.badRequest(e.getMessage());
                 }
@@ -61,7 +61,7 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
                 if (!entries(base).containsKey(name)) {
                     yield Router.Response.notFound(sectionName + " '" + name + "' not found");
                 }
-                repository.write(remove(base, name));
+                repository.update(config -> remove(config, name));
                 yield Router.Response.noContent();
             }
             default -> Router.Response.badRequest("unsupported method " + request.method());

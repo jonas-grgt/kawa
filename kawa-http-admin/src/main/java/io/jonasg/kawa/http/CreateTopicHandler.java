@@ -1,6 +1,5 @@
 package io.jonasg.kawa.http;
 
-import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
 import io.jonasg.kawa.config.VirtualTopicConfig;
 import io.jonasg.kawa.governance.GovernancePolicy;
@@ -65,8 +64,7 @@ public final class CreateTopicHandler implements Router.Handler {
         }
         var config = new VirtualTopicConfig(
                 body.topic(), body.filter(), body.exposePhysicalTopic() != null && body.exposePhysicalTopic());
-        GatewayConfig base = repository.current() != null ? repository.current() : GatewayConfig.empty();
-        repository.write(base.putVirtualTopic(body.name(), config));
+        repository.update(base -> base.putVirtualTopic(body.name(), config));
         return Router.Response.created(config);
     }
 

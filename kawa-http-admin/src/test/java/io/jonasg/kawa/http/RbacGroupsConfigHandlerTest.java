@@ -54,8 +54,8 @@ class RbacGroupsConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(repository.current().rbac().groups()).containsKey("producers");
-        assertThat(repository.current().rbac().groups().get("producers").members())
+        assertThat(repository.getActiveConfig().rbac().groups()).containsKey("producers");
+        assertThat(repository.getActiveConfig().rbac().groups().get("producers").members())
                 .containsExactly("alice");
     }
 
@@ -86,7 +86,7 @@ class RbacGroupsConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(204);
-        assertThat(repository.current().rbac().groups()).isEmpty();
+        assertThat(repository.getActiveConfig().rbac().groups()).isEmpty();
     }
 
     @Test

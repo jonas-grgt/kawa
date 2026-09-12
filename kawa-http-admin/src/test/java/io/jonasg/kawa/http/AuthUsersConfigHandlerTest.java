@@ -54,8 +54,8 @@ class AuthUsersConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(repository.current().auth().users()).containsKey("alice");
-        assertThat(repository.current().auth().users().get("alice").password()).isEqualTo("secret");
+        assertThat(repository.getActiveConfig().auth().users()).containsKey("alice");
+        assertThat(repository.getActiveConfig().auth().users().get("alice").password()).isEqualTo("secret");
     }
 
     @Test
@@ -71,7 +71,7 @@ class AuthUsersConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(400);
-        assertThat(repository.current().auth().users()).isEmpty();
+        assertThat(repository.getActiveConfig().auth().users()).isEmpty();
     }
 
     @Test
@@ -101,7 +101,7 @@ class AuthUsersConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(204);
-        assertThat(repository.current().auth().users()).isEmpty();
+        assertThat(repository.getActiveConfig().auth().users()).isEmpty();
     }
 
     @Test

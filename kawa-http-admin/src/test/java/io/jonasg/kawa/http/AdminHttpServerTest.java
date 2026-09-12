@@ -173,7 +173,7 @@ class AdminHttpServerTest {
         assertThat(put.statusCode()).isEqualTo(200);
         assertThat(get.statusCode()).isEqualTo(200);
         assertThat(get.body()).contains("\"alice\"", "\"PLAIN\"");
-        assertThat(repository.current().auth().users()).containsKey("alice");
+        assertThat(repository.getActiveConfig().auth().users()).containsKey("alice");
     }
 
     @Test
@@ -203,7 +203,7 @@ class AdminHttpServerTest {
         assertThat(put.statusCode()).isEqualTo(200);
         assertThat(get.statusCode()).isEqualTo(200);
         assertThat(get.body()).contains("\"min-replication\"", "\"topic.replicationFactor >= 3\"");
-        assertThat(repository.current().governance().topicRules()).containsKey("min-replication");
+        assertThat(repository.getActiveConfig().governance().topicRules()).containsKey("min-replication");
     }
 
     @Test
@@ -274,7 +274,7 @@ class AdminHttpServerTest {
 
         // then
         assertThat(response.statusCode()).isEqualTo(201);
-        assertThat(repository.current().virtualTopics())
+        assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
     }
 
@@ -296,7 +296,7 @@ class AdminHttpServerTest {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(repository.current().virtualTopics())
+        assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
     }
 
@@ -347,6 +347,6 @@ class AdminHttpServerTest {
 
         // then
         assertThat(response.statusCode()).isEqualTo(204);
-        assertThat(repository.current().virtualTopics()).isEmpty();
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
     }
 }

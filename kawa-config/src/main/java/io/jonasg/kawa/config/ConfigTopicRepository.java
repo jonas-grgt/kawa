@@ -9,15 +9,16 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Properties;
+import java.util.function.UnaryOperator;
 
 /// Writes full [GatewayConfig] snapshots to the compacted gateway-config topic. The consumer
 /// side ([ConfigTopicConsumer]) picks each snapshot up and applies it through the normal
 /// [io.jonasg.kawa.server.DynamicConfigManager] flow, so a write here is a live config change.
 ///
-/// Every snapshot is sent with the same key so compaction keeps only the latest one. [write]
+/// Every snapshot is sent with the same key so compaction keeps only the latest one. [upsert]
 /// blocks until the broker acknowledges, so a REST caller knows the change is persisted before
 /// it returns. As a [GatewayConfigRepository] it reports the newest *persisted* snapshot via
-/// [current] - the base the admin API's read-modify-write must build on, because the consumer
+/// [getActiveConfig] - the base the admin API's read-modify-write must build on, because the consumer
 /// applies snapshots asynchronously.
 public final class ConfigTopicRepository implements GatewayConfigRepository, AutoCloseable {
 
@@ -42,13 +43,13 @@ public final class ConfigTopicRepository implements GatewayConfigRepository, Aut
 
     /// The newest snapshot this repository has persisted, or `null` before the first write.
     @Override
-    public GatewayConfig current() {
+    public GatewayConfig getActiveConfig() {
         return lastWritten;
     }
 
     /// Writes a full config snapshot to the topic, blocking until the broker acknowledges.
     @Override
-    public void write(GatewayConfig config) {
+    public void upsert(GatewayConfig config) {
         try {
             String json = serialize(config);
             producer.send(new ProducerRecord<>(topic, CONFIG_KEY, json)).get();
@@ -59,6 +60,13 @@ public final class ConfigTopicRepository implements GatewayConfigRepository, Aut
         } catch (Exception e) {
             throw new IllegalStateException("failed to write config snapshot to topic " + topic, e);
         }
+    }
+
+    /// Applies [mutation] to the newest persisted snapshot (or an empty config before the
+    /// first write) and persists the result.
+    @Override
+    public void update(UnaryOperator<GatewayConfig> mutation) {
+        upsert(mutation.apply(getActiveConfigOrEmpty()));
     }
 
     /// Serializes a snapshot to the JSON form the consumer deserializes. Package-private so the

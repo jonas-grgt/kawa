@@ -30,7 +30,7 @@ class DeleteTopicHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(204);
-        assertThat(repository.current().virtualTopics()).isEmpty();
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
         assertThat(topicAdmin.deleted).isEmpty();
     }
 
@@ -90,7 +90,7 @@ class DeleteTopicHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(204);
-        assertThat(repository.current().virtualTopics()).isEmpty();
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
         assertThat(topicAdmin.deleted).isEmpty();
     }
 }

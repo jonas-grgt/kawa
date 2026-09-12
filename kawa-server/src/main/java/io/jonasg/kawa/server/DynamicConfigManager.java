@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
+import java.util.function.UnaryOperator;
 
 /// Owns the config-topic consumer and applies each [GatewayConfig] snapshot to the mutable
 /// consumers: [VirtualTopicManager], [RbacAuthorizer], [SaslAuthenticator] and
@@ -119,18 +120,25 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
     }
 
     @Override
-    public GatewayConfig current() {
+    public GatewayConfig getActiveConfig() {
         // The admin API's read-modify-write must build on the most recent *persisted*
         // snapshot, not the last *applied* one: the consumer applies asynchronously, so a
         // burst of PUTs would otherwise each start from the same stale base and overwrite
         // each other. The write repository tracks the newest persisted snapshot.
-        GatewayConfig persisted = writeRepository.current();
+        GatewayConfig persisted = writeRepository.getActiveConfig();
         return persisted != null ? persisted : current;
     }
 
     @Override
-    public void write(GatewayConfig config) {
-        writeRepository.write(config);
+    public void upsert(GatewayConfig config) {
+        writeRepository.upsert(config);
+    }
+
+    /// Applies [mutation] to the active config (persisted-or-applied, or empty before the
+    /// first snapshot) and persists the result.
+    @Override
+    public void update(UnaryOperator<GatewayConfig> mutation) {
+        upsert(mutation.apply(getActiveConfigOrEmpty()));
     }
 
     @Override

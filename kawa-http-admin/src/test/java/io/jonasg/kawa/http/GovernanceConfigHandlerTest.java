@@ -65,8 +65,8 @@ class GovernanceConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(200);
-        assertThat(repository.current().governance().topicRules()).containsKey("min-replication");
-        assertThat(repository.current().governance().exemptions()).containsKey("ops");
+        assertThat(repository.getActiveConfig().governance().topicRules()).containsKey("min-replication");
+        assertThat(repository.getActiveConfig().governance().exemptions()).containsKey("ops");
     }
 
     @Test
@@ -83,7 +83,7 @@ class GovernanceConfigHandlerTest {
 
         // then
         assertThat(response.status()).isEqualTo(400);
-        assertThat(repository.current().governance().topicRules()).isEmpty();
+        assertThat(repository.getActiveConfig().governance().topicRules()).isEmpty();
     }
 
     @Test
