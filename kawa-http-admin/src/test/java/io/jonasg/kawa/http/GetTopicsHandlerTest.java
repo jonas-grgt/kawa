@@ -1,7 +1,10 @@
 package io.jonasg.kawa.http;
 
 import io.jonasg.kawa.config.CelFilterConfig;
+import io.jonasg.kawa.config.HeaderContainsFilterConfig;
 import io.jonasg.kawa.config.HeaderEqualsFilterConfig;
+import io.jonasg.kawa.config.HeaderMatchesFilterConfig;
+import io.jonasg.kawa.config.HeaderStartsWithFilterConfig;
 import io.jonasg.kawa.config.VirtualTopicConfig;
 import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.core.cluster.BrokerNode;
@@ -73,6 +76,28 @@ class GetTopicsHandlerTest {
                 .singleElement()
                 .satisfies(view ->
                         assertThat(view.filter()).isEqualTo(new TopicFilterView("cel", "headers.tenant == \"acme\"")));
+    }
+
+    @Test
+    void describesHeaderPredicateFiltersOnVirtualEntry() {
+        // given
+        var virtualTopics = new VirtualTopicManager(Map.of(
+                "contains", new VirtualTopicConfig("c1", new HeaderContainsFilterConfig("tenant", "acm"), false),
+                "startsWith", new VirtualTopicConfig("s1", new HeaderStartsWithFilterConfig("tenant", "ac"), false),
+                "matches", new VirtualTopicConfig("m1", new HeaderMatchesFilterConfig("tenant", "eu.*"), false)));
+        MetadataCache cache = cacheWith(topic("c1", 1, 1), topic("s1", 1, 1), topic("m1", 1, 1));
+        var handler = new GetTopicsHandler(virtualTopics, cache);
+
+        // when
+        List<TopicView> topics = topics(handler);
+
+        // then
+        assertThat(topics).filteredOn(view -> view.type().equals("virtual"))
+                .extracting(TopicView::filter)
+                .containsExactlyInAnyOrder(
+                        new TopicFilterView("headerContains", "tenant contains acm"),
+                        new TopicFilterView("headerStartsWith", "tenant starts with ac"),
+                        new TopicFilterView("headerMatches", "tenant matches eu.*"));
     }
 
     @Test

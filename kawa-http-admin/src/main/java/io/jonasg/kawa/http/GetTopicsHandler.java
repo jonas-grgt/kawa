@@ -1,7 +1,10 @@
 package io.jonasg.kawa.http;
 
 import io.jonasg.kawa.config.CelFilterConfig;
+import io.jonasg.kawa.config.HeaderContainsFilterConfig;
 import io.jonasg.kawa.config.HeaderEqualsFilterConfig;
+import io.jonasg.kawa.config.HeaderMatchesFilterConfig;
+import io.jonasg.kawa.config.HeaderStartsWithFilterConfig;
 import io.jonasg.kawa.config.VirtualTopicFilterConfig;
 import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.core.cluster.MetadataCache;
@@ -55,6 +58,12 @@ public final class GetTopicsHandler implements Router.Handler {
             case null -> null;
             case HeaderEqualsFilterConfig header ->
                     new TopicFilterView("header", header.header() + "=" + header.value());
+            case HeaderContainsFilterConfig header ->
+                    new TopicFilterView("headerContains", header.header() + " contains " + header.value());
+            case HeaderStartsWithFilterConfig header ->
+                    new TopicFilterView("headerStartsWith", header.header() + " starts with " + header.value());
+            case HeaderMatchesFilterConfig header ->
+                    new TopicFilterView("headerMatches", header.header() + " matches " + header.value());
             case CelFilterConfig cel ->
                     new TopicFilterView("cel", cel.expression());
         };

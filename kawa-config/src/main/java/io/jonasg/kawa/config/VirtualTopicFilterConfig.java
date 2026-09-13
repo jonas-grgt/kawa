@@ -15,8 +15,12 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 )
 @JsonSubTypes({
         @JsonSubTypes.Type(value = HeaderEqualsFilterConfig.class, name = "headerEquals"),
+        @JsonSubTypes.Type(value = HeaderContainsFilterConfig.class, name = "headerContains"),
+        @JsonSubTypes.Type(value = HeaderStartsWithFilterConfig.class, name = "headerStartsWith"),
+        @JsonSubTypes.Type(value = HeaderMatchesFilterConfig.class, name = "headerMatches"),
         @JsonSubTypes.Type(value = CelFilterConfig.class, name = "cel")
 })
 public sealed interface VirtualTopicFilterConfig
-        permits HeaderEqualsFilterConfig, CelFilterConfig {
+        permits HeaderEqualsFilterConfig, HeaderContainsFilterConfig, HeaderStartsWithFilterConfig,
+        HeaderMatchesFilterConfig, CelFilterConfig {
 }
