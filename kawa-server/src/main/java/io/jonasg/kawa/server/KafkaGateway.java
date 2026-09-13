@@ -69,41 +69,41 @@ public final class KafkaGateway implements Gateway {
             return;
         }
 
-        // 1. Validate cluster, parse bootstrap
-        ClusterConfig cluster = config.defaultCluster();
-        if (cluster == null || cluster.bootstrapServers().isEmpty()) {
+        // Validate cluster, parse bootstrap
+        var clusterCfg = config.defaultCluster();
+        if (clusterCfg == null || clusterCfg.bootstrapServers().isEmpty()) {
             throw new IllegalStateException("No cluster configured");
         }
-        String bootstrapServers = cluster.bootstrapServers().get(0);
+        String bootstrapServers = clusterCfg.bootstrapServers().getFirst();
         InetSocketAddress bootstrap = parseBootstrap(bootstrapServers);
 
-        // 2. Shared infrastructure
+        // Shared infrastructure
         metrics = new GatewayMetrics(new SimpleMeterRegistry());
-        KafkaApiRegistry registry = KafkaApiRegistry.create();
-        codec = new KafkaBodyCodec(registry);
-        apiVersionsBuilder = new ApiVersionsResponseBuilder(SupportedVersions.from(registry));
+        var kawaApiRegistry = KafkaApiRegistry.create();
+        codec = new KafkaBodyCodec(kawaApiRegistry);
+        apiVersionsBuilder = new ApiVersionsResponseBuilder(SupportedVersions.from(kawaApiRegistry));
 
-        // 3. Dynamic config from the config topic (blocks until caught up)
+        // Dynamic config from the config topic (blocks until caught up)
         dynamicState = new DynamicGatewayState(bootstrapServers, config.configTopic(), config.auth().brokerAuth());
         dynamicState.start();
 
-        // 4. Bind the client listener; resolve the advertised endpoint
-        ListenerConfig listenerConfig = config.listeners().getFirst();
+        // Bind the client listener; resolve the advertised endpoint
+        var listenerConfig = config.listeners().getFirst();
         listener = new KafkaListener(metrics, codec);
         int boundPort = listener.bind(listenerConfig.host(), listenerConfig.port());
         AdvertisedListener advertised = resolveAdvertised(config.advertised(), boundPort);
 
-        // 5. Interceptor pipeline
+        // Interceptor pipeline
         RequestPipeline requestPipeline = buildPipeline(dynamicState, advertised);
 
-        // 6. Broker connections (metadata client) - the same static bootstrap that hosts the
+        // Broker connections (metadata client) - the same static bootstrap that hosts the
         //    config topic. The dynamic snapshot's `clusters` map is carried in the message but
         //    not used for routing in this milestone.
         connections = new ClusterConnections(codec, requestPipeline.pipeline(), metrics, cache,
                 bootstrap.getHostString(), bootstrap.getPort(), config.auth().brokerAuth());
         connections.start();
 
-        // 7. Dispatcher - installed only after the initial metadata fetch, so the listener
+        // Dispatcher - installed only after the initial metadata fetch, so the listener
         //    (bound earlier for advertised-port resolution) closes every connection until the
         //    gateway can actually route.
         var dispatcher = new KafkaClientRequestHandler(
@@ -112,7 +112,7 @@ public final class KafkaGateway implements Gateway {
                 metrics, requestPipeline.fetchSessions(), dynamicState.saslAuthenticator());
         listener.installDispatcher(dispatcher);
 
-        // 8. Admin surface
+        //  Admin surface
         if (config.admin().enabled()) {
             admin = new AdminSurface(config.admin(), dynamicState, cache, bootstrapServers, config.auth().brokerAuth());
             admin.start();
