@@ -40,12 +40,15 @@ modules**. Zero behavior change on the success path.
 Owns the four dynamically-reloaded consumers and the config-topic manager that feeds
 them. Created empty, then `start()` blocks until the config topic has been caught up.
 
-- Constructor: `(String bootstrapServers, String topic, Properties extraProps)`
+- Constructor: `(String bootstrapServers, String topic, BrokerAuthConfig brokerAuth)`
+  — builds the full consumer props internally (bootstrap, fresh `kawa-config-<uuid>`
+  group id, deserializers, SASL when `brokerAuth` is present)
 - `start()` — starts `DynamicConfigManager`, awaits initial load
 - Accessors: `virtualTopics()`, `authorizer()`, `saslAuthenticator()`,
   `governance()`, `configManager()`
 - `close()` — closes the `DynamicConfigManager`
-- Absorbs the `configTopicProps(...)` helper from `KafkaGateway`
+- Absorbs the `configTopicProps(...)` helper from `KafkaGateway` (as a private
+  static method; the caller no longer builds consumer `Properties`)
 
 ### `KafkaListener` (`io.jonasg.kawa.server.netty`)
 
