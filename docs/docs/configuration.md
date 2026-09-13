@@ -415,7 +415,7 @@ admin:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `allowedOrigins` | string list | `["*"]` | Origins allowed to call the admin API; `["*"]` allows any origin |
-| `allowedMethods` | string list | `["GET", "POST", "PUT", "DELETE", "OPTIONS"]` | HTTP methods allowed in preflight responses |
+| `allowedMethods` | string list | `["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]` | HTTP methods allowed in preflight responses |
 | `allowedHeaders` | string list | *(empty)* | Request headers allowed in preflight responses |
 | `allowCredentials` | bool | `false` | Whether credentialed requests (cookies, auth headers) are allowed |
 | `maxAge` | int | *(omitted)* | How long preflight results may be cached, in seconds |

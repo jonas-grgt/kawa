@@ -105,6 +105,11 @@ public final class Router {
         return route(HttpMethod.POST, path, handler);
     }
 
+    /// Registers a handler for `PATCH path` and returns `this` for chaining.
+    public Router patch(String path, Handler handler) {
+        return route(HttpMethod.PATCH, path, handler);
+    }
+
     /// Registers a handler for `DELETE path` and returns `this` for chaining.
     public Router delete(String path, Handler handler) {
         return route(HttpMethod.DELETE, path, handler);

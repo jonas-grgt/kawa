@@ -8,9 +8,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ArrayNode;
 
-import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
@@ -21,7 +19,7 @@ import static net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER;
 import static net.javacrumbs.jsonunit.core.Option.IGNORING_EXTRA_FIELDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AdminGetTopicsIT extends GatewayTestSupport {
+class AdminGetTopicsIT extends AdminHTTPTestSupport {
 
 	@Override
 	protected AdminConfig adminConfig() {
@@ -41,8 +39,7 @@ class AdminGetTopicsIT extends GatewayTestSupport {
 	@Test
 	void exposesVirtualTopicsOverHttp() {
 		// given
-		var request = HttpRequest.newBuilder(
-						URI.create("http://127.0.0.1:" + gateway.adminBoundPort() + "/topics"))
+		var request = reqBuilderForPath("/topics")
 				.GET()
 				.build();
 

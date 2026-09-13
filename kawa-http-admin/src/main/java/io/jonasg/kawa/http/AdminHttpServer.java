@@ -68,6 +68,7 @@ public final class AdminHttpServer {
                 .delete("/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
                 .get("/auth/users", new AuthUsersConfigHandler(configRepository))
                 .put("/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
+                .patch("/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
                 .delete("/auth/users/{name}", new AuthUsersConfigHandler(configRepository))
                 .get("/governance", new GovernanceConfigHandler(configRepository, governance))
                 .put("/governance", new GovernanceConfigHandler(configRepository, governance))

@@ -17,8 +17,8 @@ import java.util.Map;
 /// (404 when it does not exist). The section starts empty when no snapshot has been applied yet.
 abstract class ConfigSectionHandler<T> implements Router.Handler {
 
-    private final GatewayConfigRepository repository;
-    private final JsonMapper mapper = JsonMapper.builder().build();
+    protected final GatewayConfigRepository repository;
+    protected final JsonMapper mapper = JsonMapper.builder().build();
     private final Class<T> valueType;
     private final String sectionName;
 

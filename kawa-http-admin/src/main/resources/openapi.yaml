@@ -282,6 +282,32 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '500':
           $ref: '#/components/responses/InternalError'
+    patch:
+      summary: Update an auth user
+      description: Updates one or both fields of the user `name` and persists the new config snapshot. Fields omitted from the body keep their stored value; the user must already exist. The password is write-only and never returned.
+      parameters:
+        - $ref: '#/components/parameters/ConfigEntryName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserConfigPatch'
+      responses:
+        '200':
+          description: The stored user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       summary: Delete an auth user
       description: Removes the user `name` and persists the new config snapshot.
@@ -609,6 +635,15 @@ components:
         password:
           type: string
           description: Password; may reference environment variables as ${VAR} or ${VAR:-default}.
+    UserConfigPatch:
+      type: object
+      properties:
+        mechanism:
+          type: string
+          description: SASL mechanism (e.g. PLAIN, SCRAM-SHA-256); omitted to keep the current mechanism.
+        password:
+          type: string
+          description: New password; may reference environment variables as ${VAR} or ${VAR:-default}. Omitted to keep the current password.
     UserView:
       type: object
       required:

@@ -7,6 +7,5 @@ package io.jonasg.kawa.http;
 /// @param password the password; may reference environment variables as `${VAR}` or `${VAR:-default}`
 public record UserView(
         String username,
-        String mechanism,
-        String password) {
-}
+        String mechanism
+) { }

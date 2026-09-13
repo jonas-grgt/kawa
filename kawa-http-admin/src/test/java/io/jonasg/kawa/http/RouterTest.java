@@ -140,6 +140,21 @@ class RouterTest {
     }
 
     @Test
+    void routesPatchToRegisteredHandler() {
+        // given
+        var router = new Router().patch("/auth/users/{name}", request ->
+                Router.Response.ok(request.pathParams().get("name")));
+        var handler = new HttpRouterHandler(router);
+
+        // when
+        FullHttpResponse response = request(handler, HttpMethod.PATCH, "/auth/users/alice");
+
+        // then
+        assertThat(response.status()).isEqualTo(HttpResponseStatus.OK);
+        assertThat(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("\"alice\"");
+    }
+
+    @Test
     void writesNoContentWithoutBody() {
         // given
         var router = new Router().delete("/configs/virtual-topics/{name}", request -> Router.Response.noContent());
