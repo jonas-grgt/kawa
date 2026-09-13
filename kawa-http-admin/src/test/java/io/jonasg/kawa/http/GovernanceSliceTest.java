@@ -1,0 +1,98 @@
+package io.jonasg.kawa.http;
+
+import io.jonasg.kawa.config.GatewayConfig;
+import io.jonasg.kawa.config.GovernanceConfig;
+import io.jonasg.kawa.config.GovernanceExemptionConfig;
+import io.jonasg.kawa.config.GovernanceRuleConfig;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/// Slice tests for the `/governance` admin surface: real HTTP requests through a booted
+/// [AdminHttpServer], asserting the JSON wire format the admin UI consumes.
+class GovernanceSliceTest extends AdminHttpSliceTestBase {
+
+    @Test
+    void listsConfiguredGovernance() throws Exception {
+        // given
+        var governanceConfig = new GovernanceConfig(
+                Map.of("min-replication",
+                        new GovernanceRuleConfig("replication factor must be at least 3",
+                                "topic.replicationFactor >= 3")),
+                Map.of("ops", new GovernanceExemptionConfig(".*", ".*-changelog")));
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty().updateGovernance(governanceConfig));
+        startServer();
+
+        // when
+        var response = send("GET", "/governance", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains(
+                "\"min-replication\"",
+                "\"topic.replicationFactor >= 3\"",
+                "\"ops\"",
+                "\".*-changelog\"");
+    }
+
+    @Test
+    void listsEmptyGovernanceWhenNoSnapshotApplied() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(null);
+        startServer();
+
+        // when
+        var response = send("GET", "/governance", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("\"topicRules\"", "\"exemptions\"");
+    }
+
+    @Test
+    void replacesGovernanceAndPersistsSnapshot() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/governance",
+                "{\"topicRules\":{\"min-replication\":{\"message\":\"replication factor must be at least 3\","
+                        + "\"expression\":\"topic.replicationFactor >= 3\"}},"
+                        + "\"exemptions\":{\"ops\":{\"principal\":\".*\",\"topicPattern\":\".*-changelog\"}}}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.getActiveConfig().governance().topicRules()).containsKey("min-replication");
+        assertThat(repository.getActiveConfig().governance().exemptions()).containsKey("ops");
+    }
+
+    @Test
+    void rejectsInvalidRuleExpression() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/governance",
+                "{\"topicRules\":{\"broken\":{\"message\":\"must be valid\","
+                        + "\"expression\":\"topic.replicationFactor >=\"}}}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().governance().topicRules()).isEmpty();
+    }
+
+    @Test
+    void rejectsInvalidGovernanceBody() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/governance", "not json");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().governance().topicRules()).isEmpty();
+    }
+}

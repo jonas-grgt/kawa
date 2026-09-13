@@ -1,0 +1,380 @@
+package io.jonasg.kawa.http;
+
+import io.jonasg.kawa.config.CelFilterConfig;
+import io.jonasg.kawa.config.GatewayConfig;
+import io.jonasg.kawa.config.GovernanceConfig;
+import io.jonasg.kawa.config.GovernanceExemptionConfig;
+import io.jonasg.kawa.config.GovernanceRuleConfig;
+import io.jonasg.kawa.config.HeaderEqualsFilterConfig;
+import io.jonasg.kawa.config.VirtualTopicConfig;
+import io.jonasg.kawa.core.VirtualTopicManager;
+import io.jonasg.kawa.governance.GovernancePolicy;
+import io.jonasg.kawa.governance.TopicSpec;
+import org.apache.kafka.common.errors.TopicExistsException;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/// Slice tests for the `/topics` admin surface: real HTTP requests through a booted
+/// [AdminHttpServer], asserting the JSON wire format the admin UI consumes.
+class TopicSliceTest extends AdminHttpSliceTestBase {
+
+    @Test
+    void servesVirtualAndPhysicalEntriesOverHttp() throws Exception {
+        // given
+        virtualTopics = new VirtualTopicManager(Map.of(
+                "orders", new VirtualTopicConfig("orders-v2"),
+                "customers", new VirtualTopicConfig("crm.customers",
+                        new HeaderEqualsFilterConfig("tenant", "acme"), true)));
+        cache = cacheWith(
+                topic("orders-v2", 3, 2),
+                topic("crm.customers", 2, 3),
+                topic("raw-events", 1, 1));
+        startServer();
+
+        // when
+        var response = send("GET", "/topics", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains(
+                "\"type\":\"virtual\"",
+                "\"name\":\"orders\"",
+                "\"partitions\":3",
+                "\"replicationFactor\":2",
+                "\"physicalTopic\":\"orders-v2\"",
+                "\"type\":\"physical\"",
+                "\"name\":\"orders-v2\"",
+                "\"name\":\"customers\"",
+                "\"filter\":{\"kind\":\"header\",\"expression\":\"tenant=acme\"}",
+                "\"name\":\"raw-events\"");
+    }
+
+    @Test
+    void returnsEmptyListWhenNoTopics() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("GET", "/topics", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).isEqualTo("[]");
+    }
+
+    @Test
+    void describesCelFilterOnVirtualEntry() throws Exception {
+        // given
+        virtualTopics = new VirtualTopicManager(Map.of(
+                "audit", new VirtualTopicConfig("audit-v1",
+                        new CelFilterConfig("headers.tenant == \"acme\""), false)));
+        cache = cacheWith(topic("audit-v1", 1, 1));
+        startServer();
+
+        // when
+        var response = send("GET", "/topics", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains(
+                "\"name\":\"audit\"",
+                "\"filter\":{\"kind\":\"cel\",\"expression\":\"headers.tenant == \\\"acme\\\"\"}");
+    }
+
+    @Test
+    void listsVirtualTopicWithoutPhysicalBacking() throws Exception {
+        // given
+        virtualTopics = new VirtualTopicManager(Map.of(
+                "orders", new VirtualTopicConfig("orders-v2")));
+        startServer();
+
+        // when
+        var response = send("GET", "/topics", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains(
+                "\"type\":\"virtual\"",
+                "\"name\":\"orders\"",
+                "\"partitions\":0",
+                "\"replicationFactor\":0",
+                "\"physicalTopic\":\"orders-v2\"");
+    }
+
+    @Test
+    void createsPhysicalTopicOnBroker() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("POST", "/topics",
+                "{\"type\":\"physical\",\"name\":\"orders\",\"partitions\":3,"
+                        + "\"replicationFactor\":3,\"configs\":{\"cleanup.policy\":\"compact\"}}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(response.body()).contains(
+                "\"name\":\"orders\"",
+                "\"partitions\":3",
+                "\"replicationFactor\":3",
+                "\"configs\":{\"cleanup.policy\":\"compact\"}");
+        assertThat(topicAdmin.created)
+                .containsExactly(new TopicSpec("orders", 3, 3, Map.of("cleanup.policy", "compact")));
+    }
+
+    @Test
+    void rejectsInvalidTopicBody() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("POST", "/topics", "not json");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(topicAdmin.created).isEmpty();
+    }
+
+    @Test
+    void rejectsUnknownTopicType() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("POST", "/topics", "{\"type\":\"wormhole\",\"name\":\"orders\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(topicAdmin.created).isEmpty();
+    }
+
+    @Test
+    void rejectsTopicWithoutName() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("POST", "/topics", "{\"type\":\"physical\",\"partitions\":3}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(topicAdmin.created).isEmpty();
+    }
+
+    @Test
+    void rejectsTopicViolatingGovernance() throws Exception {
+        // given
+        governance = new GovernancePolicy(new GovernanceConfig(
+                Map.of("min-replication",
+                        new GovernanceRuleConfig("replication factor must be at least 3",
+                                "topic.replicationFactor >= 3")),
+                Map.of()));
+        startServer();
+
+        // when
+        var response = send("POST", "/topics",
+                "{\"type\":\"physical\",\"name\":\"orders\",\"partitions\":3,\"replicationFactor\":1}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(403);
+        assertThat(response.body()).contains("replication factor must be at least 3");
+        assertThat(topicAdmin.created).isEmpty();
+    }
+
+    @Test
+    void acceptsExemptTopicAndCreatesOnBroker() throws Exception {
+        // given
+        governance = new GovernancePolicy(new GovernanceConfig(
+                Map.of("min-replication",
+                        new GovernanceRuleConfig("replication factor must be at least 3",
+                                "topic.replicationFactor >= 3")),
+                Map.of("ops", new GovernanceExemptionConfig("admin", ".*"))));
+        startServer();
+
+        // when
+        var response = send("POST", "/topics",
+                "{\"type\":\"physical\",\"name\":\"orders\",\"partitions\":3,\"replicationFactor\":1}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(topicAdmin.created).hasSize(1);
+    }
+
+    @Test
+    void returnsConflictWhenTopicExists() throws Exception {
+        // given
+        topicAdmin.createError = new TopicExistsException("Topic 'orders' already exists.");
+        startServer();
+
+        // when
+        var response = send("POST", "/topics",
+                "{\"type\":\"physical\",\"name\":\"orders\",\"partitions\":3,\"replicationFactor\":3}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(409);
+        assertThat(topicAdmin.created).isEmpty();
+    }
+
+    @Test
+    void createsVirtualTopicConfig() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("POST", "/topics", "{\"type\":\"virtual\",\"name\":\"orders\",\"topic\":\"orders-v2\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(response.body()).contains("\"topic\":\"orders-v2\"");
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
+        assertThat(topicAdmin.created).isEmpty();
+    }
+
+    @Test
+    void rejectsVirtualTopicWithoutBacking() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("POST", "/topics", "{\"type\":\"virtual\",\"name\":\"orders\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
+    }
+
+    @Test
+    void addsVirtualTopicAndPersistsSnapshot() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/topics/orders", "{\"type\":\"virtual\",\"topic\":\"raw-orders\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("\"topic\":\"raw-orders\"");
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("raw-orders"));
+    }
+
+    @Test
+    void overwritesExistingVirtualTopic() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", new VirtualTopicConfig("raw-old")));
+        startServer();
+
+        // when
+        var response = send("PUT", "/topics/orders", "{\"type\":\"virtual\",\"topic\":\"raw-new\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.getActiveConfig().virtualTopics()).hasSize(1);
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("raw-new"));
+    }
+
+    @Test
+    void rejectsInvalidUpdateBody() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/topics/orders", "not json");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
+    }
+
+    @Test
+    void rejectsUpdatingPhysicalTopic() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/topics/orders", "{\"type\":\"physical\",\"partitions\":5}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
+    }
+
+    @Test
+    void rejectsUpdatingVirtualTopicWithoutBacking() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/topics/orders", "{\"type\":\"virtual\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
+    }
+
+    @Test
+    void deletesPhysicalTopicOnBroker() throws Exception {
+        // given
+        cache = cacheWith(topic("orders", 1, 1));
+        startServer();
+
+        // when
+        var response = send("DELETE", "/topics/orders", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(topicAdmin.deleted).containsExactly("orders");
+    }
+
+    @Test
+    void removesVirtualTopicConfigWithoutBrokerCall() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+        startServer();
+
+        // when
+        var response = send("DELETE", "/topics/orders", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
+        assertThat(topicAdmin.deleted).isEmpty();
+    }
+
+    @Test
+    void unknownTopicReturnsNotFound() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("DELETE", "/topics/orders", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(404);
+        assertThat(topicAdmin.deleted).isEmpty();
+    }
+
+    @Test
+    void virtualTopicWinsOverPhysicalName() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+        cache = cacheWith(topic("orders", 1, 1));
+        startServer();
+
+        // when
+        var response = send("DELETE", "/topics/orders", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
+        assertThat(topicAdmin.deleted).isEmpty();
+    }
+}

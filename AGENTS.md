@@ -30,6 +30,12 @@ Kafka cluster. Maven multi-module, Java 26.
   with `-Dit.test=ClassName` (not `-Dtest=`) to run a single IT.
 - The integration tests use **Testcontainers** (Kafka container) — Docker must
   be running; they are slow and network/docker dependent.
+- `kawa-http-admin` has two unit tiers: `RouterTest`/`KafkaTopicAdminTest`
+  (pure plumbing/helper) and the HTTP slice tests (`TopicSliceTest`,
+  `UserSliceTest`, `RoleSliceTest`, `GroupSliceTest`, `GovernanceSliceTest`,
+  `ServerSliceTest` via `AdminHttpSliceTestBase`) that boot a real
+  `AdminHttpServer` on an ephemeral port and assert the JSON wire format.
+  There are no per-handler unit tests — handler behavior is covered over HTTP.
 
 ## Modules (dependency direction)
 
