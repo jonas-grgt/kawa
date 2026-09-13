@@ -446,9 +446,12 @@ components:
           enum:
             - cel
             - header
+            - headerContains
+            - headerStartsWith
+            - headerMatches
         expression:
           type: string
-          description: The CEL expression, or the header=value pair for header filters.
+          description: The CEL expression, the header=value pair for headerEquals, or a header <operator> value description for the other header predicates.
     TopicCreateRequest:
       type: object
       required:

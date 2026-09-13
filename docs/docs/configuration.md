@@ -173,6 +173,38 @@ dropped by the gateway while preserving offsets of surviving records.
 | `header` | string | Header key to compare |
 | `value` | string | Required header value |
 
+#### `filter` (`headerContains`)
+
+Keeps only records whose record header value contains the configured substring during Fetch.
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | string | Must be `headerContains` |
+| `header` | string | Header key to compare |
+| `value` | string | Substring the header value must contain |
+
+#### `filter` (`headerStartsWith`)
+
+Keeps only records whose record header value starts with the configured prefix during Fetch.
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | string | Must be `headerStartsWith` |
+| `header` | string | Header key to compare |
+| `value` | string | Prefix the header value must start with |
+
+#### `filter` (`headerMatches`)
+
+Keeps only records whose record header value fully matches the configured regular expression
+(anchored, like Java's `String.matches`). The regex is validated at config load time, so an
+invalid pattern fails startup rather than the first Fetch.
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | string | Must be `headerMatches` |
+| `header` | string | Header key to compare |
+| `value` | string | Regular expression the header value must fully match |
+
 #### `filter` (`cel`)
 
 Keeps only records for which a [CEL](https://cel.dev) (Common Expression Language)

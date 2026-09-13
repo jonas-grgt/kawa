@@ -58,6 +58,10 @@ virtualTopics:
       value: eu
 ```
 
+`headerEquals` is one of a family of header predicates — `headerContains`,
+`headerStartsWith`, and `headerMatches` (full-match regex) use the same `header` + `value`
+shape. See [configuration](/docs/configuration#filter-headercontains) for all filter types.
+
 Behaviour details worth knowing:
 
 - Filtering happens server-side using Kafka's own batch filtering
@@ -70,7 +74,8 @@ Behaviour details worth knowing:
 
 ### CEL expressions
 
-For anything beyond a single header equality, use the `cel` filter type. It evaluates
+For anything beyond the header predicates (`headerEquals`, `headerContains`,
+`headerStartsWith`, `headerMatches`), use the `cel` filter type. It evaluates
 a [CEL](https://cel.dev) expression against each record and keeps the record when the
 expression is `true`:
 

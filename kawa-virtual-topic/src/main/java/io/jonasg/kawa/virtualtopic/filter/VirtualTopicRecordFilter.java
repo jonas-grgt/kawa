@@ -1,7 +1,10 @@
 package io.jonasg.kawa.virtualtopic.filter;
 
 import io.jonasg.kawa.config.CelFilterConfig;
+import io.jonasg.kawa.config.HeaderContainsFilterConfig;
 import io.jonasg.kawa.config.HeaderEqualsFilterConfig;
+import io.jonasg.kawa.config.HeaderMatchesFilterConfig;
+import io.jonasg.kawa.config.HeaderStartsWithFilterConfig;
 import io.jonasg.kawa.config.VirtualTopicFilterConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.record.internal.BaseRecords;
@@ -79,6 +82,9 @@ public final class VirtualTopicRecordFilter {
         boolean matches(Record record) {
             return switch (filterCfg) {
                 case HeaderEqualsFilterConfig headerEquals -> new HeaderEqualsRecordPredicate().test(headerEquals, record);
+                case HeaderContainsFilterConfig headerContains -> new HeaderContainsRecordPredicate().test(headerContains, record);
+                case HeaderStartsWithFilterConfig headerStartsWith -> new HeaderStartsWithRecordPredicate().test(headerStartsWith, record);
+                case HeaderMatchesFilterConfig headerMatches -> new HeaderMatchesRecordPredicate().test(headerMatches, record);
                 case CelFilterConfig cfg -> new CelRecordPredicate().test(cfg, record);
             };
         }

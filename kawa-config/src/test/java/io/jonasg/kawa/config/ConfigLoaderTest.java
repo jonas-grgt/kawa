@@ -148,6 +148,68 @@ class ConfigLoaderTest {
     }
 
     @Test
+    void loadsHeaderContainsFilterConfiguration() {
+        GatewayConfig config = loader.loadFromYaml("""
+                virtualTopics:
+                  customers:
+                    topic: crm.customers
+                    filter:
+                      type: headerContains
+                      header: tenant
+                      value: acm
+                """);
+
+        assertThat(config.virtualTopics().get("customers").filter())
+                .isEqualTo(new HeaderContainsFilterConfig("tenant", "acm"));
+    }
+
+    @Test
+    void loadsHeaderStartsWithFilterConfiguration() {
+        GatewayConfig config = loader.loadFromYaml("""
+                virtualTopics:
+                  customers:
+                    topic: crm.customers
+                    filter:
+                      type: headerStartsWith
+                      header: tenant
+                      value: ac
+                """);
+
+        assertThat(config.virtualTopics().get("customers").filter())
+                .isEqualTo(new HeaderStartsWithFilterConfig("tenant", "ac"));
+    }
+
+    @Test
+    void loadsHeaderMatchesFilterConfiguration() {
+        GatewayConfig config = loader.loadFromYaml("""
+                virtualTopics:
+                  customers:
+                    topic: crm.customers
+                    filter:
+                      type: headerMatches
+                      header: tenant
+                      value: eu.*
+                """);
+
+        assertThat(config.virtualTopics().get("customers").filter())
+                .isEqualTo(new HeaderMatchesFilterConfig("tenant", "eu.*"));
+    }
+
+    @Test
+    void rejectsInvalidHeaderMatchesRegex() {
+        assertThatThrownBy(() -> loader.loadFromYaml("""
+                virtualTopics:
+                  customers:
+                    topic: crm.customers
+                    filter:
+                      type: headerMatches
+                      header: tenant
+                      value: a{2,1}
+                """))
+                .hasMessageContaining("Invalid filter config for virtual topic 'customers'");
+    }
+
+    @Test
     void virtualTopicPhysicalNameIsHiddenByDefault() {
         GatewayConfig config = loader.loadFromYaml("""
                 virtualTopics:
