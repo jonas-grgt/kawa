@@ -49,28 +49,24 @@ public final class ConfigTopicConsumer implements AutoCloseable {
 
     /// @param bootstrapServers `host:port` list of the cluster hosting the config topic
     /// @param topic the config topic name
-    /// @param groupId consumer group id (only one consumer in the group is active on the
-    ///                single partition; the rest are standby)
     /// @param onConfig invoked for every valid config snapshot, in offset order
     public ConfigTopicConsumer(
             String bootstrapServers,
             String topic,
-            String groupId,
             Consumer<GatewayConfig> onConfig
     ) {
-        this(bootstrapServers, topic, groupId, new Properties(), onConfig);
+        this(bootstrapServers, topic, new Properties(), onConfig);
     }
 
     /// Variant that accepts extra consumer properties (e.g. SASL/security settings for the
-    /// config topic) on top of the base bootstrap/group/deserializer configuration.
+    /// config topic) on top of the base bootstrap/deserializer configuration.
     public ConfigTopicConsumer(
             String bootstrapServers,
             String topic,
-            String groupId,
             Properties extraProps,
             Consumer<GatewayConfig> onConfig
     ) {
-        this(bootstrapServers, topic, groupId, extraProps, (config, ignoredOffset) -> onConfig.accept(config));
+        this(bootstrapServers, topic, extraProps, (config, ignoredOffset) -> onConfig.accept(config));
     }
 
     /// Variant with extra consumer properties that also passes the consumed record offset to
@@ -78,13 +74,12 @@ public final class ConfigTopicConsumer implements AutoCloseable {
     public ConfigTopicConsumer(
             String bootstrapServers,
             String topic,
-            String groupId,
             Properties extraProps,
             BiConsumer<GatewayConfig, Long> onConfigWithOffset
     ) {
         this.topic = topic;
         this.onConfigWithOffset = onConfigWithOffset;
-        this.consumer = new KafkaConsumer<>(consumerProps(bootstrapServers, groupId, extraProps));
+        this.consumer = new KafkaConsumer<>(consumerProps(bootstrapServers, extraProps));
     }
 
     /// Starts the consumer thread. Idempotent.
@@ -168,14 +163,9 @@ public final class ConfigTopicConsumer implements AutoCloseable {
         }
     }
 
-    private static Properties consumerProps(
-            String bootstrapServers,
-            String groupId,
-            Properties extraProps
-    ) {
+    private static Properties consumerProps(String bootstrapServers, Properties extraProps) {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);

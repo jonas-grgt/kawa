@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.UUID;
 
 /// Owns the four dynamically-reloaded consumers ([VirtualTopicManager], [RbacAuthorizer],
 /// [SaslAuthenticator], [GovernancePolicy]) and the [DynamicConfigManager] that feeds them
@@ -41,10 +40,11 @@ public final class DynamicGatewayState implements AutoCloseable {
         authorizer = new RbacAuthorizer(new RbacConfig(Map.of(), Map.of()));
         saslAuthenticator = new SaslAuthenticator(Set.of());
         governance = new GovernancePolicy(new GovernanceConfig(null, null));
-        // A fresh consumer group per boot: each gateway instance must read the full config
-        // topic, and the catch-up model re-reads from the earliest offset anyway.
+        // Direct partition assignment: the config consumer re-reads the full topic from the
+        // earliest offset on every boot, so no consumer group is needed (and none is
+        // registered in the cluster).
         configManager = new DynamicConfigManager(
-                bootstrapServers, topic, "kawa-config-" + UUID.randomUUID(),
+                bootstrapServers, topic,
                 configTopicProps(brokerAuth),
                 virtualTopics, authorizer, saslAuthenticator, governance);
     }

@@ -59,13 +59,12 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
     public DynamicConfigManager(
             String bootstrapServers,
             String topic,
-            String groupId,
             VirtualTopicManager virtualTopics,
             RbacAuthorizer authorizer,
             SaslAuthenticator saslAuthenticator,
             GovernancePolicy governance
     ) {
-        this(bootstrapServers, topic, groupId, new Properties(), virtualTopics, authorizer, saslAuthenticator,
+        this(bootstrapServers, topic, new Properties(), virtualTopics, authorizer, saslAuthenticator,
                 governance, DEFAULT_APPLY_WAIT_TIMEOUT);
     }
 
@@ -74,21 +73,19 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
     public DynamicConfigManager(
             String bootstrapServers,
             String topic,
-            String groupId,
             Properties extraProps,
             VirtualTopicManager virtualTopics,
             RbacAuthorizer authorizer,
             SaslAuthenticator saslAuthenticator,
             GovernancePolicy governance
     ) {
-        this(bootstrapServers, topic, groupId, extraProps, virtualTopics, authorizer, saslAuthenticator, governance,
+        this(bootstrapServers, topic, extraProps, virtualTopics, authorizer, saslAuthenticator, governance,
                 DEFAULT_APPLY_WAIT_TIMEOUT);
     }
 
     DynamicConfigManager(
             String bootstrapServers,
             String topic,
-            String groupId,
             Properties extraProps,
             VirtualTopicManager virtualTopics,
             RbacAuthorizer authorizer,
@@ -104,7 +101,6 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
         this.consumer = new ConfigTopicConsumer(
                 bootstrapServers,
                 topic,
-                groupId,
                 extraProps,
                 (config, offset) -> apply(config, offset));
         this.writeRepository = new ConfigTopicRepository(bootstrapServers, topic, extraProps);
@@ -139,7 +135,6 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
         this.consumer = new ConfigTopicConsumer(
                 "localhost:9092",
                 "__kawa",
-                "test-group",
                 new Properties(),
                 (config, offset) -> apply(config, offset));
         this.writeRepository = writeRepository;

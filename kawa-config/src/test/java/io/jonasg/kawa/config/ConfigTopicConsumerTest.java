@@ -19,7 +19,7 @@ class ConfigTopicConsumerTest {
         // given
         List<GatewayConfig> received = new ArrayList<>();
         ConfigTopicConsumer consumer = new ConfigTopicConsumer(
-                "localhost:9092", TOPIC, "kawa-config-group", received::add);
+                "localhost:9092", TOPIC, received::add);
 
         // when
         consumer.handle(record("""
@@ -38,7 +38,7 @@ class ConfigTopicConsumerTest {
         // given
         AtomicInteger calls = new AtomicInteger();
         ConfigTopicConsumer consumer = new ConfigTopicConsumer(
-                "localhost:9092", TOPIC, "kawa-config-group", _ -> calls.incrementAndGet());
+                "localhost:9092", TOPIC, _ -> calls.incrementAndGet());
 
         // when
         assertThatCode(() -> consumer.handle(record("not-json")))
@@ -53,7 +53,7 @@ class ConfigTopicConsumerTest {
         // given
         AtomicInteger calls = new AtomicInteger();
         ConfigTopicConsumer consumer = new ConfigTopicConsumer(
-                "localhost:9092", TOPIC, "kawa-config-group", _ -> {
+                "localhost:9092", TOPIC, _ -> {
                     calls.incrementAndGet();
                     throw new IllegalArgumentException("rejected");
                 });
@@ -71,7 +71,7 @@ class ConfigTopicConsumerTest {
         // given
         List<GatewayConfig> received = new ArrayList<>();
         ConfigTopicConsumer consumer = new ConfigTopicConsumer(
-                "localhost:9092", TOPIC, "kawa-config-group", received::add);
+                "localhost:9092", TOPIC, received::add);
 
         // when
         consumer.handle(record("{\"listeners\":[{\"port\":9092}]}"));
