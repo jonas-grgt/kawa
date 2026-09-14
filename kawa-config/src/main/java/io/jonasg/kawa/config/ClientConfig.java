@@ -4,7 +4,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public record UserConfig(
+public record ClientConfig(
         String mechanism,
         String password
 ) {
@@ -12,14 +12,14 @@ public record UserConfig(
     private static final Pattern ENV_VAR_PATTERN =
             Pattern.compile("\\$\\{([^}:]+)(?::-(.+?))?\\}");
 
-    public UserConfig {
+    public ClientConfig {
         if (password == null || password.isBlank()) {
             throw new IllegalArgumentException("password must not be null or blank");
         }
         password = resolveEnvVars(password, System::getenv);
     }
 
-    static UserConfig of(
+    static ClientConfig of(
             String mechanism,
             String password,
             Function<String, String> envLookup
@@ -27,7 +27,7 @@ public record UserConfig(
         if (password == null || password.isBlank()) {
             throw new IllegalArgumentException("password must not be null or blank");
         }
-        return new UserConfig(mechanism, resolveEnvVars(password, envLookup));
+        return new ClientConfig(mechanism, resolveEnvVars(password, envLookup));
     }
 
     static String resolveEnvVars(String value, Function<String, String> envLookup) {

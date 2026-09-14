@@ -15,7 +15,7 @@ import io.jonasg.kawa.config.MetricsConfig;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
 import io.jonasg.kawa.config.RoleConfig;
-import io.jonasg.kawa.config.UserConfig;
+import io.jonasg.kawa.config.ClientConfig;
 import io.jonasg.kawa.server.KafkaGateway;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -123,7 +123,7 @@ class BrokerAuthIT {
 
         var auth = new AuthConfig(
                 Set.of("PLAIN"),
-                Map.of("client", new UserConfig("PLAIN", "client-secret")),
+                Map.of("client", new ClientConfig("PLAIN", "client-secret")),
                 new BrokerAuthConfig("PLAIN", BROKER_USER, BROKER_PASSWORD));
 
         var allowAllRole = new RoleConfig(List.of(

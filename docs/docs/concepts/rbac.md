@@ -202,7 +202,7 @@ topics:
 auth:
   mechanisms:
     - PLAIN
-  users:
+  clients:
     alice:
       password: "${ALICE_PASSWORD}"
     bob:

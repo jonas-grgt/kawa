@@ -12,7 +12,7 @@ import io.jonasg.kawa.config.MetricsConfig;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
 import io.jonasg.kawa.config.RoleConfig;
-import io.jonasg.kawa.config.UserConfig;
+import io.jonasg.kawa.config.ClientConfig;
 import io.jonasg.kawa.config.VirtualTopicConfig;
 import io.jonasg.kawa.server.KafkaGateway;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -191,7 +191,7 @@ abstract class GatewayTestSupport {
 	protected AuthConfig authConfig() {
 		return new AuthConfig(
 				Set.of("PLAIN"),
-				Map.of(DEFAULT_PRINCIPAL, new UserConfig("PLAIN", DEFAULT_PASSWORD)),
+				Map.of(DEFAULT_PRINCIPAL, new ClientConfig("PLAIN", DEFAULT_PASSWORD)),
 				null);
 	}
 

@@ -7,7 +7,7 @@ import org.apache.kafka.common.message.SaslHandshakeRequestData;
 import org.apache.kafka.common.message.SaslHandshakeResponseData;
 import org.apache.kafka.common.protocol.Errors;
 
-import io.jonasg.kawa.config.UserConfig;
+import io.jonasg.kawa.config.ClientConfig;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -29,14 +29,14 @@ import java.util.Set;
 ///
 /// `SaslAuthenticate` auth bytes are validated by this class for PLAIN credentials.
 ///
-/// The mechanisms and users are an immutable snapshot replaced atomically via [reload]: a
+/// The mechanisms and clients are an immutable snapshot replaced atomically via [reload]: a
 /// reader on the hot path sees either the previous or the new auth state, never a
 /// partially-applied one.
 public final class SaslAuthenticator {
 
     /// Immutable snapshot of the dynamic auth state, published as a unit so a reload can never
     /// be observed half-applied.
-    private record Snapshot(Set<String> mechanisms, Map<String, UserConfig> users) {
+    private record Snapshot(Set<String> mechanisms, Map<String, ClientConfig> clients) {
     }
 
     private volatile Snapshot snapshot;
@@ -47,18 +47,18 @@ public final class SaslAuthenticator {
 
     public SaslAuthenticator(
             Set<String> mechanisms,
-            Map<String, UserConfig> users
+            Map<String, ClientConfig> clients
     ) {
-        reload(mechanisms, users);
+        reload(mechanisms, clients);
     }
 
-    /// Replaces the supported mechanisms and user directory with a new snapshot.
+    /// Replaces the supported mechanisms and client directory with a new snapshot.
     ///
     /// Safe to call concurrently with readers: the new snapshot is assigned to a single
     /// `volatile` reference, so readers see either the previous or the new auth state, never a
     /// partially-applied one.
-    public void reload(Set<String> mechanisms, Map<String, UserConfig> users) {
-        this.snapshot = new Snapshot(Set.copyOf(mechanisms), Map.copyOf(users));
+    public void reload(Set<String> mechanisms, Map<String, ClientConfig> clients) {
+        this.snapshot = new Snapshot(Set.copyOf(mechanisms), Map.copyOf(clients));
     }
 
     public static boolean isSaslApi(int apiKey) {
@@ -102,8 +102,8 @@ public final class SaslAuthenticator {
             return authenticationFailed(response);
         }
 
-        UserConfig userConfig = snapshot.users().get(username);
-        if (userConfig == null || !userConfig.password().equals(password)) {
+        ClientConfig clientConfig = snapshot.clients().get(username);
+        if (clientConfig == null || !clientConfig.password().equals(password)) {
             return authenticationFailed(response);
         }
 

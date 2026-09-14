@@ -11,7 +11,7 @@ import io.jonasg.kawa.config.GroupConfig;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
 import io.jonasg.kawa.config.RoleConfig;
-import io.jonasg.kawa.config.UserConfig;
+import io.jonasg.kawa.config.ClientConfig;
 import io.jonasg.kawa.config.VirtualTopicConfig;
 import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.governance.GovernancePolicy;
@@ -58,7 +58,7 @@ class DynamicConfigManagerTest {
     }
 
     private static AuthConfig plainAuth() {
-        return new AuthConfig(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")), null);
+        return new AuthConfig(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")), null);
     }
 
     private static GovernancePolicy emptyGovernance() {

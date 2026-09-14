@@ -19,7 +19,7 @@ class GatewayConfigTest {
         assertThat(config.clusters()).isEmpty();
         assertThat(config.virtualTopics()).isEmpty();
         assertThat(config.auth().mechanisms()).isEmpty();
-        assertThat(config.auth().users()).isEmpty();
+        assertThat(config.auth().clients()).isEmpty();
         assertThat(config.rbac().roles()).isEmpty();
         assertThat(config.rbac().groups()).isEmpty();
         assertThat(config.governance().topicRules()).isEmpty();
@@ -91,7 +91,7 @@ class GatewayConfigTest {
                 new AuthConfig(null, null, null), null, null, null, null);
         var newAuth = new AuthConfig(
                 java.util.Set.of("PLAIN"),
-                Map.of("alice", new UserConfig("PLAIN", "secret")),
+                Map.of("alice", new ClientConfig("PLAIN", "secret")),
                 null);
 
         // when

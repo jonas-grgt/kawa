@@ -38,7 +38,7 @@ clusters:
 auth:
   mechanisms:
     - PLAIN
-  users:
+  clients:
     alice:
       password: "${ALICE_PASSWORD}"
     bob:
@@ -244,9 +244,9 @@ using the standard Kafka SASL handshake (`SaslHandshake` + `SaslAuthenticate`).
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `mechanisms` | string list | *(empty)* | SASL mechanisms advertised to clients |
-| `users` | map | *(empty)* | User credentials |
+| `clients` | map | *(empty)* | Client credentials |
 
-Each user entry requires at minimum a `password`. If `mechanism` is omitted, the user
+Each client entry requires at minimum a `password`. If `mechanism` is omitted, the client
 inherits the first mechanism from the global `mechanisms` list. If no global mechanism
 is configured, an error is raised at startup.
 
@@ -255,7 +255,7 @@ auth:
   mechanisms:
     - PLAIN
     - SCRAM-SHA-256
-  users:
+  clients:
     alice:                          # inherits PLAIN
       password: "${ALICE_PASSWORD}"
     bob:
@@ -280,7 +280,7 @@ Kafka cluster using these credentials instead of connecting in plaintext.
 auth:
   mechanisms:
     - PLAIN
-  users:
+  clients:
     alice:
       password: s3cret
   brokerAuth:
@@ -494,7 +494,7 @@ topic `...-changelog` to skip enforcement.
 Virtual topics, RBAC, client authentication and governance are **dynamic**: they are
 read from the config topic (default `__kawa`) and update live while the gateway runs.
 The static YAML file does **not** carry them - any `virtualTopics`, `rbac`,
-`auth.users`/`auth.mechanisms` or `governance` in the file are ignored.
+`auth.clients`/`auth.mechanisms` or `governance` in the file are ignored.
 
 Each message in the config topic is a full JSON snapshot of the dynamic subset of
 [`GatewayConfig`](#reference). The topic is expected to have a single partition and
@@ -570,20 +570,20 @@ applied live.
 | `/rbac/groups` | GET | List groups |
 | `/rbac/groups/{name}` | PUT | Add or replace a group |
 | `/rbac/groups/{name}` | DELETE | Remove a group |
-| `/auth/users` | GET | List users |
-| `/auth/users/{name}` | PUT | Add or replace a user |
-| `/auth/users/{name}` | DELETE | Remove a user |
+| `/auth/clients` | GET | List clients |
+| `/auth/clients/{name}` | PUT | Add or replace a client |
+| `/auth/clients/{name}` | DELETE | Remove a client |
 | `/governance` | GET | List the governance section (rules + exemptions) |
 | `/governance` | PUT | Replace the whole governance section |
 
 The request body for a `PUT` is the entry's JSON object, using the same fields as the
 YAML reference above — e.g. `{"acls": [...]}` for a role, `{"members": [...], "roles": [...]}`
-for a group, `{"mechanism": "PLAIN", "password": "..."}` for a user, or the full
+for a group, `{"mechanism": "PLAIN", "password": "..."}` for a client, or the full
 `{"topicRules": {...}, "exemptions": {...}}` object for governance.
 
-Adding a user via `PUT /auth/users/{name}` auto-expands the advertised SASL
-mechanisms to include the user's mechanism, so the first user can be added to an empty
-config. The user's `mechanism` is required — a `PUT` without it is rejected with `400`.
+Adding a client via `PUT /auth/clients/{name}` auto-expands the advertised SASL
+mechanisms to include the client's mechanism, so the first client can be added to an empty
+config. The client's `mechanism` is required — a `PUT` without it is rejected with `400`.
 
 Unlike the per-entry sections, `PUT /governance` replaces the **whole**
 governance section in one write. Every rule expression is validated before the snapshot

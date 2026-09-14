@@ -105,7 +105,7 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
         authorizer.reload(config.rbac()); // risky first: can throw on unknown role
         governance.reload(config.governance()); // risky: can throw on invalid CEL expression
         virtualTopics.reload(config.virtualTopics());
-        saslAuthenticator.reload(config.auth().mechanisms(), config.auth().users());
+        saslAuthenticator.reload(config.auth().mechanisms(), config.auth().clients());
         current = config;
     }
 

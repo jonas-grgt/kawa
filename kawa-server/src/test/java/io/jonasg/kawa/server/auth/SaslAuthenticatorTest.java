@@ -1,6 +1,6 @@
 package io.jonasg.kawa.server.auth;
 
-import io.jonasg.kawa.config.UserConfig;
+import io.jonasg.kawa.config.ClientConfig;
 import io.jonasg.kawa.protocol.kafka.KafkaApiRegistry;
 import org.apache.kafka.common.message.SaslAuthenticateRequestData;
 import org.apache.kafka.common.message.SaslHandshakeRequestData;
@@ -56,9 +56,9 @@ class SaslAuthenticatorTest {
     }
 
     @Test
-    void authenticatesPlainWithKnownUserAndCorrectPassword() {
+    void authenticatesPlainWithKnownClientAndCorrectPassword() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
         var request = new SaslAuthenticateRequestData()
                 .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8));
 
@@ -74,9 +74,9 @@ class SaslAuthenticatorTest {
     }
 
     @Test
-    void rejectsUnknownUserWithoutLeakingWhetherTheUsernameExists() {
+    void rejectsUnknownClientWithoutLeakingWhetherTheUsernameExists() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
         var request = new SaslAuthenticateRequestData()
                 .setAuthBytes("\u0000bob\u0000secret".getBytes(StandardCharsets.UTF_8));
 
@@ -93,7 +93,7 @@ class SaslAuthenticatorTest {
     @Test
     void rejectsMalformedPlainPayload() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
         var request = new SaslAuthenticateRequestData()
                 .setAuthBytes("not-a-plain-payload".getBytes(StandardCharsets.UTF_8));
 
@@ -108,12 +108,12 @@ class SaslAuthenticatorTest {
     }
 
     @Test
-    void reloadReplacesMechanismsAndUsers() {
+    void reloadReplacesMechanismsAndClients() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
 
         // when
-        authenticator.reload(Set.of("SCRAM-SHA-256"), Map.of("bob", new UserConfig("SCRAM-SHA-256", "hunter2")));
+        authenticator.reload(Set.of("SCRAM-SHA-256"), Map.of("bob", new ClientConfig("SCRAM-SHA-256", "hunter2")));
 
         // then
         var handshake = authenticator.handleHandshake(new SaslHandshakeRequestData().setMechanism("PLAIN"));
@@ -132,7 +132,7 @@ class SaslAuthenticatorTest {
     @Test
     void reloadWithEmptyStateRejectsEverything() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
 
         // when
         authenticator.reload(Set.of(), Map.of());
@@ -148,9 +148,9 @@ class SaslAuthenticatorTest {
     @Test
     void reloadIsSafeDuringConcurrentReads() throws Exception {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new UserConfig("PLAIN", "secret")));
-        var first = Map.of("alice", new UserConfig("PLAIN", "secret"));
-        var second = Map.of("bob", new UserConfig("PLAIN", "hunter2"));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
+        var first = Map.of("alice", new ClientConfig("PLAIN", "secret"));
+        var second = Map.of("bob", new ClientConfig("PLAIN", "hunter2"));
         var failure = new AtomicReference<Throwable>();
 
         // when

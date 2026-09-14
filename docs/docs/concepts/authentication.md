@@ -8,7 +8,7 @@ sidebar_position: 3
 kawa terminates client authentication itself. Clients authenticate to kawa
 directly via the standard Kafka SASL handshake; kawa authenticates to the
 upstream cluster separately as one dedicated service identity. Adding a kawa
-user never requires provisioning a matching Kafka principal.
+client never requires provisioning a matching Kafka principal.
 
 ## Protocol
 
@@ -22,7 +22,7 @@ implements. No custom client configuration — point any client at kawa with
 auth:
   mechanisms:
     - PLAIN
-  users:
+  clients:
     john:
       password: doe
     alice:
@@ -31,20 +31,20 @@ auth:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `mechanisms` | string list | yes | Advertised in `SaslHandshake` responses. Must include every mechanism any user needs. |
-| `users.<name>.password` | string | yes | Plain-text or `${VAR}` / `${VAR:-default}` for env interpolation. |
-| `users.<name>.mechanism` | string | no | Per-user override. Inherits `mechanisms[0]` when omitted. |
+| `mechanisms` | string list | yes | Advertised in `SaslHandshake` responses. Must include every mechanism any client needs. |
+| `clients.<name>.password` | string | yes | Plain-text or `${VAR}` / `${VAR:-default}` for env interpolation. |
+| `clients.<name>.mechanism` | string | no | Per-client override. Inherits `mechanisms[0]` when omitted. |
 
-### Per-user mechanism override
+### Per-client mechanism override
 
-When a user needs a different mechanism than the global default:
+When a client needs a different mechanism than the global default:
 
 ```yaml
 auth:
   mechanisms:
     - PLAIN
     - SCRAM-SHA-256
-  users:
+  clients:
     john:
       password: doe                    # inherits PLAIN
     alice:
@@ -52,7 +52,7 @@ auth:
       password: "${ALICE_PASSWORD}"
 ```
 
-Every user mechanism must appear in the `mechanisms` list — the gateway
+Every client mechanism must appear in the `mechanisms` list — the gateway
 advertises this list during handshake, so a mechanism not listed will be
 rejected before authentication is even attempted.
 
@@ -65,7 +65,7 @@ without a default cause a startup error.
 auth:
   mechanisms:
     - PLAIN
-  users:
+  clients:
     alice:
       password: "${ALICE_PASSWORD}"           # required at startup
     bob:
@@ -76,8 +76,8 @@ auth:
 
 kawa validates auth config at startup:
 
-- A user without `mechanism` + no global `mechanisms` → error
-- A user with `mechanism` not in the `mechanisms` list → error
+- A client without `mechanism` + no global `mechanisms` → error
+- A client with `mechanism` not in the `mechanisms` list → error
 - Blank or missing password → error
 
 ## Upstream broker authentication

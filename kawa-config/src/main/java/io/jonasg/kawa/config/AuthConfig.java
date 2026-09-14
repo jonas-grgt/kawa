@@ -8,88 +8,88 @@ import java.util.stream.Collectors;
 
 public record AuthConfig(
         Set<String> mechanisms,
-        Map<String, UserConfig> users,
+        Map<String, ClientConfig> clients,
         BrokerAuthConfig brokerAuth
 ) {
 
     public AuthConfig {
         mechanisms = mechanisms == null ? Set.of() : Set.copyOf(mechanisms);
-        users = users == null ? Map.of() : resolveUserMechanisms(users, mechanisms);
-        validateUserMechanisms(users, mechanisms);
+        clients = clients == null ? Map.of() : resolveClientMechanisms(clients, mechanisms);
+        validateClientMechanisms(clients, mechanisms);
     }
 
-    /// Returns a new [AuthConfig] with the given user added or replaced. The user's mechanism
-    /// is required. It is ensured present in the advertised [mechanisms] list (added when
-    /// missing), so the first user can be added to an empty config via the admin API. The
-    /// startup-only [brokerAuth] is preserved.
-    public AuthConfig withUser(String username, UserConfig user) {
-        if (user == null) {
-            throw new IllegalArgumentException("user config for '" + username + "' must not be null");
+    /// Returns a new [AuthConfig] with the given client added or replaced. The client's
+    /// mechanism is required. It is ensured present in the advertised [mechanisms] list
+    /// (added when missing), so the first client can be added to an empty config via the
+    /// admin API. The startup-only [brokerAuth] is preserved.
+    public AuthConfig withClient(String username, ClientConfig client) {
+        if (client == null) {
+            throw new IllegalArgumentException("client config for '" + username + "' must not be null");
         }
-        String mechanism = user.mechanism();
+        String mechanism = client.mechanism();
         if (mechanism == null || mechanism.isBlank()) {
-            throw new IllegalArgumentException("user '" + username + "' must specify a mechanism");
+            throw new IllegalArgumentException("client '" + username + "' must specify a mechanism");
         }
-        var newUsers = new HashMap<>(users);
-        newUsers.put(username, user);
+        var newClients = new HashMap<>(clients);
+        newClients.put(username, client);
         Set<String> newMechanisms = mechanisms;
         if (!mechanisms.contains(mechanism)) {
             var expanded = new HashSet<>(mechanisms);
             expanded.add(mechanism);
             newMechanisms = Set.copyOf(expanded);
         }
-        return new AuthConfig(newMechanisms, newUsers, brokerAuth);
+        return new AuthConfig(newMechanisms, newClients, brokerAuth);
     }
 
-    /// Returns a new [AuthConfig] with the given user removed. The startup-only [brokerAuth]
-    /// is preserved.
-    public AuthConfig withoutUser(String username) {
-        var newUsers = new HashMap<>(users);
-        newUsers.remove(username);
-        return new AuthConfig(mechanisms, newUsers, brokerAuth);
+    /// Returns a new [AuthConfig] with the given client removed. The startup-only
+    /// [brokerAuth] is preserved.
+    public AuthConfig withoutClient(String username) {
+        var newClients = new HashMap<>(clients);
+        newClients.remove(username);
+        return new AuthConfig(mechanisms, newClients, brokerAuth);
     }
 
-    private static Map<String, UserConfig> resolveUserMechanisms(
-            Map<String, UserConfig> users,
+    private static Map<String, ClientConfig> resolveClientMechanisms(
+            Map<String, ClientConfig> clients,
             Set<String> mechanisms
     ) {
         // Deterministic default: pick the alphabetically-first configured mechanism so a
-        // user without an explicit mechanism resolves consistently regardless of Set order.
+        // client without an explicit mechanism resolves consistently regardless of Set order.
         String globalMechanism = mechanisms.stream().sorted().findFirst().orElse(null);
-        return users.entrySet().stream().collect(Collectors.toUnmodifiableMap(
+        return clients.entrySet().stream().collect(Collectors.toUnmodifiableMap(
                 Map.Entry::getKey,
-                entry -> resolveUser(entry.getKey(), entry.getValue(), globalMechanism)));
+                entry -> resolveClient(entry.getKey(), entry.getValue(), globalMechanism)));
     }
 
-    private static UserConfig resolveUser(
+    private static ClientConfig resolveClient(
             String username,
-            UserConfig user,
+            ClientConfig client,
             String globalMechanism
     ) {
-        if (user == null) {
-            throw new IllegalArgumentException("user config for '" + username + "' must not be null");
+        if (client == null) {
+            throw new IllegalArgumentException("client config for '" + username + "' must not be null");
         }
-        String mechanism = user.mechanism();
+        String mechanism = client.mechanism();
         if (mechanism == null || mechanism.isBlank()) {
             if (globalMechanism == null) {
-                throw new IllegalArgumentException("user '" + username
+                throw new IllegalArgumentException("client '" + username
                         + "' has no mechanism and no global mechanism is configured");
             }
-            return new UserConfig(globalMechanism, user.password());
+            return new ClientConfig(globalMechanism, client.password());
         }
-        return user;
+        return client;
     }
 
-    private static void validateUserMechanisms(
-            Map<String, UserConfig> users,
+    private static void validateClientMechanisms(
+            Map<String, ClientConfig> clients,
             Set<String> mechanisms
     ) {
-        for (var entry : users.entrySet()) {
+        for (var entry : clients.entrySet()) {
             String username = entry.getKey();
             String mechanism = entry.getValue().mechanism();
             if (!mechanisms.contains(mechanism)) {
                 throw new IllegalArgumentException(
-                        "User '" + username + "' uses mechanism '" + mechanism
+                        "Client '" + username + "' uses mechanism '" + mechanism
                                 + "' which is not in the configured mechanisms list " + mechanisms);
             }
         }

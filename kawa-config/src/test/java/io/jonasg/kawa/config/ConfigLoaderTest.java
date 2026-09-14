@@ -61,7 +61,7 @@ class ConfigLoaderTest {
         assertThat(config.advertised()).isEqualTo(new AdvertisedListener(1, "localhost", 9092));
         assertThat(config.metrics().enabled()).isFalse();
         assertThat(config.auth().mechanisms()).isEmpty();
-        assertThat(config.auth().users()).isEmpty();
+        assertThat(config.auth().clients()).isEmpty();
         assertThat(config.auth().brokerAuth()).isNull();
         assertThat(config.admin().enabled()).isFalse();
         assertThat(config.configTopic()).isEqualTo("__kawa");
@@ -281,7 +281,7 @@ class ConfigLoaderTest {
                   mechanisms:
                     - PLAIN
                     - SCRAM-SHA-256
-                  users:
+                  clients:
                     alice:
                       password: s3cret
                     bob:
@@ -292,18 +292,18 @@ class ConfigLoaderTest {
                 """);
 
         assertThat(config.auth().mechanisms()).containsExactlyInAnyOrder("PLAIN", "SCRAM-SHA-256");
-        assertThat(config.auth().users()).hasSize(2);
-        assertThat(config.auth().users().get("alice").mechanism()).isEqualTo("PLAIN");
-        assertThat(config.auth().users().get("alice").password()).isEqualTo("s3cret");
-        assertThat(config.auth().users().get("bob").mechanism()).isEqualTo("SCRAM-SHA-256");
-        assertThat(config.auth().users().get("bob").password()).isEqualTo("hunter2");
+        assertThat(config.auth().clients()).hasSize(2);
+        assertThat(config.auth().clients().get("alice").mechanism()).isEqualTo("PLAIN");
+        assertThat(config.auth().clients().get("alice").password()).isEqualTo("s3cret");
+        assertThat(config.auth().clients().get("bob").mechanism()).isEqualTo("SCRAM-SHA-256");
+        assertThat(config.auth().clients().get("bob").password()).isEqualTo("hunter2");
     }
 
     @Test
-    void rejectsUserWithoutMechanismWhenNoGlobalMechanism() {
+    void rejectsClientWithoutMechanismWhenNoGlobalMechanism() {
         assertThatThrownBy(() -> loader.loadFromYaml("""
                 auth:
-                  users:
+                  clients:
                     alice:
                       password: s3cret
                 listeners:
@@ -319,7 +319,7 @@ class ConfigLoaderTest {
                 auth:
                   mechanisms:
                     - PLAIN
-                  users:
+                  clients:
                     alice:
                       password: s3cret
                 listeners:
@@ -328,7 +328,7 @@ class ConfigLoaderTest {
 
         assertThatThrownBy(() -> config.auth().mechanisms().add("SCRAM-SHA-512"))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> config.auth().users().put("bob", new UserConfig("PLAIN", "pw")))
+        assertThatThrownBy(() -> config.auth().clients().put("bob", new ClientConfig("PLAIN", "pw")))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -356,7 +356,7 @@ class ConfigLoaderTest {
                 auth:
                   mechanisms:
                     - PLAIN
-                  users:
+                  clients:
                     alice:
                       password: secret
                 listeners:

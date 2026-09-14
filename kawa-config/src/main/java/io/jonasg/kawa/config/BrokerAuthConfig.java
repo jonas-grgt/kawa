@@ -18,7 +18,7 @@ public record BrokerAuthConfig(
         if (password == null || password.isBlank()) {
             throw new IllegalArgumentException("brokerAuth password must not be null or blank");
         }
-        password = UserConfig.resolveEnvVars(password, System::getenv);
+        password = ClientConfig.resolveEnvVars(password, System::getenv);
     }
 
     static BrokerAuthConfig of(
@@ -36,6 +36,6 @@ public record BrokerAuthConfig(
         if (password == null || password.isBlank()) {
             throw new IllegalArgumentException("brokerAuth password must not be null or blank");
         }
-        return new BrokerAuthConfig(mechanism, username, UserConfig.resolveEnvVars(password, envLookup));
+        return new BrokerAuthConfig(mechanism, username, ClientConfig.resolveEnvVars(password, envLookup));
     }
 }

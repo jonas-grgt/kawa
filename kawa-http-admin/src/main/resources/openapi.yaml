@@ -4,7 +4,7 @@ info:
   description: |
     HTTP surface of the Kafka Access Gateway (kawa) admin server. Exposes gateway state
     (virtual and physical topics) to a UI and reads/writes the dynamic gateway config
-    (RBAC roles and groups, auth users, governance) through the config topic.
+    (RBAC roles and groups, auth clients, governance) through the config topic.
 
     Config writes are persisted to the config topic and applied asynchronously by the
     gateway's config consumer: a successful write response means the change is persisted,
@@ -236,29 +236,29 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '500':
           $ref: '#/components/responses/InternalError'
-  /auth/users:
+  /auth/clients:
     get:
-      summary: List auth users
-      description: The SASL users from the dynamic config.
+      summary: List auth clients
+      description: The SASL clients from the dynamic config.
       responses:
         '200':
-          description: The users, each with its username, mechanism and password
+          description: The clients, each with its username, mechanism and password
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/UserView'
+                  $ref: '#/components/schemas/ClientView'
         '404':
           $ref: '#/components/responses/NotFound'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
         '500':
           $ref: '#/components/responses/InternalError'
-  /auth/users/{name}:
+  /auth/clients/{name}:
     put:
-      summary: Upsert an auth user
-      description: Adds or replaces the user `name` and persists the new config snapshot.
+      summary: Upsert an auth client
+      description: Adds or replaces the client `name` and persists the new config snapshot.
       parameters:
         - $ref: '#/components/parameters/ConfigEntryName'
       requestBody:
@@ -266,14 +266,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserConfig'
+              $ref: '#/components/schemas/ClientConfig'
       responses:
         '200':
-          description: The stored user
+          description: The stored client
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserConfig'
+                $ref: '#/components/schemas/ClientConfig'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -283,8 +283,8 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
     patch:
-      summary: Update an auth user
-      description: Updates one or both fields of the user `name` and persists the new config snapshot. Fields omitted from the body keep their stored value; the user must already exist. The password is write-only and never returned.
+      summary: Update an auth client
+      description: Updates one or both fields of the client `name` and persists the new config snapshot. Fields omitted from the body keep their stored value; the client must already exist. The password is write-only and never returned.
       parameters:
         - $ref: '#/components/parameters/ConfigEntryName'
       requestBody:
@@ -292,14 +292,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserConfigPatch'
+              $ref: '#/components/schemas/ClientConfigPatch'
       responses:
         '200':
-          description: The stored user
+          description: The stored client
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserView'
+                $ref: '#/components/schemas/ClientView'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -309,13 +309,13 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
     delete:
-      summary: Delete an auth user
-      description: Removes the user `name` and persists the new config snapshot.
+      summary: Delete an auth client
+      description: Removes the client `name` and persists the new config snapshot.
       parameters:
         - $ref: '#/components/parameters/ConfigEntryName'
       responses:
         '204':
-          description: User deleted
+          description: Client deleted
         '404':
           $ref: '#/components/responses/NotFound'
         '405':
@@ -624,7 +624,7 @@ components:
         topicPattern:
           type: string
           description: Topic pattern regex the exemption applies to.
-    UserConfig:
+    ClientConfig:
       type: object
       required:
         - password
@@ -635,7 +635,7 @@ components:
         password:
           type: string
           description: Password; may reference environment variables as ${VAR} or ${VAR:-default}.
-    UserConfigPatch:
+    ClientConfigPatch:
       type: object
       properties:
         mechanism:
@@ -644,7 +644,7 @@ components:
         password:
           type: string
           description: New password; may reference environment variables as ${VAR} or ${VAR:-default}. Omitted to keep the current password.
-    UserView:
+    ClientView:
       type: object
       required:
         - username
