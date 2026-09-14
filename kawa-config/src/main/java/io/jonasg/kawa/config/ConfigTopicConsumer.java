@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -32,7 +31,9 @@ import java.util.function.Consumer;
 /// config and the next valid message resumes the stream.
 ///
 /// The topic is expected to have a single partition and `cleanup.policy=compact`; ordering
-/// within the partition is what makes "apply the last snapshot" correct.
+/// within the partition is what makes "apply the last snapshot" correct. The consumer uses
+/// direct partition assignment ([KafkaConsumer#assign]) instead of a consumer group, so the
+/// gateway never registers a group in the cluster.
 public final class ConfigTopicConsumer implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(ConfigTopicConsumer.class);
@@ -126,8 +127,13 @@ public final class ConfigTopicConsumer implements AutoCloseable {
 
     private void run() {
         try {
-            consumer.subscribe(List.of(topic));
-            TopicPartition partition = awaitAssignment();
+            // Direct partition assignment instead of a consumer group: the config topic is a
+            // single-partition compacted topic and every boot re-reads from the earliest
+            // offset, so no group membership or offset commits are needed. This keeps the
+            // gateway from registering a consumer group (and leaving dead groups behind on
+            // every restart) in the cluster.
+            TopicPartition partition = new TopicPartition(topic, 0);
+            consumer.assign(Set.of(partition));
             consumer.seekToBeginning(Set.of(partition));
             long targetEnd = consumer.endOffsets(Set.of(partition)).get(partition);
             boolean caughtUp = false;
@@ -151,17 +157,6 @@ public final class ConfigTopicConsumer implements AutoCloseable {
         }
     }
 
-    private TopicPartition awaitAssignment() {
-        while (running) {
-            Set<TopicPartition> assignment = consumer.assignment();
-            if (!assignment.isEmpty()) {
-                return assignment.iterator().next();
-            }
-            consumer.poll(Duration.ofMillis(100));
-        }
-        throw new IllegalStateException("config consumer stopped before partition assignment");
-    }
-
     /// Deserializes one message and delivers it to the callback. Package-private so the
     /// message-handling path is testable without a broker.
     void handle(ConsumerRecord<String, String> record) {
@@ -181,6 +176,7 @@ public final class ConfigTopicConsumer implements AutoCloseable {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
