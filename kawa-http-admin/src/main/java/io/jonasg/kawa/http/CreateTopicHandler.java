@@ -24,6 +24,7 @@ public final class CreateTopicHandler implements Router.Handler {
 
     private final GovernancePolicy governance;
     private final GatewayConfigRepository repository;
+    private final ConsistencyAwareUpdater updater;
     private final TopicAdmin topicAdmin;
     private final JsonMapper mapper = JsonMapper.builder().build();
 
@@ -34,6 +35,7 @@ public final class CreateTopicHandler implements Router.Handler {
     ) {
         this.governance = governance;
         this.repository = repository;
+        this.updater = new ConsistencyAwareUpdater(repository);
         this.topicAdmin = topicAdmin;
     }
 
@@ -52,19 +54,23 @@ public final class CreateTopicHandler implements Router.Handler {
             return Router.Response.badRequest("topic name is required");
         }
         return switch (body.type()) {
-            case "virtual" -> createVirtual(body);
+            case "virtual" -> createVirtual(request, body);
             case "physical" -> createPhysical(body);
             default -> Router.Response.badRequest("type must be 'physical' or 'virtual'");
         };
     }
 
-    private Router.Response<?> createVirtual(TopicCreateRequest body) {
+    private Router.Response<?> createVirtual(Router.Request request, TopicCreateRequest body) {
         if (body.topic() == null || body.topic().isBlank()) {
             return Router.Response.badRequest("virtual topic requires a physical 'topic'");
         }
         var config = new VirtualTopicConfig(
                 body.topic(), body.filter(), body.exposePhysicalTopic() != null && body.exposePhysicalTopic());
-        repository.update(base -> base.putVirtualTopic(body.name(), config));
+        try {
+            updater.update(request, base -> base.putVirtualTopic(body.name(), config));
+        } catch (IllegalArgumentException e) {
+            return Router.Response.badRequest(e.getMessage());
+        }
         return Router.Response.created(config);
     }
 

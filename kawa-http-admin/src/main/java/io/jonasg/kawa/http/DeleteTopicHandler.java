@@ -11,11 +11,13 @@ import io.jonasg.kawa.core.cluster.MetadataCache;
 public final class DeleteTopicHandler implements Router.Handler {
 
     private final GatewayConfigRepository repository;
+    private final ConsistencyAwareUpdater updater;
     private final MetadataCache cache;
     private final TopicAdmin topicAdmin;
 
     public DeleteTopicHandler(GatewayConfigRepository repository, MetadataCache cache, TopicAdmin topicAdmin) {
         this.repository = repository;
+        this.updater = new ConsistencyAwareUpdater(repository);
         this.cache = cache;
         this.topicAdmin = topicAdmin;
     }
@@ -28,7 +30,11 @@ public final class DeleteTopicHandler implements Router.Handler {
         String name = request.pathParams().get("name");
         GatewayConfig base = repository.getActiveConfigOrEmpty();
         if (base.virtualTopics().containsKey(name)) {
-            repository.update(config -> config.removeVirtualTopic(name));
+            try {
+                updater.update(request, config -> config.removeVirtualTopic(name));
+            } catch (IllegalArgumentException e) {
+                return Router.Response.badRequest(e.getMessage());
+            }
             return Router.Response.noContent();
         }
         boolean physicalExists = cache.topics().stream().anyMatch(t -> t.name().equals(name));

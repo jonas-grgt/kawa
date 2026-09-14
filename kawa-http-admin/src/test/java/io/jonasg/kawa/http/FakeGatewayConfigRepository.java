@@ -9,6 +9,8 @@ import java.util.function.UnaryOperator;
 final class FakeGatewayConfigRepository implements GatewayConfigRepository {
 
     private GatewayConfig current;
+    private int updateCalls;
+    private int updateAndWaitCalls;
 
     FakeGatewayConfigRepository(GatewayConfig initial) {
         this.current = initial;
@@ -21,7 +23,22 @@ final class FakeGatewayConfigRepository implements GatewayConfigRepository {
 
     @Override
     public void update(UnaryOperator<GatewayConfig> mutation) {
+        updateCalls++;
         this.current = mutation.apply(getActiveConfigOrEmpty());
+    }
+
+    @Override
+    public void updateAndWaitUntilApplied(UnaryOperator<GatewayConfig> mutation) {
+        updateAndWaitCalls++;
+        this.current = mutation.apply(getActiveConfigOrEmpty());
+    }
+
+    int updateCalls() {
+        return updateCalls;
+    }
+
+    int updateAndWaitCalls() {
+        return updateAndWaitCalls;
     }
 
     @Override

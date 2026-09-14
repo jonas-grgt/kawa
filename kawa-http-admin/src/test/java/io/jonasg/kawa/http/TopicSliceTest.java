@@ -232,6 +232,37 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
         assertThat(topicAdmin.created).isEmpty();
+        assertThat(repository.updateCalls()).isEqualTo(1);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
+    }
+
+    @Test
+    void createsVirtualTopicWithAppliedConsistencyWaitsForApplyMode() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("POST", "/topics?consistency=applied", "{\"type\":\"virtual\",\"name\":\"orders\",\"topic\":\"orders-v2\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(201);
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsInvalidConsistencyForVirtualTopicCreate() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("POST", "/topics?consistency=strong", "{\"type\":\"virtual\",\"name\":\"orders\",\"topic\":\"orders-v2\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.body()).contains("invalid consistency 'strong'");
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
     }
 
     @Test
@@ -260,6 +291,22 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         assertThat(response.body()).contains("\"topic\":\"raw-orders\"");
         assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("raw-orders"));
+        assertThat(repository.updateCalls()).isEqualTo(1);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
+    }
+
+    @Test
+    void updatesVirtualTopicWithAppliedConsistencyWaitsForApplyMode() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/topics/orders?consistency=applied", "{\"type\":\"virtual\",\"topic\":\"raw-orders\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(1);
     }
 
     @Test
@@ -346,6 +393,41 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         assertThat(response.statusCode()).isEqualTo(204);
         assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
         assertThat(topicAdmin.deleted).isEmpty();
+        assertThat(repository.updateCalls()).isEqualTo(1);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
+    }
+
+    @Test
+    void deletesVirtualTopicWithAppliedConsistencyWaitsForApplyMode() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+        startServer();
+
+        // when
+        var response = send("DELETE", "/topics/orders?consistency=applied", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsInvalidConsistencyForVirtualTopicDelete() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+        startServer();
+
+        // when
+        var response = send("DELETE", "/topics/orders?consistency=invalid", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.body()).contains("invalid consistency 'invalid'");
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
     }
 
     @Test

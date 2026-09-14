@@ -13,6 +13,9 @@ import io.netty.handler.codec.http.HttpVersion;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /// Http Routing capable Netty Handler. It decodes a [FullHttpRequest], routes it
 /// through the [Router] to a plain handler, and writes the response.
@@ -31,7 +34,9 @@ public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHtt
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
-        String path = request.uri();
+        String uri = request.uri();
+        int queryStart = uri.indexOf('?');
+        String path = queryStart >= 0 ? uri.substring(0, queryStart) : uri;
         if (!router.hasPath(path)) {
             write(ctx, request, HttpResponseStatus.NOT_FOUND, "{\"error\":\"not found\"}");
             return;
@@ -43,7 +48,12 @@ public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHtt
         }
         byte[] body = new byte[request.content().readableBytes()];
         request.content().readBytes(body);
-        Router.Request req = new Router.Request(request.method().name(), path, match.pathParams(), body);
+        Router.Request req = new Router.Request(
+                request.method().name(),
+                path,
+                match.pathParams(),
+                parseQueryParams(queryStart >= 0 ? uri.substring(queryStart + 1) : ""),
+                body);
         Router.Response<?> response;
         try {
             response = match.handler().handle(req);
@@ -67,6 +77,24 @@ public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHtt
         write(ctx, request, HttpResponseStatus.valueOf(response.status()), responseBody, response.contentType());
     }
 
+    private static Map<String, String> parseQueryParams(String query) {
+        if (query == null || query.isBlank()) {
+            return Map.of();
+        }
+        var params = new LinkedHashMap<String, String>();
+        Arrays.stream(query.split("&"))
+                .filter(part -> !part.isBlank())
+                .forEach(part -> {
+                    int idx = part.indexOf('=');
+                    if (idx < 0) {
+                        params.put(part, "");
+                        return;
+                    }
+                    params.put(part.substring(0, idx), part.substring(idx + 1));
+                });
+        return Map.copyOf(params);
+    }
+
     private static void write(
             ChannelHandlerContext ctx,
             FullHttpRequest request,
@@ -74,15 +102,6 @@ public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHtt
             String body
     ) {
         write(ctx, request, status, body.getBytes(StandardCharsets.UTF_8), JSON);
-    }
-
-    private static void write(
-            ChannelHandlerContext ctx,
-            FullHttpRequest request,
-            HttpResponseStatus status,
-            byte[] body
-    ) {
-        write(ctx, request, status, body, JSON);
     }
 
     private static void write(
@@ -100,7 +119,7 @@ public final class HttpRouterHandler extends SimpleChannelInboundHandler<FullHtt
         if (keepAlive) {
             response.headers().set(HttpHeaderNames.CONNECTION, "keep-alive");
         }
-        ctx.writeAndFlush(response).addListener(future -> {
+        ctx.writeAndFlush(response).addListener(_ -> {
             if (!keepAlive) {
                 ctx.close();
             }

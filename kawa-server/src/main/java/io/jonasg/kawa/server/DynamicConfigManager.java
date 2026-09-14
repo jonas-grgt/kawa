@@ -4,6 +4,7 @@ import io.jonasg.kawa.config.ConfigTopicConsumer;
 import io.jonasg.kawa.config.ConfigTopicRepository;
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
+import io.jonasg.kawa.config.OffsetAwareGatewayConfigRepository;
 import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.governance.GovernancePolicy;
 import io.jonasg.kawa.rbac.RbacAuthorizer;
@@ -11,7 +12,9 @@ import io.jonasg.kawa.server.auth.SaslAuthenticator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.function.UnaryOperator;
 
 /// Owns the config-topic consumer and applies each [GatewayConfig] snapshot to the mutable
@@ -39,14 +42,19 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
 
     private static final Logger log = LoggerFactory.getLogger(DynamicConfigManager.class);
 
+    private static final Duration DEFAULT_APPLY_WAIT_TIMEOUT = Duration.ofSeconds(5);
+
     private final ConfigTopicConsumer consumer;
     private final GatewayConfigRepository writeRepository;
     private final VirtualTopicManager virtualTopics;
     private final RbacAuthorizer authorizer;
     private final SaslAuthenticator saslAuthenticator;
     private final GovernancePolicy governance;
+    private final Duration applyWaitTimeout;
+    private final Object applyProgressLock = new Object();
 
     private volatile GatewayConfig current;
+    private volatile long lastAppliedOffset = -1L;
 
     public DynamicConfigManager(
             String bootstrapServers,
@@ -58,7 +66,7 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
             GovernancePolicy governance
     ) {
         this(bootstrapServers, topic, groupId, new Properties(), virtualTopics, authorizer, saslAuthenticator,
-                governance);
+                governance, DEFAULT_APPLY_WAIT_TIMEOUT);
     }
 
     /// Variant that accepts extra consumer/producer properties (e.g. SASL/security settings
@@ -73,11 +81,32 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
             SaslAuthenticator saslAuthenticator,
             GovernancePolicy governance
     ) {
+        this(bootstrapServers, topic, groupId, extraProps, virtualTopics, authorizer, saslAuthenticator, governance,
+                DEFAULT_APPLY_WAIT_TIMEOUT);
+    }
+
+    DynamicConfigManager(
+            String bootstrapServers,
+            String topic,
+            String groupId,
+            Properties extraProps,
+            VirtualTopicManager virtualTopics,
+            RbacAuthorizer authorizer,
+            SaslAuthenticator saslAuthenticator,
+            GovernancePolicy governance,
+            Duration applyWaitTimeout
+    ) {
         this.virtualTopics = virtualTopics;
         this.authorizer = authorizer;
         this.saslAuthenticator = saslAuthenticator;
         this.governance = governance;
-        this.consumer = new ConfigTopicConsumer(bootstrapServers, topic, groupId, extraProps, this::apply);
+        this.applyWaitTimeout = applyWaitTimeout;
+        this.consumer = new ConfigTopicConsumer(
+                bootstrapServers,
+                topic,
+                groupId,
+                extraProps,
+                (config, offset) -> apply(config, offset));
         this.writeRepository = new ConfigTopicRepository(bootstrapServers, topic, extraProps);
     }
 
@@ -91,22 +120,54 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
             SaslAuthenticator saslAuthenticator,
             GovernancePolicy governance
     ) {
+        this(writeRepository, virtualTopics, authorizer, saslAuthenticator, governance, DEFAULT_APPLY_WAIT_TIMEOUT);
+    }
+
+    DynamicConfigManager(
+            GatewayConfigRepository writeRepository,
+            VirtualTopicManager virtualTopics,
+            RbacAuthorizer authorizer,
+            SaslAuthenticator saslAuthenticator,
+            GovernancePolicy governance,
+            Duration applyWaitTimeout
+    ) {
         this.virtualTopics = virtualTopics;
         this.authorizer = authorizer;
         this.saslAuthenticator = saslAuthenticator;
         this.governance = governance;
-        this.consumer = new ConfigTopicConsumer("localhost:9092", "__kawa", "test-group", this::apply);
+        this.applyWaitTimeout = applyWaitTimeout;
+        this.consumer = new ConfigTopicConsumer(
+                "localhost:9092",
+                "__kawa",
+                "test-group",
+                new Properties(),
+                (config, offset) -> apply(config, offset));
         this.writeRepository = writeRepository;
     }
 
     /// Applies a snapshot to the four mutable consumers. Package-private so the wiring is
     /// testable without a broker.
     void apply(GatewayConfig config) {
+        applyConsumers(config);
+        current = config;
+    }
+
+    /// Applies a snapshot and advances the last-applied offset used by
+    /// [updateAndWaitUntilApplied]. Package-private so offset-wait behavior is testable.
+    void apply(GatewayConfig config, long offset) {
+        applyConsumers(config);
+        current = config;
+        synchronized (applyProgressLock) {
+            lastAppliedOffset = Math.max(lastAppliedOffset, offset);
+            applyProgressLock.notifyAll();
+        }
+    }
+
+    private void applyConsumers(GatewayConfig config) {
         authorizer.reload(config.rbac()); // risky first: can throw on unknown role
         governance.reload(config.governance()); // risky: can throw on invalid CEL expression
         virtualTopics.reload(config.virtualTopics());
         saslAuthenticator.reload(config.auth().mechanisms(), config.auth().clients());
-        current = config;
     }
 
     /// Starts the config-topic consumer. Idempotent.
@@ -138,6 +199,40 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
         // config (see getActiveConfig).
         GatewayConfig base = getActiveConfigOrEmpty();
         writeRepository.update(ignored -> mutation.apply(base));
+    }
+
+    @Override
+    public void updateAndWaitUntilApplied(UnaryOperator<GatewayConfig> mutation) {
+        GatewayConfig base = getActiveConfigOrEmpty();
+        if (!(writeRepository instanceof OffsetAwareGatewayConfigRepository offsetAwareRepository)) {
+            writeRepository.updateAndWaitUntilApplied(ignored -> mutation.apply(base));
+            return;
+        }
+        long writtenOffset = offsetAwareRepository.updateAndGetOffset(ignored -> mutation.apply(base));
+        awaitAppliedOffset(writtenOffset);
+    }
+
+    private void awaitAppliedOffset(long targetOffset) {
+        long timeoutNanos = applyWaitTimeout.toNanos();
+        long deadline = System.nanoTime() + timeoutNanos;
+        synchronized (applyProgressLock) {
+            while (lastAppliedOffset < targetOffset) {
+                long remainingNanos = deadline - System.nanoTime();
+                if (remainingNanos <= 0) {
+                    throw new IllegalStateException(
+                            "timed out waiting for config apply after persist; targetOffset=" + targetOffset
+                                    + ", lastAppliedOffset=" + lastAppliedOffset
+                                    + ", timeout=" + applyWaitTimeout.toMillis() + "ms");
+                }
+                try {
+                    TimeUnit.NANOSECONDS.timedWait(applyProgressLock, remainingNanos);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(
+                            "interrupted while waiting for config apply at offset " + targetOffset, e);
+                }
+            }
+        }
     }
 
     @Override

@@ -10,10 +10,12 @@ import tools.jackson.databind.json.JsonMapper;
 public final class UpdateTopicHandler implements Router.Handler {
 
     private final GatewayConfigRepository repository;
+    private final ConsistencyAwareUpdater updater;
     private final JsonMapper mapper = JsonMapper.builder().build();
 
     public UpdateTopicHandler(GatewayConfigRepository repository) {
         this.repository = repository;
+        this.updater = new ConsistencyAwareUpdater(repository);
     }
 
     @Override
@@ -36,7 +38,11 @@ public final class UpdateTopicHandler implements Router.Handler {
         }
         var value = new VirtualTopicConfig(
                 body.topic(), body.filter(), body.exposePhysicalTopic() != null && body.exposePhysicalTopic());
-        repository.update(base -> base.putVirtualTopic(name, value));
+        try {
+            updater.update(request, base -> base.putVirtualTopic(name, value));
+        } catch (IllegalArgumentException e) {
+            return Router.Response.badRequest(e.getMessage());
+        }
         return Router.Response.ok(value);
     }
 }

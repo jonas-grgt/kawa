@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /// Consumes the compacted gateway-config topic and delivers each full [GatewayConfig]
@@ -38,7 +39,7 @@ public final class ConfigTopicConsumer implements AutoCloseable {
 
     private final KafkaConsumer<String, String> consumer;
     private final String topic;
-    private final Consumer<GatewayConfig> onConfig;
+    private final BiConsumer<GatewayConfig, Long> onConfigWithOffset;
     private final JsonMapper mapper = JsonMapper.builder().build();
     private final CountDownLatch initialLoad = new CountDownLatch(1);
 
@@ -68,8 +69,20 @@ public final class ConfigTopicConsumer implements AutoCloseable {
             Properties extraProps,
             Consumer<GatewayConfig> onConfig
     ) {
+        this(bootstrapServers, topic, groupId, extraProps, (config, ignoredOffset) -> onConfig.accept(config));
+    }
+
+    /// Variant with extra consumer properties that also passes the consumed record offset to
+    /// the callback.
+    public ConfigTopicConsumer(
+            String bootstrapServers,
+            String topic,
+            String groupId,
+            Properties extraProps,
+            BiConsumer<GatewayConfig, Long> onConfigWithOffset
+    ) {
         this.topic = topic;
-        this.onConfig = onConfig;
+        this.onConfigWithOffset = onConfigWithOffset;
         this.consumer = new KafkaConsumer<>(consumerProps(bootstrapServers, groupId, extraProps));
     }
 
@@ -154,7 +167,7 @@ public final class ConfigTopicConsumer implements AutoCloseable {
     void handle(ConsumerRecord<String, String> record) {
         try {
             GatewayConfig config = mapper.readValue(record.value(), GatewayConfig.class);
-            onConfig.accept(config);
+            onConfigWithOffset.accept(config, record.offset());
         } catch (Exception e) {
             log.error("skipping invalid config message at offset {} on topic {}", record.offset(), topic, e);
         }

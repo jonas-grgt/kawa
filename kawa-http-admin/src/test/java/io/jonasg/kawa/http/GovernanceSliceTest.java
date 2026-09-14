@@ -66,6 +66,42 @@ class GovernanceSliceTest extends AdminHttpSliceTestBase {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(repository.getActiveConfig().governance().topicRules()).containsKey("min-replication");
         assertThat(repository.getActiveConfig().governance().exemptions()).containsKey("ops");
+        assertThat(repository.updateCalls()).isEqualTo(1);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
+    }
+
+    @Test
+    void replacesGovernanceWithAppliedConsistencyWaitsForApplyMode() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/governance?consistency=applied",
+                "{\"topicRules\":{\"min-replication\":{\"message\":\"replication factor must be at least 3\","
+                        + "\"expression\":\"topic.replicationFactor >= 3\"}},"
+                        + "\"exemptions\":{\"ops\":{\"principal\":\".*\",\"topicPattern\":\".*-changelog\"}}}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsInvalidConsistencyForGovernanceWrite() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/governance?consistency=eventual",
+                "{\"topicRules\":{\"min-replication\":{\"message\":\"replication factor must be at least 3\","
+                        + "\"expression\":\"topic.replicationFactor >= 3\"}}}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.body()).contains("invalid consistency 'eventual'");
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
     }
 
     @Test

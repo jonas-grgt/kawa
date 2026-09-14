@@ -8,6 +8,7 @@ import io.jonasg.kawa.config.GovernanceConfig;
 import io.jonasg.kawa.config.GovernanceExemptionConfig;
 import io.jonasg.kawa.config.GovernanceRuleConfig;
 import io.jonasg.kawa.config.GroupConfig;
+import io.jonasg.kawa.config.OffsetAwareGatewayConfigRepository;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
 import io.jonasg.kawa.config.RoleConfig;
@@ -30,6 +31,7 @@ import org.apache.kafka.common.resource.ResourceType;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -150,6 +152,11 @@ class DynamicConfigManagerTest {
             }
 
             @Override
+            public void updateAndWaitUntilApplied(UnaryOperator<GatewayConfig> mutation) {
+                update(mutation);
+            }
+
+            @Override
             public void close() {
                 // no resources
             }
@@ -189,6 +196,11 @@ class DynamicConfigManagerTest {
             @Override
             public void update(UnaryOperator<GatewayConfig> mutation) {
                 upsert(mutation.apply(getActiveConfigOrEmpty()));
+            }
+
+            @Override
+            public void updateAndWaitUntilApplied(UnaryOperator<GatewayConfig> mutation) {
+                update(mutation);
             }
 
             @Override
@@ -293,5 +305,137 @@ class DynamicConfigManagerTest {
         // then
         assertThat(governancePolicy.exempt("streams-app", "orders-changelog")).isTrue();
         assertThat(governancePolicy.exempt("other-app", "orders-changelog")).isFalse();
+    }
+
+    @Test
+    void updateAndWaitUntilAppliedReturnsAfterWrittenOffsetIsApplied() {
+        // given
+        var writeRepository = new OffsetAwareTestRepository();
+        var manager = new DynamicConfigManager(
+                writeRepository,
+                new VirtualTopicManager(Map.of()),
+                new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
+                new SaslAuthenticator(Set.of()),
+                emptyGovernance(),
+                Duration.ofSeconds(1));
+        var targetConfig = config(
+                Map.of("orders", new VirtualTopicConfig("orders-v2")),
+                rbacAllowingReadOnOrders(),
+                plainAuth(),
+                null);
+        long writtenOffset = writeRepository.nextOffset;
+        Thread applier = new Thread(() -> {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            }
+            manager.apply(targetConfig, writtenOffset);
+        });
+        applier.start();
+
+        // when
+        manager.updateAndWaitUntilApplied(_ -> targetConfig);
+
+        // then
+        assertThat(writeRepository.updateAndGetOffsetCalls).isEqualTo(1);
+        assertThat(manager.getActiveConfig()).isSameAs(targetConfig);
+    }
+
+    @Test
+    void updateAndWaitUntilAppliedTimesOutWhenOffsetIsNotApplied() {
+        // given
+        var writeRepository = new OffsetAwareTestRepository();
+        var manager = new DynamicConfigManager(
+                writeRepository,
+                new VirtualTopicManager(Map.of()),
+                new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
+                new SaslAuthenticator(Set.of()),
+                emptyGovernance(),
+                Duration.ofMillis(20));
+
+        // when / then
+        assertThatThrownBy(() -> manager.updateAndWaitUntilApplied(_ -> GatewayConfig.empty()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("timed out waiting for config apply")
+                .hasMessageContaining("targetOffset=");
+    }
+
+    @Test
+    void updateAndWaitUntilAppliedFallsBackToRepositoryWhenOffsetIsUnavailable() {
+        // given
+        var writeRepository = new GatewayConfigRepository() {
+            private GatewayConfig current;
+            private int updateAndWaitCalls;
+
+            @Override
+            public GatewayConfig getActiveConfig() {
+                return current;
+            }
+
+            @Override
+            public void update(UnaryOperator<GatewayConfig> mutation) {
+                current = mutation.apply(getActiveConfigOrEmpty());
+            }
+
+            @Override
+            public void updateAndWaitUntilApplied(UnaryOperator<GatewayConfig> mutation) {
+                updateAndWaitCalls++;
+                current = mutation.apply(getActiveConfigOrEmpty());
+            }
+
+            @Override
+            public void close() {
+                // no resources
+            }
+        };
+        var manager = new DynamicConfigManager(
+                writeRepository,
+                new VirtualTopicManager(Map.of()),
+                new RbacAuthorizer(new RbacConfig(Map.of(), Map.of())),
+                new SaslAuthenticator(Set.of()),
+                emptyGovernance(),
+                Duration.ofMillis(20));
+
+        // when
+        manager.updateAndWaitUntilApplied(_ -> GatewayConfig.empty().putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+
+        // then
+        assertThat(writeRepository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
+    }
+
+    private static final class OffsetAwareTestRepository implements OffsetAwareGatewayConfigRepository {
+        private GatewayConfig current;
+        private long nextOffset = 7;
+        private int updateAndGetOffsetCalls;
+
+        @Override
+        public GatewayConfig getActiveConfig() {
+            return current;
+        }
+
+        @Override
+        public void update(UnaryOperator<GatewayConfig> mutation) {
+            current = mutation.apply(getActiveConfigOrEmpty());
+        }
+
+        @Override
+        public void updateAndWaitUntilApplied(UnaryOperator<GatewayConfig> mutation) {
+            update(mutation);
+        }
+
+        @Override
+        public long updateAndGetOffset(UnaryOperator<GatewayConfig> mutation) {
+            updateAndGetOffsetCalls++;
+            current = mutation.apply(getActiveConfigOrEmpty());
+            return nextOffset++;
+        }
+
+        @Override
+        public void close() {
+            // no resources
+        }
     }
 }

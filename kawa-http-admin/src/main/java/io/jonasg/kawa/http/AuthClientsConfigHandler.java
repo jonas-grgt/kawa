@@ -69,7 +69,7 @@ public final class AuthClientsConfigHandler extends ConfigSectionHandler<ClientC
         String mechanism = patch.mechanism() != null ? patch.mechanism() : current.mechanism();
         String password = patch.password() != null ? patch.password() : current.password();
         try {
-            repository.update(config -> upsert(config, name, new ClientConfig(mechanism, password)));
+            updater.update(request, config -> upsert(config, name, new ClientConfig(mechanism, password)));
         } catch (IllegalArgumentException e) {
             return Router.Response.badRequest(e.getMessage());
         }

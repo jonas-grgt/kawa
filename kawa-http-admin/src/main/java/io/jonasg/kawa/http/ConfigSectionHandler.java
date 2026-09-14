@@ -18,12 +18,14 @@ import java.util.Map;
 abstract class ConfigSectionHandler<T> implements Router.Handler {
 
     protected final GatewayConfigRepository repository;
+    protected final ConsistencyAwareUpdater updater;
     protected final JsonMapper mapper = JsonMapper.builder().build();
     private final Class<T> valueType;
     private final String sectionName;
 
     ConfigSectionHandler(GatewayConfigRepository repository, Class<T> valueType, String sectionName) {
         this.repository = repository;
+        this.updater = new ConsistencyAwareUpdater(repository);
         this.valueType = valueType;
         this.sectionName = sectionName;
     }
@@ -57,7 +59,7 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
                     yield Router.Response.badRequest("invalid " + sectionName + " body: " + e.getMessage());
                 }
                 try {
-                    repository.update(config -> upsert(config, name, value));
+                    updater.update(request, config -> upsert(config, name, value));
                 } catch (IllegalArgumentException e) {
                     yield Router.Response.badRequest(e.getMessage());
                 }
@@ -67,7 +69,11 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
                 if (!entries(base).containsKey(name)) {
                     yield Router.Response.notFound(sectionName + " '" + name + "' not found");
                 }
-                repository.update(config -> remove(config, name));
+                try {
+                    updater.update(request, config -> remove(config, name));
+                } catch (IllegalArgumentException e) {
+                    yield Router.Response.badRequest(e.getMessage());
+                }
                 yield Router.Response.noContent();
             }
             default -> Router.Response.badRequest("unsupported method " + request.method());

@@ -13,6 +13,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ServerSliceTest extends AdminHttpSliceTestBase {
 
     @Test
+    void installsHttpRouterOnDedicatedExecutorGroup() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var hasExecutorGroup = server().hasDedicatedRouterExecutor();
+
+        // then
+        assertThat(hasExecutorGroup).isTrue();
+    }
+
+    @Test
     void servesRenderedOpenApiDocsOverHttp() throws Exception {
         // given
         startServer();

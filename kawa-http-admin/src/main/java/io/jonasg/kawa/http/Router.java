@@ -23,8 +23,15 @@ public final class Router {
     }
 
     /// The decoded request handed to a handler: method, path, path parameters captured from
-    /// `{name}` template segments, and the raw request body (empty when the request has none).
-    public record Request(String method, String path, Map<String, String> pathParams, byte[] body) {
+    /// `{name}` template segments, query parameters, and the raw request body (empty when the
+    /// request has none).
+    public record Request(
+            String method,
+            String path,
+            Map<String, String> pathParams,
+            Map<String, String> queryParams,
+            byte[] body
+    ) {
 
         public boolean hasBody() {
             return body.length > 0;

@@ -16,6 +16,8 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.cors.CorsHandler;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.EventExecutorGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,14 +34,13 @@ public final class AdminHttpServer {
     private static final Logger log = LoggerFactory.getLogger(AdminHttpServer.class);
 
     private final AdminConfig config;
-    private final VirtualTopicManager virtualTopics;
-    private final MetadataCache cache;
-    private final GovernancePolicy governance;
-    private final TopicAdmin topicAdmin;
+	private final TopicAdmin topicAdmin;
     private final Router router;
+    private final int routerExecutorThreads;
 
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
+    private EventExecutorGroup routerExecutorGroup;
     private Channel serverChannel;
 
     public AdminHttpServer(
@@ -51,10 +52,8 @@ public final class AdminHttpServer {
             TopicAdmin topicAdmin
     ) {
         this.config = config;
-        this.virtualTopics = virtualTopics;
-        this.cache = cache;
-        this.governance = governance;
-        this.topicAdmin = topicAdmin;
+		this.topicAdmin = topicAdmin;
+        this.routerExecutorThreads = Math.max(4, Runtime.getRuntime().availableProcessors());
         this.router = new Router()
                 .get("/topics", new GetTopicsHandler(virtualTopics, cache))
                 .post("/topics", new CreateTopicHandler(governance, configRepository, topicAdmin))
@@ -78,6 +77,7 @@ public final class AdminHttpServer {
     public void start() throws InterruptedException {
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup();
+        routerExecutorGroup = new DefaultEventExecutorGroup(routerExecutorThreads);
         var bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
@@ -91,7 +91,7 @@ public final class AdminHttpServer {
                         if (config.cors() != null) {
                             ch.pipeline().addLast("cors", new CorsHandler(CorsConfigFactory.from(config.cors())));
                         }
-                        ch.pipeline().addLast("httpRouter", new HttpRouterHandler(router));
+                        ch.pipeline().addLast(routerExecutorGroup, "httpRouter", new HttpRouterHandler(router));
                     }
                 });
         serverChannel = bootstrap.bind(config.host(), config.port()).sync().channel();
@@ -107,7 +107,14 @@ public final class AdminHttpServer {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }
+        if (routerExecutorGroup != null) {
+            routerExecutorGroup.shutdownGracefully();
+        }
         topicAdmin.close();
+    }
+
+    boolean hasDedicatedRouterExecutor() {
+        return routerExecutorGroup != null;
     }
 
     public int boundPort() {

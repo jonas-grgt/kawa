@@ -39,6 +39,10 @@ abstract class AdminHttpSliceTestBase {
     private AdminHttpServer server;
     private final HttpClient client = HttpClient.newHttpClient();
 
+    protected AdminHttpServer server() {
+        return server;
+    }
+
     @AfterEach
     void tearDown() {
         if (server != null) {

@@ -68,6 +68,51 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(repository.getActiveConfig().auth().clients()).containsKey("alice");
         assertThat(repository.getActiveConfig().auth().clients().get("alice").password()).isEqualTo("secret");
+        assertThat(repository.updateCalls()).isEqualTo(1);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
+    }
+
+    @Test
+    void addsClientWithAppliedConsistencyWaitsForApplyMode() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/auth/clients/alice?consistency=applied", "{\"mechanism\":\"PLAIN\",\"password\":\"secret\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(1);
+    }
+
+    @Test
+    void addsClientWithPersistedConsistencyUsesPersistedMode() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/auth/clients/alice?consistency=persisted", "{\"mechanism\":\"PLAIN\",\"password\":\"secret\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.updateCalls()).isEqualTo(1);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
+    }
+
+    @Test
+    void rejectsInvalidConsistencyOnClientWrite() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/auth/clients/alice?consistency=strong", "{\"mechanism\":\"PLAIN\",\"password\":\"secret\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.body()).contains("invalid consistency 'strong'");
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
     }
 
     @Test
@@ -137,6 +182,22 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(repository.getActiveConfig().auth().clients().get("alice"))
                 .isEqualTo(new ClientConfig("SCRAM-SHA-256", "secret"));
+    }
+
+    @Test
+    void patchWithAppliedConsistencyWaitsForApplyMode() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret"))));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/auth/clients/alice?consistency=applied", "{\"mechanism\":\"SCRAM-SHA-256\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.updateCalls()).isEqualTo(0);
+        assertThat(repository.updateAndWaitCalls()).isEqualTo(1);
     }
 
     @Test

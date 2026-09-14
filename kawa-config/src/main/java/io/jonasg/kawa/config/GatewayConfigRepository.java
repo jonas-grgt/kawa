@@ -25,6 +25,11 @@ public interface GatewayConfigRepository extends AutoCloseable {
     /// callers never see the null-before-first-snapshot case.
     void update(UnaryOperator<GatewayConfig> mutation);
 
+    /// Applies mutation to the active config (or an empty config before the first snapshot),
+    /// persists the result, and only returns when the write mode's consistency target has been
+    /// reached. Repositories that only observe persistence may alias this to [update].
+    void updateAndWaitUntilApplied(UnaryOperator<GatewayConfig> mutation);
+
     /// Releases the repository's resources (e.g. the config-topic producer).
     @Override
     void close();

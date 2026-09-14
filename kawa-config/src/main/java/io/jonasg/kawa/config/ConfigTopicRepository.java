@@ -3,6 +3,7 @@ package io.jonasg.kawa.config;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +21,7 @@ import java.util.function.UnaryOperator;
 /// it returns. As a [GatewayConfigRepository] it reports the newest *persisted* snapshot via
 /// [getActiveConfig] - the base the admin API's read-modify-write must build on, because the consumer
 /// applies snapshots asynchronously.
-public final class ConfigTopicRepository implements GatewayConfigRepository, AutoCloseable {
+public final class ConfigTopicRepository implements OffsetAwareGatewayConfigRepository, AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(ConfigTopicRepository.class);
 
@@ -49,10 +50,17 @@ public final class ConfigTopicRepository implements GatewayConfigRepository, Aut
 
     /// Writes a full config snapshot to the topic, blocking until the broker acknowledges.
     private void upsert(GatewayConfig config) {
+        upsertAndGetOffset(config);
+    }
+
+    /// Writes a full config snapshot to the topic, blocking until the broker acknowledges, and
+    /// returns the offset of the written record.
+    long upsertAndGetOffset(GatewayConfig config) {
         try {
             String json = serialize(config);
-            producer.send(new ProducerRecord<>(topic, CONFIG_KEY, json)).get();
+            RecordMetadata metadata = producer.send(new ProducerRecord<>(topic, CONFIG_KEY, json)).get();
             lastWritten = config;
+            return metadata.offset();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("interrupted while writing config snapshot to topic " + topic, e);
@@ -66,6 +74,19 @@ public final class ConfigTopicRepository implements GatewayConfigRepository, Aut
     @Override
     public void update(UnaryOperator<GatewayConfig> mutation) {
         upsert(mutation.apply(getActiveConfigOrEmpty()));
+    }
+
+    @Override
+    public long updateAndGetOffset(UnaryOperator<GatewayConfig> mutation) {
+        return upsertAndGetOffset(mutation.apply(getActiveConfigOrEmpty()));
+    }
+
+    /// This repository observes persistence, not apply progress. For full
+    /// persisted-then-applied semantics call through [io.jonasg.kawa.server.DynamicConfigManager],
+    /// which can correlate write offsets with consumer apply offsets.
+    @Override
+    public void updateAndWaitUntilApplied(UnaryOperator<GatewayConfig> mutation) {
+        update(mutation);
     }
 
     /// Serializes a snapshot to the JSON form the consumer deserializes. Package-private so the

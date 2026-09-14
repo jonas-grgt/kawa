@@ -116,7 +116,8 @@ class GetTopicsHandlerTest {
     }
 
     private static List<TopicView> topics(GetTopicsHandler handler) {
-        Router.Response<List<TopicView>> response = handler.handle(new Router.Request("GET", "/topics", Map.of(), new byte[0]));
+        Router.Response<List<TopicView>> response = handler.handle(
+                new Router.Request("GET", "/topics", Map.of(), Map.of(), new byte[0]));
         return response.body();
     }
 

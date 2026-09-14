@@ -13,11 +13,13 @@ import tools.jackson.databind.json.JsonMapper;
 public final class GovernanceConfigHandler implements Router.Handler {
 
     private final GatewayConfigRepository repository;
+    private final ConsistencyAwareUpdater updater;
     private final GovernancePolicy governance;
     private final JsonMapper mapper = JsonMapper.builder().build();
 
     public GovernanceConfigHandler(GatewayConfigRepository repository, GovernancePolicy governance) {
         this.repository = repository;
+        this.updater = new ConsistencyAwareUpdater(repository);
         this.governance = governance;
     }
 
@@ -40,7 +42,11 @@ public final class GovernanceConfigHandler implements Router.Handler {
                                 "invalid governance rule '" + entry.getKey() + "': " + error.get());
                     }
                 }
-                repository.update(config -> config.updateGovernance(value));
+                try {
+                    updater.update(request, config -> config.updateGovernance(value));
+                } catch (IllegalArgumentException e) {
+                    yield Router.Response.badRequest(e.getMessage());
+                }
                 yield Router.Response.ok(value);
             }
             default -> Router.Response.badRequest("unsupported method " + request.method());
