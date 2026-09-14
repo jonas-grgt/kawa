@@ -90,7 +90,7 @@ class AdminConfigApiIT {
 
         // when - the first user, role and group are added through the admin API
         HttpResponse<String> userPut = http.send(
-                HttpRequest.newBuilder(URI.create(base + "/auth/users/alice"))
+                HttpRequest.newBuilder(URI.create(base + "/auth/clients/alice"))
                         .PUT(HttpRequest.BodyPublishers.ofString("{\"mechanism\":\"PLAIN\",\"password\":\"secret\"}"))
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
