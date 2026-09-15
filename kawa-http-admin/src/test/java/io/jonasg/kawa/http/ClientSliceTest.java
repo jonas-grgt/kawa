@@ -2,7 +2,10 @@ package io.jonasg.kawa.http;
 
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.ClientConfig;
+import io.jonasg.kawa.config.GroupConfig;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -154,6 +157,41 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         // then
         assertThat(response.statusCode()).isEqualTo(204);
         assertThat(repository.getActiveConfig().auth().clients()).isEmpty();
+    }
+
+    @Test
+    void removesClientNotReferencedByAnyGroup() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret")))
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of("bob"), List.of("reader")))));
+        startServer();
+
+        // when
+        var response = send("DELETE", "/auth/clients/alice", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(repository.getActiveConfig().auth().clients()).isEmpty();
+    }
+
+    @Test
+    void rejectsRemovalWhileClientIsInGroup() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret")))
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
+        startServer();
+
+        // when
+        var response = send("DELETE", "/auth/clients/alice", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(409);
+        assertThat(response.body()).contains("still in groups", "producers");
+        assertThat(repository.getActiveConfig().auth().clients()).containsKey("alice");
     }
 
     @Test

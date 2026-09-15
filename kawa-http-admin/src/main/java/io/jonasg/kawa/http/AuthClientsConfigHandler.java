@@ -6,6 +6,7 @@ import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 /// Serves `/config/auth/clients`: lists the clients, upserts one entry via
@@ -41,6 +42,19 @@ public final class AuthClientsConfigHandler extends ConfigSectionHandler<ClientC
     @Override
     protected GatewayConfig remove(GatewayConfig config, String name) {
         return config.updateAuth(config.auth().withoutClient(name));
+    }
+
+    @Override
+    protected Router.Response<?> validateRemove(GatewayConfig config, String name) {
+        List<String> groups = config.rbac().groups().entrySet().stream()
+                .filter(entry -> entry.getValue().clients().contains(name))
+                .map(Map.Entry::getKey)
+                .sorted()
+                .toList();
+        if (groups.isEmpty()) {
+            return null;
+        }
+        return Router.Response.conflict("client '" + name + "' is still in groups " + groups);
     }
 
     /// `PATCH` updates one or both credential fields of an existing client; a field left out
