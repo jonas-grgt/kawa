@@ -179,10 +179,10 @@ paths:
   /rbac/groups:
     get:
       summary: List RBAC groups
-      description: The groups from the dynamic config, each a member list plus the roles those members inherit.
+      description: The groups from the dynamic config, each a client list plus the roles those clients inherit.
       responses:
         '200':
-          description: The groups, each with its name, members and roles
+          description: The groups, each with its name, clients and roles
           content:
             application/json:
               schema:
@@ -683,7 +683,7 @@ components:
     GroupConfig:
       type: object
       properties:
-        members:
+        clients:
           type: array
           items:
             type: string
@@ -692,7 +692,7 @@ components:
           type: array
           items:
             type: string
-          description: The roles whose ACLs every member inherits.
+          description: The roles whose ACLs every client inherits.
     GroupView:
       type: object
       required:
@@ -701,7 +701,7 @@ components:
         name:
           type: string
           description: The group name.
-        members:
+        clients:
           type: array
           items:
             type: string
@@ -710,7 +710,7 @@ components:
           type: array
           items:
             type: string
-          description: The roles whose ACLs every member inherits.
+          description: The roles whose ACLs every client inherits.
     AclConfig:
       type: object
       required:

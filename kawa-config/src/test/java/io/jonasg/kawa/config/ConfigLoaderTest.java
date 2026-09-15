@@ -392,13 +392,13 @@ class ConfigLoaderTest {
                           operation: READ
                   groups:
                     producers:
-                      members: [alice]
+                      clients: [alice]
                       roles: [producer]
                     admins:
-                      members: [bob]
+                      clients: [bob]
                       roles: [admin]
                     consumers:
-                      members: [carol]
+                      clients: [carol]
                       roles: [consumer]
                 """);
 
@@ -413,10 +413,10 @@ class ConfigLoaderTest {
         assertThat(rbac.roles().get("consumer").acls()).containsExactly(
                 new AclConfig(new ResourceConfig(ResourceType.GROUP, "orders-group", PatternType.LITERAL),
                         AclOperation.READ, AclPermissionType.ALLOW));
-        assertThat(rbac.groups().get("producers").members()).containsExactly("alice");
+        assertThat(rbac.groups().get("producers").clients()).containsExactly("alice");
         assertThat(rbac.groups().get("producers").roles()).containsExactly("producer");
-        assertThat(rbac.groups().get("admins").members()).containsExactly("bob");
-        assertThat(rbac.groups().get("consumers").members()).containsExactly("carol");
+        assertThat(rbac.groups().get("admins").clients()).containsExactly("bob");
+        assertThat(rbac.groups().get("consumers").clients()).containsExactly("carol");
     }
 
     @Test

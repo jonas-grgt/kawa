@@ -34,12 +34,12 @@ class RbacConfigTest {
     }
 
     @Test
-    void nullMembersAndRolesCoalesceToEmptyLists() {
+    void nullClientsAndRolesCoalesceToEmptyLists() {
         // when
         GroupConfig group = new GroupConfig(null, null);
 
         // then
-        assertThat(group.members()).isEmpty();
+        assertThat(group.clients()).isEmpty();
         assertThat(group.roles()).isEmpty();
     }
 
@@ -141,7 +141,7 @@ class RbacConfigTest {
                 .isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> config.roles().get("reader").acls().add(null))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> config.groups().get("team").members().add("bob"))
+        assertThatThrownBy(() -> config.groups().get("team").clients().add("bob"))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 

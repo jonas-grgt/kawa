@@ -36,7 +36,7 @@ rbac:
           operation: ALL
   groups:
     everyone:
-      members: [john]
+      clients: [john]
       roles: [allow-all]
 
 virtualTopics:

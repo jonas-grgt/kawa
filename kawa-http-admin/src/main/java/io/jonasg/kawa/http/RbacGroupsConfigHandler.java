@@ -24,9 +24,18 @@ public final class RbacGroupsConfigHandler extends ConfigSectionHandler<GroupCon
     @Override
     protected Object listView(GatewayConfig config) {
         return entries(config).entrySet().stream()
-                .map(entry -> new GroupView(entry.getKey(), entry.getValue().members(), entry.getValue().roles()))
+                .map(entry -> new GroupView(entry.getKey(), entry.getValue().clients(), entry.getValue().roles()))
                 .sorted(Comparator.comparing(GroupView::name))
                 .toList();
+    }
+
+    @Override
+    protected Router.Response<?> validateRemove(GatewayConfig config, String name) {
+        GroupConfig group = entries(config).get(name);
+        if (group.clients().isEmpty()) {
+            return null;
+        }
+        return Router.Response.conflict("group '" + name + "' still has clients " + group.clients());
     }
 
     @Override

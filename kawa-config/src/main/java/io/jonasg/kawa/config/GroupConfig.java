@@ -2,14 +2,14 @@ package io.jonasg.kawa.config;
 
 import java.util.List;
 
-/// A named group: the members it contains and the roles those members inherit.
+/// A named group: the clients it contains and the roles those clients inherit.
 ///
-/// @param members the usernames in this group
-/// @param roles the roles whose ACLs every member inherits
-public record GroupConfig(List<String> members, List<String> roles) {
+/// @param clients the usernames in this group
+/// @param roles the roles whose ACLs every client inherits
+public record GroupConfig(List<String> clients, List<String> roles) {
 
     public GroupConfig {
-        members = members == null ? List.of() : List.copyOf(members);
+        clients = clients == null ? List.of() : List.copyOf(clients);
         roles = roles == null ? List.of() : List.copyOf(roles);
     }
 }

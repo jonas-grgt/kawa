@@ -45,6 +45,15 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
     /// A new snapshot with the given entry removed.
     protected abstract GatewayConfig remove(GatewayConfig config, String name);
 
+    /// Guards the removal of an entry. Base implementation always allows the removal;
+    /// subclasses override for referential-integrity rules (e.g. "cannot delete a group
+    /// that still lists clients") when a section exposes a `DELETE`.
+    ///
+    /// @return a non-`null` response to short-circuit the removal, or `null` to allow it
+    protected Router.Response<?> validateRemove(GatewayConfig config, String name) {
+        return null;
+    }
+
     @Override
     public Router.Response<?> handle(Router.Request request) {
         GatewayConfig base = repository.getActiveConfigOrEmpty();
@@ -68,6 +77,10 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
             case "DELETE" -> {
                 if (!entries(base).containsKey(name)) {
                     yield Router.Response.notFound(sectionName + " '" + name + "' not found");
+                }
+                Router.Response<?> rejection = validateRemove(base, name);
+                if (rejection != null) {
+                    yield rejection;
                 }
                 try {
                     updater.update(request, config -> remove(config, name));

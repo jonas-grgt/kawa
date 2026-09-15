@@ -4,6 +4,8 @@ import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GroupConfig;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Slice tests for the `/rbac/groups` admin surface: real HTTP requests through a booted
@@ -22,7 +24,7 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains("\"name\":\"producers\"", "\"members\":[]", "\"roles\":[]");
+        assertThat(response.body()).contains("\"name\":\"producers\"", "\"clients\":[]", "\"roles\":[]");
     }
 
     @Test
@@ -62,12 +64,12 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         startServer();
 
         // when
-        var response = send("PUT", "/rbac/groups/producers", "{\"members\":[\"alice\"],\"roles\":[\"reader\"]}");
+        var response = send("PUT", "/rbac/groups/producers", "{\"clients\":[\"alice\"],\"roles\":[\"reader\"]}");
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(repository.getActiveConfig().rbac().groups()).containsKey("producers");
-        assertThat(repository.getActiveConfig().rbac().groups().get("producers").members())
+        assertThat(repository.getActiveConfig().rbac().groups().get("producers").clients())
                 .containsExactly("alice");
     }
 
@@ -97,6 +99,23 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         // then
         assertThat(response.statusCode()).isEqualTo(204);
         assertThat(repository.getActiveConfig().rbac().groups()).isEmpty();
+    }
+
+    @Test
+    void rejectsRemovalWhileGroupHasClients() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
+        startServer();
+
+        // when
+        var response = send("DELETE", "/rbac/groups/producers", null);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(409);
+        assertThat(response.body()).contains("still has clients", "alice");
+        assertThat(repository.getActiveConfig().rbac().groups()).containsKey("producers");
     }
 
     @Test

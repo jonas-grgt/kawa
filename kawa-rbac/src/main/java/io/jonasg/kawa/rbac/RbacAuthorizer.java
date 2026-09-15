@@ -79,8 +79,8 @@ public final class RbacAuthorizer {
                         return role.acls().stream();
                     })
                     .toList();
-            group.members().forEach(member ->
-                    byUser.computeIfAbsent(member, k -> new ArrayList<>()).addAll(groupAcls));
+            group.clients().forEach(client ->
+                    byUser.computeIfAbsent(client, k -> new ArrayList<>()).addAll(groupAcls));
         });
         return byUser.entrySet().stream()
                 .collect(Collectors.toUnmodifiableMap(

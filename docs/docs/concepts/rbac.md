@@ -27,7 +27,7 @@ it, and any matching deny wins immediately.
 RBAC is configured in terms of **roles**, **groups** and **ACLs**:
 
 - A **role** is a named list of ACLs.
-- A **group** lists members (authenticated usernames) and the roles those members inherit.
+- A **group** lists clients (authenticated usernames) and the roles those clients inherit.
 - An **ACL** grants or denies one operation on one resource.
 
 A user's effective ACLs are the union of every role referenced by every group they belong
@@ -49,10 +49,10 @@ rbac:
           operation: CREATE
   groups:
     producers:
-      members: [alice]
+      clients: [alice]
       roles: [producer]
     admins:
-      members: [bob]
+      clients: [bob]
       roles: [admin]
 ```
 
@@ -185,7 +185,7 @@ rbac:
           operation: ALL
   groups:
     everyone:
-      members: [alice]
+      clients: [alice]
       roles: [allow-all]
 ```
 
@@ -226,10 +226,10 @@ rbac:
           operation: DELETE
   groups:
     producers:
-      members: [alice]
+      clients: [alice]
       roles: [orders-producer]
     admins:
-      members: [bob]
+      clients: [bob]
       roles: [admin]
 ```
 

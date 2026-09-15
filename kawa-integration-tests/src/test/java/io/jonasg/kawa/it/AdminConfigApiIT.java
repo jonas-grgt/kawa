@@ -108,7 +108,7 @@ class AdminConfigApiIT {
                 HttpResponse.BodyHandlers.ofString());
         HttpResponse<String> groupPut = http.send(
                 HttpRequest.newBuilder(URI.create(base + "/rbac/groups/admins"))
-                        .PUT(HttpRequest.BodyPublishers.ofString("{\"members\":[\"alice\"],\"roles\":[\"allow-all\"]}"))
+                        .PUT(HttpRequest.BodyPublishers.ofString("{\"clients\":[\"alice\"],\"roles\":[\"allow-all\"]}"))
                         .build(),
                 HttpResponse.BodyHandlers.ofString());
 

@@ -64,10 +64,10 @@ rbac:
           operation: CREATE
   groups:
     producers:
-      members: [alice]
+      clients: [alice]
       roles: [producer]
     admins:
-      members: [bob]
+      clients: [bob]
       roles: [admin]
 
 virtualTopics:
@@ -304,7 +304,7 @@ and any matching deny wins.
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `roles` | map | *(empty)* | Named roles, each a list of ACLs |
-| `groups` | map | *(empty)* | Named groups, each a member list plus the roles those members inherit |
+| `groups` | map | *(empty)* | Named groups, each a client list plus the roles those clients inherit |
 
 A user's effective ACLs are the union of every role referenced by every group they belong
 to.
@@ -325,10 +325,10 @@ rbac:
           operation: CREATE
   groups:
     producers:
-      members: [alice]
+      clients: [alice]
       roles: [producer]
     admins:
-      members: [bob]
+      clients: [bob]
       roles: [admin]
 ```
 
@@ -354,8 +354,8 @@ Each ACL grants or denies one operation on one resource.
 
 | Field | Type | Description |
 |---|---|---|
-| `members` | string list | Authenticated usernames in this group |
-| `roles` | string list | Roles whose ACLs every member inherits |
+| `clients` | string list | Authenticated usernames in this group |
+| `roles` | string list | Roles whose ACLs every client inherits |
 
 See [Access control (RBAC)](/docs/concepts/rbac) for the full model, what is enforced
 today, and how unauthenticated requests are handled.
@@ -577,7 +577,7 @@ applied live.
 | `/governance` | PUT | Replace the whole governance section |
 
 The request body for a `PUT` is the entry's JSON object, using the same fields as the
-YAML reference above — e.g. `{"acls": [...]}` for a role, `{"members": [...], "roles": [...]}`
+YAML reference above — e.g. `{"acls": [...]}` for a role, `{"clients": [...], "roles": [...]}`
 for a group, `{"mechanism": "PLAIN", "password": "..."}` for a client, or the full
 `{"topicRules": {...}, "exemptions": {...}}` object for governance.
 
