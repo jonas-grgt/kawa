@@ -23,12 +23,11 @@ class ConfigTopicConsumerTest {
 
         // when
         consumer.handle(record("""
-                {"name":"test-gateway","virtualTopics":{"orders":"orders-v2"}}
+                {"virtualTopics":{"orders":"orders-v2"}}
                 """));
 
         // then
         assertThat(received).hasSize(1);
-        assertThat(received.getFirst().name()).isEqualTo("test-gateway");
         assertThat(received.getFirst().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
     }
@@ -59,7 +58,7 @@ class ConfigTopicConsumerTest {
                 });
 
         // when
-        assertThatCode(() -> consumer.handle(record("{\"name\":\"test-gateway\"}")))
+        assertThatCode(() -> consumer.handle(record("{}")))
                 .doesNotThrowAnyException();
 
         // then
@@ -78,8 +77,23 @@ class ConfigTopicConsumerTest {
 
         // then
         assertThat(received).hasSize(1);
-        assertThat(received.getFirst().name()).isEqualTo("kafka-gateway");
         assertThat(received.getFirst().virtualTopics()).isEmpty();
+    }
+
+    @Test
+    void deliversSnapshotIgnoringUnknownKeysFromLegacySnapshots() {
+        // given
+        List<GatewayConfig> received = new ArrayList<>();
+        ConfigTopicConsumer consumer = new ConfigTopicConsumer(
+                "localhost:9092", TOPIC, received::add);
+
+        // when
+        consumer.handle(record("{\"name\":\"old\",\"metrics\":{\"enabled\":false,\"prometheusPort\":0},\"virtualTopics\":{\"orders\":\"orders-v2\"}}"));
+
+        // then
+        assertThat(received).hasSize(1);
+        assertThat(received.getFirst().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
     }
 
     private static ConsumerRecord<String, String> record(String value) {

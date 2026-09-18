@@ -34,7 +34,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Built-in Micrometer metrics for requests, latency, bytes and virtual
-        topic hits, exposed through an optional Prometheus text-format endpoint.
+        topic hits.
       </>
     ),
   },

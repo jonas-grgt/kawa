@@ -1,61 +1,11 @@
-name: kawa-gateway
-
 listeners:
   - host: 0.0.0.0
     port: 9092
 
 clusters:
   default:
-    name: default
     bootstrapServers:
       - kafka:9092
-
-auth:
-  mechanisms:
-    - PLAIN
-  users:
-    john:
-      password: doe
-
-rbac:
-  roles:
-    allow-all:
-      acls:
-        - resource:
-            type: TOPIC
-            pattern: ""
-            patternType: PREFIXED
-          operation: ALL
-        - resource:
-            type: GROUP
-            pattern: ""
-            patternType: PREFIXED
-          operation: ALL
-        - resource:
-            type: CLUSTER
-          operation: ALL
-  groups:
-    everyone:
-      clients: [john]
-      roles: [allow-all]
-
-virtualTopics:
-  orders.eu:
-    topic: orders-v2
-    filter:
-      type: headerEquals
-      header: region
-      value: eu
-
-governance:
-  topicRules:
-    min-replication:
-      message: replication factor must be at least 3
-      expression: topic.replicationFactor >= 3
-  exemptions:
-    ops-internal:
-      principal: "ops-.*"
-      topicPattern: ".*-changelog"
 
 advertised:
   nodeId: 1
@@ -69,7 +19,3 @@ admin:
   cors:
     allowedOrigins:
       - http://localhost:5173
-
-metrics:
-  enabled: false
-  prometheusPort: 9404

@@ -85,10 +85,6 @@ const config: Config = {
               label: 'Kafka APIs',
               to: '/docs/reference/kafka-apis',
             },
-            {
-              label: 'Metrics',
-              to: '/docs/reference/metrics',
-            },
           ],
         },
         {

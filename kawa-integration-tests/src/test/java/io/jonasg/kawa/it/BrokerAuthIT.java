@@ -11,7 +11,6 @@ import io.jonasg.kawa.config.ClusterConfig;
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GroupConfig;
 import io.jonasg.kawa.config.ListenerConfig;
-import io.jonasg.kawa.config.MetricsConfig;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
 import io.jonasg.kawa.config.RoleConfig;
@@ -144,12 +143,10 @@ class BrokerAuthIT {
         writeConfigSnapshot(brokerBootstrap, auth, rbac);
 
         var bootstrap = new GatewayConfig(
-                "test-gateway",
                 List.of(new ListenerConfig("127.0.0.1", 0)),
-                Map.of("default", new ClusterConfig("default", List.of(brokerBootstrap))),
+                Map.of("default", new ClusterConfig(List.of(brokerBootstrap))),
                 null,
                 new AdvertisedListener(1, "localhost", 0),
-                new MetricsConfig(false, 0),
                 new AuthConfig(null, null, new BrokerAuthConfig("PLAIN", BROKER_USER, BROKER_PASSWORD)),
                 null,
                 null,
@@ -235,11 +232,9 @@ class BrokerAuthIT {
     /// admin are startup-only and come from the static bootstrap.
     private static void writeConfigSnapshot(String brokerBootstrap, AuthConfig auth, RbacConfig rbac) throws Exception {
         var fullConfig = new GatewayConfig(
-                "test-gateway",
                 null,
-                Map.of("default", new ClusterConfig("default", List.of(brokerBootstrap))),
+                Map.of("default", new ClusterConfig(List.of(brokerBootstrap))),
                 Map.of(),
-                null,
                 null,
                 auth,
                 rbac,

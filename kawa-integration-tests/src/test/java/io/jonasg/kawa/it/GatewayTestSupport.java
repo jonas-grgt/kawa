@@ -8,7 +8,6 @@ import io.jonasg.kawa.config.ClusterConfig;
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GroupConfig;
 import io.jonasg.kawa.config.ListenerConfig;
-import io.jonasg.kawa.config.MetricsConfig;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
 import io.jonasg.kawa.config.RoleConfig;
@@ -222,12 +221,10 @@ abstract class GatewayTestSupport {
 	/// come from the config topic snapshot.
 	private GatewayConfig buildBootstrap() {
 		return new GatewayConfig(
-				"test-gateway",
 				List.of(new ListenerConfig("127.0.0.1", 0)),
-				Map.of("default", new ClusterConfig("default", List.of(brokerBootstrap))),
+				Map.of("default", new ClusterConfig(List.of(brokerBootstrap))),
 				null,
 				new AdvertisedListener(1, "localhost", 0),
-				new MetricsConfig(false, 0),
 				new AuthConfig(null, null, null),
 				null,
 				adminConfig(),
@@ -243,11 +240,9 @@ abstract class GatewayTestSupport {
 				typedVirtualTopics.put(virtual, new VirtualTopicConfig(physical)));
 		typedVirtualTopics.putAll(filteredVirtualTopics());
 		return new GatewayConfig(
-				"test-gateway",
 				null,
-				Map.of("default", new ClusterConfig("default", List.of(brokerBootstrap))),
+				Map.of("default", new ClusterConfig(List.of(brokerBootstrap))),
 				typedVirtualTopics,
-				null,
 				null,
 				authConfig(),
 				rbacConfig(),

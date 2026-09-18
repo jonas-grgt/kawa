@@ -6,11 +6,15 @@ sidebar_position: 2
 # Getting started
 
 The fastest way to run kawa is the bundled Docker Compose setup, which starts a Kafka
-broker and a gateway configured with one virtual topic.
+broker and a gateway. The gateway boots **empty**: no virtual topics are configured and
+RBAC is **default-deny**, so nothing can be produced or consumed until dynamic config is
+applied (see [Dynamic config](/docs/configuration#dynamic-config)).
 
 ## Prerequisites
 
 - Docker (with Compose v2)
+- Kafka command-line tools, including `kafka-console-producer.sh` (available on
+  your `PATH`)
 
 ## Run the demo stack
 
@@ -32,37 +36,73 @@ This starts three services:
 | `gateway` | built from this repo's Dockerfile | `9092` — **connect your clients here** |
 
 The gateway is mounted with [`docker/gateway.yaml`](https://GITHUB_URL/blob/main/docker/gateway.yaml),
-which defines:
+which carries only startup-only settings:
 
 - a listener on `0.0.0.0:9092`
 - an upstream cluster pointing at `kafka:9092`
-- a virtual topic `orders.eu` mapped to physical topic `orders-v2`
 - an advertised listener at `localhost:9092`
+- an admin API on `0.0.0.0:8080`
 
-## Produce and consume through the gateway
+Virtual topics, RBAC, client authentication and governance are not in this file — they
+are dynamic (see [Dynamic config](/docs/configuration#dynamic-config)).
 
-Point any Kafka client at `localhost:9092` and use the virtual topic name:
+## Configure a virtual topic and produce through the gateway
+
+The `orders.eu` virtual topic no longer ships in the static config. Configure virtual
+topics at runtime — via the admin API or by writing a config-topic snapshot (see
+[Admin API](/docs/configuration#admin-api)). This maps `orders.eu` to the physical topic
+`orders-v2` created by `kafka-init`:
+
+```bash
+curl -X POST http://localhost:8080/topics \
+  -H 'Content-Type: application/json' \
+  -d '{"type": "virtual", "name": "orders.eu", "topic": "orders-v2"}'
+```
+
+Because RBAC is **default-deny** and client auth is empty on first boot, producing also
+needs grants. The following creates a PLAIN client with broad demo access:
+
+```bash
+curl -X PUT http://localhost:8080/auth/clients/alice \
+  -H 'Content-Type: application/json' \
+  -d '{"mechanism":"PLAIN","password":"secret"}'
+curl -X PUT http://localhost:8080/rbac/roles/allow-all \
+  -H 'Content-Type: application/json' \
+  -d '{"acls":[{"resource":{"type":"TOPIC","pattern":"","patternType":"PREFIXED"},"operation":"ALL"},{"resource":{"type":"GROUP","pattern":"","patternType":"PREFIXED"},"operation":"ALL"},{"resource":{"type":"CLUSTER"},"operation":"ALL"}]}'
+curl -X PUT http://localhost:8080/rbac/groups/demo \
+  -H 'Content-Type: application/json' \
+  -d '{"clients":["alice"],"roles":["allow-all"]}'
+```
+
+For a Kafka CLI running on the host, create client properties:
+
+```bash
+cat > /tmp/kawa-client.properties <<'EOF'
+security.protocol=SASL_PLAINTEXT
+sasl.mechanism=PLAIN
+sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="alice" password="secret";
+EOF
+```
+
+Then point the Kafka client at `localhost:9092` (the advertised address in
+`docker/gateway.yaml`) and use the virtual topic name:
 
 ```bash
 # Produce to the VIRTUAL topic via the gateway
-docker compose exec kafka /opt/kafka/bin/kafka-console-producer.sh \
-  --bootstrap-server kafka:9092 \
+kafka-console-producer.sh \
+  --bootstrap-server localhost:9092 \
+  --command-config /tmp/kawa-client.properties \
   --topic orders.eu <<'EOF'
 {"orderId": "1", "region": "eu"}
 EOF
 ```
 
 ```bash
-# Consume from the virtual topic via the host-published broker port,
-# bypassing the gateway, to see that only the PHYSICAL topic exists
+# The cluster only ever sees the PHYSICAL topic; orders.eu is virtual
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh \
   --bootstrap-server kafka:9092 --list
 # -> orders-v2   (orders.eu never existed on the cluster)
 ```
-
-Because of the `headerEquals` filter in the default config (`header: region`,
-`value: eu`), consumers of `orders.eu` only receive records whose `region` header
-equals `eu`. Records are filtered server-side by the gateway; offsets stay intact.
 
 ## Run the gateway without Docker
 
