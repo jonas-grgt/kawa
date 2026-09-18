@@ -68,27 +68,27 @@ class GovernanceConfigTest {
     }
 
     @Test
-    void withoutRuleRemovesExisting() {
+    void removeRuleRemovesExisting() {
         // given
         var config = new GovernanceConfig(Map.of("min-partitions",
                 new GovernanceRuleConfig("must have partitions", "topic.partitions >= 1")), null);
 
         // when
-        var updated = config.withoutRule("min-partitions");
+        var updated = config.removeRule("min-partitions");
 
         // then
         assertThat(updated.topicRules()).isEmpty();
     }
 
     @Test
-    void withoutRulePreservesOtherRules() {
+    void removeRulePreservesOtherRules() {
         // given
         var config = new GovernanceConfig(Map.of(
                 "min-partitions", new GovernanceRuleConfig("must have partitions", "topic.partitions >= 1"),
                 "max-partitions", new GovernanceRuleConfig("too many partitions", "topic.partitions <= 12")), null);
 
         // when
-        var updated = config.withoutRule("min-partitions");
+        var updated = config.removeRule("min-partitions");
 
         // then
         assertThat(updated.topicRules()).hasSize(1);
@@ -125,27 +125,27 @@ class GovernanceConfigTest {
     }
 
     @Test
-    void withoutExemptionRemovesExisting() {
+    void removeExemptionRemovesExisting() {
         // given
         var config = new GovernanceConfig(null, Map.of("streams-internal",
                 new GovernanceExemptionConfig("^streams-.*", ".*-changelog$")));
 
         // when
-        var updated = config.withoutExemption("streams-internal");
+        var updated = config.removeExemption("streams-internal");
 
         // then
         assertThat(updated.exemptions()).isEmpty();
     }
 
     @Test
-    void withoutExemptionPreservesOtherExemptions() {
+    void removeExemptionPreservesOtherExemptions() {
         // given
         var config = new GovernanceConfig(null, Map.of(
                 "streams-internal", new GovernanceExemptionConfig("^streams-.*", ".*-changelog$"),
                 "mirror-maker", new GovernanceExemptionConfig("^mm2-.*", ".*")));
 
         // when
-        var updated = config.withoutExemption("streams-internal");
+        var updated = config.removeExemption("streams-internal");
 
         // then
         assertThat(updated.exemptions()).hasSize(1);

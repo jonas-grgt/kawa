@@ -36,6 +36,6 @@ public final class RbacRolesConfigHandler extends ConfigSectionHandler<RoleConfi
 
     @Override
     protected GatewayConfig remove(GatewayConfig config, String name) {
-        return config.updateRbac(config.rbac().withoutRole(name));
+        return config.updateRbac(config.rbac().removeRole(name));
     }
 }

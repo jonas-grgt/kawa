@@ -45,6 +45,6 @@ public final class RbacGroupsConfigHandler extends ConfigSectionHandler<GroupCon
 
     @Override
     protected GatewayConfig remove(GatewayConfig config, String name) {
-        return config.updateRbac(config.rbac().withoutGroup(name));
+        return config.updateRbac(config.rbac().removeGroup(name));
     }
 }

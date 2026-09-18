@@ -43,7 +43,7 @@ public record AuthConfig(
 
     /// Returns a new [AuthConfig] with the given client removed. The startup-only
     /// [brokerAuth] is preserved.
-    public AuthConfig withoutClient(String username) {
+    public AuthConfig removeClient(String username) {
         var newClients = new HashMap<>(clients);
         newClients.remove(username);
         return new AuthConfig(mechanisms, newClients, brokerAuth);

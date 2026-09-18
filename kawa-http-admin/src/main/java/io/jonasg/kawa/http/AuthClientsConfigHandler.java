@@ -41,7 +41,7 @@ public final class AuthClientsConfigHandler extends ConfigSectionHandler<ClientC
 
     @Override
     protected GatewayConfig remove(GatewayConfig config, String name) {
-        return config.updateAuth(config.auth().withoutClient(name));
+        return config.updateAuth(config.auth().removeClient(name));
     }
 
     @Override

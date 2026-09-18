@@ -174,30 +174,88 @@ class RbacConfigTest {
     }
 
     @Test
-    void withoutRoleRemovesExisting() {
+    void removeRoleRemovesExisting() {
         // given
         var config = new RbacConfig(Map.of("admin", new RoleConfig(List.of())), null);
 
         // when
-        var updated = config.withoutRole("admin");
+        var updated = config.removeRole("admin");
 
         // then
         assertThat(updated.roles()).isEmpty();
     }
 
     @Test
-    void withoutRolePreservesOtherRoles() {
+    void removeRolePreservesOtherRoles() {
         // given
         var config = new RbacConfig(Map.of(
                 "admin", new RoleConfig(List.of()),
                 "reader", new RoleConfig(List.of())), null);
 
         // when
-        var updated = config.withoutRole("admin");
+        var updated = config.removeRole("admin");
 
         // then
         assertThat(updated.roles()).hasSize(1);
         assertThat(updated.roles()).containsKey("reader");
+    }
+
+    @Test
+    void removeRoleRemovesRoleFromReferencingGroup() {
+        // given
+        var config = new RbacConfig(
+                Map.of("reader", new RoleConfig(List.of())),
+                Map.of("team-a", new GroupConfig(List.of("alice"), List.of("reader", "writer"))));
+
+        // when
+        var updated = config.removeRole("reader");
+
+        // then
+        assertThat(updated.roles()).isEmpty();
+        assertThat(updated.groups().get("team-a").roles())
+                .containsExactly("writer");
+    }
+
+    @Test
+    void removeRoleLeavesGroupsWithoutTheRoleUntouched() {
+        // given
+        var config = new RbacConfig(
+                Map.of("reader", new RoleConfig(List.of()), "admin", new RoleConfig(List.of())),
+                Map.of("team-a", new GroupConfig(List.of("alice"), List.of("admin"))));
+
+        // when
+        var updated = config.removeRole("reader");
+
+        // then
+        assertThat(updated.groups().get("team-a").roles()).containsExactly("admin");
+    }
+
+    @Test
+    void removeRoleRemovesAllOccurrencesFromAGroup() {
+        // given
+        var config = new RbacConfig(
+                Map.of("reader", new RoleConfig(List.of())),
+                Map.of("team-a", new GroupConfig(List.of("alice"), List.of("reader", "reader"))));
+
+        // when
+        var updated = config.removeRole("reader");
+
+        // then
+        assertThat(updated.groups().get("team-a").roles()).isEmpty();
+    }
+
+    @Test
+    void removeRolePreservesGroupClients() {
+        // given
+        var config = new RbacConfig(
+                Map.of("reader", new RoleConfig(List.of())),
+                Map.of("team-a", new GroupConfig(List.of("alice", "bob"), List.of("reader"))));
+
+        // when
+        var updated = config.removeRole("reader");
+
+        // then
+        assertThat(updated.groups().get("team-a").clients()).containsExactly("alice", "bob");
     }
 
     @Test
@@ -227,26 +285,26 @@ class RbacConfigTest {
     }
 
     @Test
-    void withoutGroupRemovesExisting() {
+    void removeGroupRemovesExisting() {
         // given
         var config = new RbacConfig(null, Map.of("team-a", new GroupConfig(List.of("alice"), List.of())));
 
         // when
-        var updated = config.withoutGroup("team-a");
+        var updated = config.removeGroup("team-a");
 
         // then
         assertThat(updated.groups()).isEmpty();
     }
 
     @Test
-    void withoutGroupPreservesOtherGroups() {
+    void removeGroupPreservesOtherGroups() {
         // given
         var config = new RbacConfig(null, Map.of(
                 "team-a", new GroupConfig(List.of("alice"), List.of()),
                 "team-b", new GroupConfig(List.of("bob"), List.of())));
 
         // when
-        var updated = config.withoutGroup("team-a");
+        var updated = config.removeGroup("team-a");
 
         // then
         assertThat(updated.groups()).hasSize(1);
