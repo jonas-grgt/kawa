@@ -88,27 +88,27 @@ class AuthConfigTest {
     }
 
     @Test
-    void withoutClientRemovesExisting() {
+    void removeClientRemovesExisting() {
         // given
         var config = new AuthConfig(Set.of("PLAIN"),
                 Map.of("alice", new ClientConfig("PLAIN", "secret")), null);
 
         // when
-        var updated = config.withoutClient("alice");
+        var updated = config.removeClient("alice");
 
         // then
         assertThat(updated.clients()).isEmpty();
     }
 
     @Test
-    void withoutClientPreservesOtherClients() {
+    void removeClientPreservesOtherClients() {
         // given
         var config = new AuthConfig(Set.of("PLAIN"), Map.of(
                 "alice", new ClientConfig("PLAIN", "secret-alice"),
                 "bob", new ClientConfig("PLAIN", "secret-bob")), null);
 
         // when
-        var updated = config.withoutClient("alice");
+        var updated = config.removeClient("alice");
 
         // then
         assertThat(updated.clients()).hasSize(1);

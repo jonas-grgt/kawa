@@ -26,7 +26,7 @@ public record GovernanceConfig(
     }
 
     /// Returns a new [GovernanceConfig] with the given rule removed.
-    public GovernanceConfig withoutRule(String name) {
+    public GovernanceConfig removeRule(String name) {
         var newRules = new HashMap<>(topicRules);
         newRules.remove(name);
         return new GovernanceConfig(newRules, exemptions);
@@ -40,7 +40,7 @@ public record GovernanceConfig(
     }
 
     /// Returns a new [GovernanceConfig] with the given exemption removed.
-    public GovernanceConfig withoutExemption(String name) {
+    public GovernanceConfig removeExemption(String name) {
         var newExemptions = new HashMap<>(exemptions);
         newExemptions.remove(name);
         return new GovernanceConfig(topicRules, newExemptions);

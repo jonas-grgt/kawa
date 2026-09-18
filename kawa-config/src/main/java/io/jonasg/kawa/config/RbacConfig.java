@@ -1,5 +1,6 @@
 package io.jonasg.kawa.config;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,11 +31,22 @@ public record RbacConfig(
         return new RbacConfig(newRoles, groups);
     }
 
-    /// Returns a new [RbacConfig] with the given role removed.
-    public RbacConfig withoutRole(String name) {
+    /// Returns a new [RbacConfig] with the given role removed. The role is also stripped from
+    /// every group that references it, so no group is left pointing at a missing role.
+    public RbacConfig removeRole(String name) {
         var newRoles = new HashMap<>(roles);
         newRoles.remove(name);
-        return new RbacConfig(newRoles, groups);
+        var newGroups = new HashMap<String, GroupConfig>();
+        groups.forEach((groupName, group) -> {
+            if (group.roles().contains(name)) {
+                var remaining = new ArrayList<>(group.roles());
+                remaining.removeIf(name::equals);
+                newGroups.put(groupName, new GroupConfig(group.clients(), remaining));
+            } else {
+                newGroups.put(groupName, group);
+            }
+        });
+        return new RbacConfig(newRoles, newGroups);
     }
 
     /// Returns a new [RbacConfig] with the given group added or replaced.
@@ -45,7 +57,7 @@ public record RbacConfig(
     }
 
     /// Returns a new [RbacConfig] with the given group removed.
-    public RbacConfig withoutGroup(String name) {
+    public RbacConfig removeGroup(String name) {
         var newGroups = new HashMap<>(groups);
         newGroups.remove(name);
         return new RbacConfig(roles, newGroups);

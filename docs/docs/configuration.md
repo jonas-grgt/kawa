@@ -589,6 +589,10 @@ Deleting a group that still lists clients, or a client that is still referenced 
 group, is rejected with `409` and a message naming the blocker — clear the group's clients
 (or remove the client from its groups) first, then delete again.
 
+Deleting a role also removes it from every group that references it: the groups and their
+clients are kept, but the role's ACLs stop applying to them. Unlike group/client deletion,
+this is not rejected — the reference is cleaned up as part of the delete.
+
 Unlike the per-entry sections, `PUT /governance` replaces the **whole**
 governance section in one write. Every rule expression is validated before the snapshot
 is persisted — a `PUT` containing an invalid CEL expression is rejected with `400` and
