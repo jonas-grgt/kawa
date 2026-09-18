@@ -62,4 +62,16 @@ public record RbacConfig(
         newGroups.remove(name);
         return new RbacConfig(roles, newGroups);
     }
+
+    /// Returns a new [RbacConfig] with the group `from` re-keyed as `to`. The group's clients
+    /// and roles move with it; no other entry references a group by name. A no-op when `from`
+    /// does not exist.
+    public RbacConfig renameGroup(String from, String to) {
+        if (!groups.containsKey(from)) {
+            return this;
+        }
+        var newGroups = new HashMap<>(groups);
+        newGroups.put(to, newGroups.remove(from));
+        return new RbacConfig(roles, newGroups);
+    }
 }

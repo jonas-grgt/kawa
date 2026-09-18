@@ -222,6 +222,34 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '500':
           $ref: '#/components/responses/InternalError'
+    patch:
+      summary: Rename an RBAC group
+      description: Re-keys the group `name` under the new name from the body. The group's clients and roles move with it; the new name must not already exist.
+      parameters:
+        - $ref: '#/components/parameters/ConfigEntryName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupConfigPatch'
+      responses:
+        '200':
+          description: The renamed group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupView'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       summary: Delete an RBAC group
       description: Removes the group `name` and persists the new config snapshot.
@@ -693,6 +721,14 @@ components:
           items:
             type: string
           description: The roles whose ACLs every client inherits.
+    GroupConfigPatch:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The new group name; the group's clients and roles move with it.
     GroupView:
       type: object
       required:
