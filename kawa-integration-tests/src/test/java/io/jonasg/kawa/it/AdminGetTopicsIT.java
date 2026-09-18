@@ -8,7 +8,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ArrayNode;
 
-import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
@@ -39,7 +38,7 @@ class AdminGetTopicsIT extends AdminHTTPTestSupport {
 	@Test
 	void exposesVirtualTopicsOverHttp() {
 		// given
-		var request = reqBuilderForPath("/topics")
+		var request = reqBuilder("/topics")
 				.GET()
 				.build();
 
@@ -49,8 +48,7 @@ class AdminGetTopicsIT extends AdminHTTPTestSupport {
 				.atMost(Duration.ofSeconds(30))
 				.pollInterval(Duration.ofMillis(500))
 				.untilAsserted(() -> {
-					HttpResponse<String> response = HttpClient.newHttpClient()
-							.send(request, HttpResponse.BodyHandlers.ofString());
+					HttpResponse<String> response = httpExec(request);
 
 					// then
 					assertThat(response.statusCode()).isEqualTo(200);

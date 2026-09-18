@@ -99,6 +99,37 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '500':
           $ref: '#/components/responses/InternalError'
+    patch:
+      summary: Update a virtual topic config
+      description: |
+        Partially updates the virtual topic identified by `name`. Omitted fields retain their
+        current values; an omitted or null `filter` produces no filter. The optional `name`
+        field atomically renames the virtual topic and must not collide with an existing topic.
+      parameters:
+        - $ref: '#/components/parameters/TopicName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VirtualTopicConfigPatch'
+      responses:
+        '200':
+          description: The resulting virtual topic config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VirtualTopicConfig'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       summary: Delete a topic
       description: |
@@ -557,6 +588,23 @@ components:
           nullable: true
         exposePhysicalTopic:
           type: boolean
+    VirtualTopicConfigPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Optional new virtual topic name.
+        topic:
+          type: string
+          description: Optional physical backing topic; omitted values are preserved.
+        filter:
+          allOf:
+            - $ref: '#/components/schemas/VirtualTopicFilter'
+          nullable: true
+          description: Optional filter; omitted or null means no filter.
+        exposePhysicalTopic:
+          type: boolean
+          description: Optional physical-topic exposure setting.
     VirtualTopicFilter:
       oneOf:
         - $ref: '#/components/schemas/HeaderEqualsFilter'

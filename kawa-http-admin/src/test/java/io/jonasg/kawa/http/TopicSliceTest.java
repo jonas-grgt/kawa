@@ -366,6 +366,168 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
     }
 
     @Test
+    void patchesVirtualTopicConfiguration() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v1")));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/topics/orders",
+                "{\"topic\":\"orders-v2\",\"filter\":{\"type\":\"headerEquals\","
+                        + "\"header\":\"region\",\"value\":\"eu\"},\"exposePhysicalTopic\":true}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v2",
+                        new HeaderEqualsFilterConfig("region", "eu"), true));
+        assertThat(response.body()).contains(
+                "\"topic\":\"orders-v2\"",
+                "\"header\":\"region\"",
+                "\"value\":\"eu\"",
+                "\"exposePhysicalTopic\":true");
+    }
+
+    @Test
+    void preservesOmittedVirtualTopicFieldsWhenPatching() throws Exception {
+        // given
+        var current = new VirtualTopicConfig("orders-v1", null, true);
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", current));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/topics/orders", "{\"topic\":\"orders-v2\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v2", null, true));
+    }
+
+    @Test
+    void clearsFilterWhenFilterIsNull() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v1",
+                        new HeaderEqualsFilterConfig("region", "eu"), true)));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/topics/orders", "{\"filter\":null}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v1", null, true));
+    }
+
+    @Test
+    void clearsFilterWhenFilterIsOmitted() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v1",
+                        new HeaderEqualsFilterConfig("region", "eu"), true)));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/topics/orders", "{\"exposePhysicalTopic\":false}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", new VirtualTopicConfig("orders-v1", null, false));
+    }
+
+    @Test
+    void renamesVirtualTopicWithoutCreatingAnotherEntry() throws Exception {
+        // given
+        var current = new VirtualTopicConfig("orders-v1", null, true);
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", current));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/topics/orders", "{\"name\":\"regional-orders\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsOnlyKeys("regional-orders")
+                .containsEntry("regional-orders", current);
+    }
+
+    @Test
+    void rejectsPatchForMissingVirtualTopic() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PATCH", "/topics/orders", "{\"topic\":\"orders-v2\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(404);
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
+        assertThat(repository.updateCalls()).isZero();
+    }
+
+    @Test
+    void rejectsPatchingPhysicalTopic() throws Exception {
+        // given
+        cache = cacheWith(topic("orders", 1, 1));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/topics/orders", "{\"topic\":\"orders-v2\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().virtualTopics()).isEmpty();
+        assertThat(repository.updateCalls()).isZero();
+    }
+
+    @Test
+    void rejectsPatchWhenRenamedVirtualTopicAlreadyExists() throws Exception {
+        // given
+        var original = new VirtualTopicConfig("orders-v1");
+        var existing = new VirtualTopicConfig("customers-v1");
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", original)
+                .putVirtualTopic("customers", existing));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/topics/orders", "{\"name\":\"customers\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(409);
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", original)
+                .containsEntry("customers", existing);
+        assertThat(repository.updateCalls()).isZero();
+    }
+
+    @Test
+    void rejectsInvalidPatchWithoutChangingExistingConfiguration() throws Exception {
+        // given
+        var current = new VirtualTopicConfig("orders-v1");
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .putVirtualTopic("orders", current));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/topics/orders",
+                "{\"topic\":\"\",\"filter\":{\"type\":\"unknown\"}}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().virtualTopics())
+                .containsEntry("orders", current);
+        assertThat(repository.updateCalls()).isZero();
+    }
+
+    @Test
     void deletesPhysicalTopicOnBroker() throws Exception {
         // given
         cache = cacheWith(topic("orders", 1, 1));

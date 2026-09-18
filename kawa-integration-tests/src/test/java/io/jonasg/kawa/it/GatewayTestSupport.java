@@ -209,11 +209,9 @@ abstract class GatewayTestSupport {
 				Map.of("it-defaults", new GroupConfig(List.of(DEFAULT_PRINCIPAL), List.of("allow-all"))));
 	}
 
-	/// The gateway's admin HTTP server configuration. Defaults to disabled; subclasses that
-	/// exercise the admin surface override this with `enabled=true` (and usually an ephemeral
-	/// port).
+	/// The gateway's admin HTTP server configuration.
 	protected AdminConfig adminConfig() {
-		return new AdminConfig(false, "127.0.0.1", 0, null);
+		return new AdminConfig(true, "127.0.0.1", 0, null);
 	}
 
 	/// The static bootstrap passed to the gateway: cluster bootstrap servers, config topic
