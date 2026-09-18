@@ -1,21 +1,15 @@
 package io.jonasg.kawa.config;
 
 import org.junit.jupiter.api.Test;
+import org.junitpioneer.jupiter.ClearEnvironmentVariable;
+import org.junitpioneer.jupiter.SetEnvironmentVariable;
 
-import java.util.Map;
-import java.util.function.Function;
+import java.lang.reflect.Method;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ClientConfigTest {
-
-    private static final Function<String, String> ENV = Map.of(
-            "MY_SECRET", "s3cret-from-env",
-            "MY_PORT", "5432"
-    )::get;
-
-    private static final Function<String, String> EMPTY_ENV = k -> null;
 
     @Test
     void allowsMissingMechanismForGlobalInheritance() {
@@ -40,29 +34,32 @@ class ClientConfigTest {
     }
 
     @Test
+    @SetEnvironmentVariable(key = "KAWA_TEST_CLIENT_PASSWORD", value = "s3cret-from-env")
     void resolvesEnvironmentVariable() {
-        ClientConfig config = ClientConfig.of("PLAIN", "${MY_SECRET}", ENV);
+        ClientConfig config = new ClientConfig("PLAIN", "${KAWA_TEST_CLIENT_PASSWORD}");
 
         assertThat(config.password().encoded()).isEqualTo("s3cret-from-env");
     }
 
     @Test
+    @ClearEnvironmentVariable(key = "KAWA_TEST_MISSING_PASSWORD")
     void resolvesDefaultWhenEnvVarIsMissing() {
-        ClientConfig config = ClientConfig.of("PLAIN", "${NONEXISTENT:-fallback}", EMPTY_ENV);
+        ClientConfig config = new ClientConfig("PLAIN", "${KAWA_TEST_MISSING_PASSWORD:-fallback}");
 
         assertThat(config.password().encoded()).isEqualTo("fallback");
     }
 
     @Test
+    @ClearEnvironmentVariable(key = "KAWA_TEST_MISSING_PASSWORD")
     void rejectsUnresolvedEnvVarWithoutDefault() {
-        assertThatThrownBy(() -> ClientConfig.of("PLAIN", "${NONEXISTENT}", EMPTY_ENV))
+        assertThatThrownBy(() -> new ClientConfig("PLAIN", "${KAWA_TEST_MISSING_PASSWORD}"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("NONEXISTENT");
+                .hasMessageContaining("KAWA_TEST_MISSING_PASSWORD");
     }
 
     @Test
     void passesLiteralPasswordThroughUnchanged() {
-        ClientConfig config = ClientConfig.of("PLAIN", "plain-password", EMPTY_ENV);
+        ClientConfig config = new ClientConfig("PLAIN", "plain-password");
 
         assertThat(config.password().encoded()).isEqualTo("plain-password");
     }

@@ -22,19 +22,6 @@ public record ClientConfig(
         this(mechanism, HashedPassword.fromEncoded(resolvePassword(password, System::getenv)));
     }
 
-    static ClientConfig of(
-            String mechanism,
-            String password,
-            Function<String, String> envLookup
-    ) {
-        if (password == null || password.isBlank()) {
-            throw new IllegalArgumentException("password must not be null or blank");
-        }
-        return new ClientConfig(
-                mechanism,
-                HashedPassword.fromEncoded(resolveEnvVars(password, envLookup)));
-    }
-
     private static String resolvePassword(String password, Function<String, String> envLookup) {
         if (password == null || password.isBlank()) {
             throw new IllegalArgumentException("password must not be null or blank");

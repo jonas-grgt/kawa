@@ -36,6 +36,7 @@
     <slf4j.version>2.0.18</slf4j.version>
     <logback.version>1.5.12</logback.version>
     <junit.version>5.10.2</junit.version>
+    <junit-pioneer.version>2.3.0</junit-pioneer.version>
     <assertj.version>3.26.3</assertj.version>
     <kassert.version>0.1.0</kassert.version>
     <testcontainers.version>1.21.4</testcontainers.version>
@@ -87,6 +88,12 @@
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter</artifactId>
         <version>${junit.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.junit-pioneer</groupId>
+        <artifactId>junit-pioneer</artifactId>
+        <version>${junit-pioneer.version}</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -155,6 +162,12 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>3.5.2</version>
+          <configuration>
+            <argLine>
+              --add-opens java.base/java.lang=ALL-UNNAMED
+              --add-opens java.base/java.util=ALL-UNNAMED
+            </argLine>
+          </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
