@@ -129,4 +129,99 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         // then
         assertThat(response.statusCode()).isEqualTo(404);
     }
+
+    @Test
+    void renamesGroupAndPersistsSnapshot() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/rbac/groups/producers", "{\"name\":\"publishers\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).contains("\"name\":\"publishers\"", "\"alice\"", "\"reader\"");
+        assertThat(repository.getActiveConfig().rbac().groups()).doesNotContainKey("producers");
+        assertThat(repository.getActiveConfig().rbac().groups().get("publishers"))
+                .isEqualTo(new GroupConfig(List.of("alice"), List.of("reader")));
+    }
+
+    @Test
+    void renameMissingGroupReturnsNotFound() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PATCH", "/rbac/groups/producers", "{\"name\":\"publishers\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(404);
+    }
+
+    @Test
+    void renameToExistingGroupIsRejected() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))
+                        .withGroup("publishers", new GroupConfig(List.of("bob"), List.of()))));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/rbac/groups/producers", "{\"name\":\"publishers\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(409);
+        assertThat(repository.getActiveConfig().rbac().groups()).containsKeys("producers", "publishers");
+    }
+
+    @Test
+    void renameToBlankNameIsRejected() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of()))));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/rbac/groups/producers", "{\"name\":\"\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().rbac().groups()).containsKey("producers");
+    }
+
+    @Test
+    void renameToSameNameIsRejected() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of()))));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/rbac/groups/producers", "{\"name\":\"producers\"}");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+    }
+
+    @Test
+    void renameRejectsInvalidBody() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of()))));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/rbac/groups/producers", "not json");
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(response.body()).startsWith("{\"error\":\"invalid group body");
+    }
 }

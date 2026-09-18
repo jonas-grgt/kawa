@@ -65,6 +65,7 @@ public final class AdminHttpServer {
                 .get("/rbac/groups", new RbacGroupsConfigHandler(configRepository))
                 .put("/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
                 .delete("/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
+                .patch("/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
                 .get("/auth/clients", new AuthClientsConfigHandler(configRepository))
                 .put("/auth/clients/{name}", new AuthClientsConfigHandler(configRepository))
                 .patch("/auth/clients/{name}", new AuthClientsConfigHandler(configRepository))

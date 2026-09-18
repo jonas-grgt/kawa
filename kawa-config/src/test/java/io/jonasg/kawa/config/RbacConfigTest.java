@@ -326,4 +326,50 @@ class RbacConfigTest {
         assertThat(updated.groups()).containsEntry("team-a",
                 new GroupConfig(List.of("alice"), List.of("reader")));
     }
+
+    @Test
+    void renameGroupReKeysGroupPreservingClientsAndRoles() {
+        // given
+        var config = new RbacConfig(
+                Map.of("reader", new RoleConfig(List.of())),
+                Map.of("team-a", new GroupConfig(List.of("alice"), List.of("reader"))));
+
+        // when
+        var updated = config.renameGroup("team-a", "team-b");
+
+        // then
+        assertThat(updated.groups()).doesNotContainKey("team-a");
+        assertThat(updated.groups().get("team-b"))
+                .isEqualTo(new GroupConfig(List.of("alice"), List.of("reader")));
+    }
+
+    @Test
+    void renameGroupPreservesOtherGroups() {
+        // given
+        var config = new RbacConfig(
+                null,
+                Map.of(
+                        "team-a", new GroupConfig(List.of("alice"), List.of()),
+                        "team-b", new GroupConfig(List.of("bob"), List.of())));
+
+        // when
+        var updated = config.renameGroup("team-a", "team-c");
+
+        // then
+        assertThat(updated.groups()).hasSize(2);
+        assertThat(updated.groups()).containsKey("team-b");
+        assertThat(updated.groups()).containsKey("team-c");
+    }
+
+    @Test
+    void renameGroupMissingSourceIsNoOp() {
+        // given
+        var config = new RbacConfig(null, Map.of("team-a", new GroupConfig(List.of("alice"), List.of())));
+
+        // when
+        var updated = config.renameGroup("missing", "team-b");
+
+        // then
+        assertThat(updated.groups()).containsOnlyKeys("team-a");
+    }
 }
