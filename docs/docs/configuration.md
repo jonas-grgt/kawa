@@ -23,70 +23,25 @@ client auth, and no governance rules.
 ## Full example
 
 ```yaml
-name: kawa-gateway
-
 listeners:
   - host: 0.0.0.0
     port: 9092
 
 clusters:
   default:
-    name: default
     bootstrapServers:
       - kafka:9092
 
 auth:
-  mechanisms:
-    - PLAIN
-  clients:
-    alice:
-      password: "${ALICE_PASSWORD}"
-    bob:
-      mechanism: SCRAM-SHA-256
-      password: "${BOB_PASSWORD}"
   brokerAuth:
     mechanism: PLAIN
     username: kafka
     password: "${KAFKA_PASSWORD}"
 
-rbac:
-  roles:
-    producer:
-      acls:
-        - resource:
-            type: TOPIC
-            pattern: orders
-          operation: WRITE
-    admin:
-      acls:
-        - resource:
-            type: CLUSTER
-          operation: CREATE
-  groups:
-    producers:
-      clients: [alice]
-      roles: [producer]
-    admins:
-      clients: [bob]
-      roles: [admin]
-
-virtualTopics:
-  orders.eu:
-    topic: orders-v2
-    filter:
-      type: headerEquals
-      header: region
-      value: eu
-    exposePhysicalTopic: false
-
 advertised:
   nodeId: 1
   host: localhost
   port: 9092
-
-metrics:
-  enabled: true
-  prometheusPort: 9404
 
 admin:
   enabled: true
@@ -96,30 +51,10 @@ admin:
     allowedOrigins:
       - http://localhost:8080
 
-governance:
-  topicRules:
-    min-replication:
-      message: replication factor must be at least 3
-      expression: topic.replicationFactor >= 3
-    min-partitions:
-      message: must have at least 1 partition
-      expression: topic.partitions >= 1
-  exemptions:
-    ops-internal:
-      principal: "ops-.*"
-      topicPattern: ".*-changelog"
+configTopic: __kawa
 ```
 
 ## Reference
-
-### `name`
-
-Gateway name used in logs and metrics.
-
-| | |
-|---|---|
-| Type | string |
-| Default | `kafka-gateway` |
 
 ### `listeners[]`
 
@@ -140,7 +75,6 @@ cluster** that traffic is forwarded to (milestone 1 supports a single cluster).
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `name` | string | map key | Cluster name |
 | `bootstrapServers` | string list | *(required)* | `host:port` list used for the initial broker connection |
 
 ```yaml
@@ -152,6 +86,8 @@ clusters:
 ```
 
 ### `virtualTopics`
+
+Dynamic — see [Dynamic config](#dynamic-config).
 
 Map of virtual name → virtual topic definition. The map key is the topic name clients
 see and use.
@@ -238,7 +174,10 @@ See [Virtual topics](/docs/concepts/virtual-topics) for behaviour details.
 
 ### `auth`
 
-Client SASL authentication configuration. When configured, clients must authenticate
+Client SASL authentication configuration (`mechanisms`/`clients`) is **dynamic** — see
+[Dynamic config](#dynamic-config). `auth.brokerAuth` below is startup-only.
+
+When configured, clients must authenticate
 using the standard Kafka SASL handshake (`SaslHandshake` + `SaslAuthenticate`).
 
 | Field | Type | Default | Description |
@@ -278,11 +217,6 @@ Kafka cluster using these credentials instead of connecting in plaintext.
 
 ```yaml
 auth:
-  mechanisms:
-    - PLAIN
-  clients:
-    alice:
-      password: s3cret
   brokerAuth:
     mechanism: PLAIN
     username: kafka
@@ -294,6 +228,8 @@ The gateway authenticates to the broker during the initial connection handshake
 This is transparent to clients — they authenticate to the gateway independently.
 
 ### `rbac`
+
+Dynamic — see [Dynamic config](#dynamic-config).
 
 Role-based access control. kawa checks each request against the principal's ACLs before
 forwarding it to the cluster. RBAC is **always enforced** — there is no way to disable it,
@@ -377,18 +313,6 @@ All broker endpoints are rewritten to this value, so `advertised.host` must reso
 `localhost` because the port is published to the host where the clients run.
 :::
 
-### `metrics`
-
-Observability settings.
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `enabled` | bool | `false` | Whether metrics are collected at all |
-| `prometheusPort` | int | disabled | Port for a Prometheus text-format HTTP endpoint |
-
-When enabled, kawa exports Micrometer metrics — see [Metrics](/docs/reference/metrics)
-for the full list.
-
 ### `admin`
 
 The admin HTTP surface exposing gateway state (e.g. `GET /topics`) to a UI.
@@ -426,9 +350,10 @@ returning `*`, as required by the CORS spec.
 
 ### `governance`
 
+Dynamic — see [Dynamic config](#dynamic-config).
+
 Topic governance: named CEL rules that new topics must satisfy, and named exemptions
-that skip evaluation for matching principal + topic pairs. Governance is **dynamic** —
-it is read from the config topic like virtual topics and RBAC. When no rules are
+that skip evaluation for matching principal + topic pairs. When no rules are
 configured, every topic creation is admitted.
 
 | Field | Type | Default | Description |

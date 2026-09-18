@@ -9,6 +9,7 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
@@ -41,7 +42,9 @@ public final class ConfigTopicConsumer implements AutoCloseable {
     private final KafkaConsumer<String, String> consumer;
     private final String topic;
     private final BiConsumer<GatewayConfig, Long> onConfigWithOffset;
-    private final JsonMapper mapper = JsonMapper.builder().build();
+    private final JsonMapper mapper = JsonMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
     private final CountDownLatch initialLoad = new CountDownLatch(1);
 
     private volatile boolean running;

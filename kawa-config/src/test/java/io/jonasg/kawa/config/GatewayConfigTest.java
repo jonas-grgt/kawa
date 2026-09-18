@@ -14,7 +14,6 @@ class GatewayConfigTest {
         GatewayConfig config = GatewayConfig.empty();
 
         // then
-        assertThat(config.name()).isEqualTo("kafka-gateway");
         assertThat(config.listeners()).hasSize(1);
         assertThat(config.clusters()).isEmpty();
         assertThat(config.virtualTopics()).isEmpty();
@@ -30,7 +29,7 @@ class GatewayConfigTest {
     @Test
     void updateGovernanceReplacesGovernanceConfig() {
         // given
-        var config = new GatewayConfig(null, null, null, null, null, null, null, null, null, null, null);
+        var config = new GatewayConfig(null, null, null, null, null, null, null, null, null);
         var newGovernance = new GovernanceConfig(
                 Map.of("min-partitions",
                         new GovernanceRuleConfig("must have partitions", "topic.partitions >= 1")),
@@ -46,7 +45,7 @@ class GatewayConfigTest {
     @Test
     void putVirtualTopicAddsNewEntry() {
         // given
-        var config = new GatewayConfig(null, null, null, null, null, null, null, null, null, null, null);
+        var config = new GatewayConfig(null, null, null, null, null, null, null, null, null);
 
         // when
         var updated = config.putVirtualTopic("orders", new VirtualTopicConfig("raw-orders"));
@@ -58,9 +57,9 @@ class GatewayConfigTest {
     @Test
     void putVirtualTopicOverwritesExisting() {
         // given
-        var config = new GatewayConfig(null, null, null,
+        var config = new GatewayConfig(null, null,
                 Map.of("orders", new VirtualTopicConfig("raw-old")),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null);
 
         // when
         var updated = config.putVirtualTopic("orders", new VirtualTopicConfig("raw-new"));
@@ -73,9 +72,9 @@ class GatewayConfigTest {
     @Test
     void removeVirtualTopicRemovesEntry() {
         // given
-        var config = new GatewayConfig(null, null, null,
+        var config = new GatewayConfig(null, null,
                 Map.of("orders", new VirtualTopicConfig("raw-orders")),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null);
 
         // when
         var updated = config.removeVirtualTopic("orders");
@@ -87,7 +86,7 @@ class GatewayConfigTest {
     @Test
     void updateAuthReplacesAuthConfig() {
         // given
-        var config = new GatewayConfig(null, null, null, null, null, null,
+        var config = new GatewayConfig(null, null, null, null,
                 new AuthConfig(null, null, null), null, null, null, null);
         var newAuth = new AuthConfig(
                 java.util.Set.of("PLAIN"),
@@ -104,7 +103,7 @@ class GatewayConfigTest {
     @Test
     void updateRbacReplacesRbacConfig() {
         // given
-        var config = new GatewayConfig(null, null, null, null, null, null, null,
+        var config = new GatewayConfig(null, null, null, null, null,
                 new RbacConfig(null, null), null, null, null);
         var newRbac = new RbacConfig(
                 Map.of("admin", new RoleConfig(java.util.List.of())),
@@ -120,9 +119,9 @@ class GatewayConfigTest {
     @Test
     void updateVirtualTopicsReplacesMap() {
         // given
-        var config = new GatewayConfig(null, null, null,
+        var config = new GatewayConfig(null, null,
                 Map.of("old-topic", new VirtualTopicConfig("raw-old")),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null);
         var newTopics = Map.of("new-topic", new VirtualTopicConfig("raw-new"));
 
         // when
@@ -135,9 +134,9 @@ class GatewayConfigTest {
     @Test
     void putVirtualTopicPreservesOtherTopics() {
         // given
-        var config = new GatewayConfig(null, null, null,
+        var config = new GatewayConfig(null, null,
                 Map.of("existing", new VirtualTopicConfig("raw-existing")),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null);
 
         // when
         var updated = config.putVirtualTopic("new-topic", new VirtualTopicConfig("raw-new"));

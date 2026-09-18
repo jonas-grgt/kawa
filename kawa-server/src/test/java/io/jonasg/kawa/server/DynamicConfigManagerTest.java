@@ -48,7 +48,7 @@ class DynamicConfigManagerTest {
             AuthConfig auth,
             GovernanceConfig governance
     ) {
-        return new GatewayConfig("test", null, null, virtualTopics, null, null, auth, rbac, null, null, governance);
+        return new GatewayConfig(null, null, virtualTopics, null, auth, rbac, null, null, governance);
     }
 
     private static RbacConfig rbacAllowingReadOnOrders() {

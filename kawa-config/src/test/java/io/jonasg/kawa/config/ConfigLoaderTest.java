@@ -16,7 +16,6 @@ class ConfigLoaderTest {
     @Test
     void loadsFullConfiguration() {
         GatewayConfig config = loader.loadFromYaml("""
-                name: test-gateway
                 listeners:
                   - host: 0.0.0.0
                     port: 9092
@@ -33,12 +32,8 @@ class ConfigLoaderTest {
                   nodeId: 7
                   host: gw.example.com
                   port: 9092
-                metrics:
-                  enabled: true
-                  prometheusPort: 9095
                 """);
 
-        assertThat(config.name()).isEqualTo("test-gateway");
         assertThat(config.listeners()).containsExactly(new ListenerConfig("0.0.0.0", 9092));
         ClusterConfig cluster = config.defaultCluster();
         assertThat(cluster.bootstrapServers()).containsExactly("localhost:9093", "localhost:9094");
@@ -46,20 +41,16 @@ class ConfigLoaderTest {
                 .containsEntry("orders", new VirtualTopicConfig("orders-v2"))
                 .containsEntry("customers", new VirtualTopicConfig("crm.customers"));
         assertThat(config.advertised()).isEqualTo(new AdvertisedListener(7, "gw.example.com", 9092));
-        assertThat(config.metrics().enabled()).isTrue();
-        assertThat(config.metrics().prometheusPort()).isEqualTo(9095);
     }
 
     @Test
     void appliesDefaults() {
         GatewayConfig config = loader.loadFromYaml("listeners:\n  - port: 9092\n");
 
-        assertThat(config.name()).isEqualTo("kafka-gateway");
         assertThat(config.listeners()).containsExactly(new ListenerConfig("0.0.0.0", 9092));
         assertThat(config.clusters()).isEmpty();
         assertThat(config.virtualTopics()).isEmpty();
         assertThat(config.advertised()).isEqualTo(new AdvertisedListener(1, "localhost", 9092));
-        assertThat(config.metrics().enabled()).isFalse();
         assertThat(config.auth().mechanisms()).isEmpty();
         assertThat(config.auth().clients()).isEmpty();
         assertThat(config.auth().brokerAuth()).isNull();

@@ -68,7 +68,7 @@ negotiation.
 
 `GatewayMetrics` (Micrometer) is instrumented at the transport and interceptor
 layers — counters for requests/responses, a latency timer, byte counters, active
-connection gauges and virtual-topic hit counters. See [Metrics](/docs/reference/metrics).
+connection gauges and virtual-topic hit counters.
 
 ## Current limitations
 

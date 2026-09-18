@@ -19,9 +19,9 @@ class ConfigTopicRepositoryTest {
         // given
         try (var repository = new ConfigTopicRepository("localhost:9092", "__kawa", new Properties())) {
             var config = new GatewayConfig(
-                    "test", null, null,
-                    Map.of("orders", new VirtualTopicConfig("raw-orders")),
                     null, null,
+                    Map.of("orders", new VirtualTopicConfig("raw-orders")),
+                    null,
                     new AuthConfig(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")), null),
                     new RbacConfig(Map.of("reader", new RoleConfig(List.of())), null),
                     null, null, null);
@@ -40,9 +40,9 @@ class ConfigTopicRepositoryTest {
         // given
         try (var repository = new ConfigTopicRepository("localhost:9092", "__kawa", new Properties())) {
             var config = new GatewayConfig(
-                    "test", null, null,
-                    Map.of("orders", new VirtualTopicConfig("raw-orders")),
                     null, null,
+                    Map.of("orders", new VirtualTopicConfig("raw-orders")),
+                    null,
                     new AuthConfig(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")), null),
                     new RbacConfig(Map.of("reader", new RoleConfig(List.of())), null),
                     null, null, null);
