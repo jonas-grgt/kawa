@@ -58,6 +58,7 @@ public final class AdminHttpServer {
                 .get("/topics", new GetTopicsHandler(virtualTopics, cache))
                 .post("/topics", new CreateTopicHandler(governance, configRepository, topicAdmin))
                 .put("/topics/{name}", new UpdateTopicHandler(configRepository))
+                .patch("/topics/{name}", new PatchTopicHandler(configRepository, cache))
                 .delete("/topics/{name}", new DeleteTopicHandler(configRepository, cache, topicAdmin))
                 .get("/rbac/roles", new RbacRolesConfigHandler(configRepository))
                 .put("/rbac/roles/{name}", new RbacRolesConfigHandler(configRepository))

@@ -90,12 +90,12 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     }
 
     @Test
-    void addsClientWithPersistedConsistencyUsesPersistedMode() throws Exception {
+    void addsClientWithoutConsistencyUsesPersistedMode() throws Exception {
         // given
         startServer();
 
         // when
-        var response = send("PUT", "/auth/clients/alice?consistency=persisted", "{\"mechanism\":\"PLAIN\",\"password\":\"secret\"}");
+        var response = send("PUT", "/auth/clients/alice", "{\"mechanism\":\"PLAIN\",\"password\":\"secret\"}");
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
