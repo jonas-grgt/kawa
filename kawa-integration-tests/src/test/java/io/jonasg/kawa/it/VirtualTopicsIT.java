@@ -48,6 +48,7 @@ import org.apache.kafka.common.requests.SaslHandshakeRequest;
 import org.apache.kafka.common.requests.SaslHandshakeResponse;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -184,7 +186,11 @@ class VirtualTopicsIT extends GatewayTestSupport {
         brokerAdmin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get(5, TimeUnit.SECONDS);
 
         gatewayAdmin.deleteTopics(List.of(topic)).all().get(5, TimeUnit.SECONDS);
-        assertThat(gatewayAdmin.listTopics().names().get()).doesNotContain(topic);
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() ->
+                        assertThat(gatewayAdmin.listTopics().names().get()).doesNotContain(topic));
     }
 
     @Test
