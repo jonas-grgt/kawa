@@ -51,6 +51,18 @@ public final class AdminHttpServer {
             GovernancePolicy governance,
             TopicAdmin topicAdmin
     ) {
+        this(config, virtualTopics, cache, configRepository, governance, topicAdmin, null);
+    }
+
+    public AdminHttpServer(
+            AdminConfig config,
+            VirtualTopicManager virtualTopics,
+            MetadataCache cache,
+            GatewayConfigRepository configRepository,
+            GovernancePolicy governance,
+            TopicAdmin topicAdmin,
+            String passwordSalt
+    ) {
         this.config = config;
 		this.topicAdmin = topicAdmin;
         this.routerExecutorThreads = Math.max(4, Runtime.getRuntime().availableProcessors());
@@ -66,10 +78,10 @@ public final class AdminHttpServer {
                 .put("/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
                 .delete("/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
                 .patch("/rbac/groups/{name}", new RbacGroupsConfigHandler(configRepository))
-                .get("/auth/clients", new AuthClientsConfigHandler(configRepository))
-                .put("/auth/clients/{name}", new AuthClientsConfigHandler(configRepository))
-                .patch("/auth/clients/{name}", new AuthClientsConfigHandler(configRepository))
-                .delete("/auth/clients/{name}", new AuthClientsConfigHandler(configRepository))
+                .get("/auth/clients", new AuthClientsConfigHandler(configRepository, passwordSalt))
+                .put("/auth/clients/{name}", new AuthClientsConfigHandler(configRepository, passwordSalt))
+                .patch("/auth/clients/{name}", new AuthClientsConfigHandler(configRepository, passwordSalt))
+                .delete("/auth/clients/{name}", new AuthClientsConfigHandler(configRepository, passwordSalt))
                 .get("/governance", new GovernanceConfigHandler(configRepository, governance))
                 .put("/governance", new GovernanceConfigHandler(configRepository, governance))
                 .get("/docs", new OpenApiDocsHandler());

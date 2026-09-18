@@ -8,6 +8,7 @@ import org.apache.kafka.common.message.SaslHandshakeResponseData;
 import org.apache.kafka.common.protocol.Errors;
 
 import io.jonasg.kawa.config.ClientConfig;
+import io.jonasg.kawa.config.HashedPassword;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -40,15 +41,25 @@ public final class SaslAuthenticator {
     }
 
     private volatile Snapshot snapshot;
+    private final String passwordSalt;
 
     public SaslAuthenticator(Set<String> mechanisms) {
-        this(mechanisms, Map.of());
+        this(mechanisms, Map.of(), null);
     }
 
     public SaslAuthenticator(
             Set<String> mechanisms,
             Map<String, ClientConfig> clients
     ) {
+        this(mechanisms, clients, null);
+    }
+
+    public SaslAuthenticator(
+            Set<String> mechanisms,
+            Map<String, ClientConfig> clients,
+            String passwordSalt
+    ) {
+        this.passwordSalt = passwordSalt;
         reload(mechanisms, clients);
     }
 
@@ -103,7 +114,8 @@ public final class SaslAuthenticator {
         }
 
         ClientConfig clientConfig = snapshot.clients().get(username);
-        if (clientConfig == null || !clientConfig.password().equals(password)) {
+        if (clientConfig == null
+                || !new HashedPassword(password, passwordSalt).equals(clientConfig.password())) {
             return authenticationFailed(response);
         }
 

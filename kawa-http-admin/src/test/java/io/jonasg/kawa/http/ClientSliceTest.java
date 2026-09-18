@@ -2,6 +2,7 @@ package io.jonasg.kawa.http;
 
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.ClientConfig;
+import io.jonasg.kawa.config.HashedPassword;
 import io.jonasg.kawa.config.GroupConfig;
 import org.junit.jupiter.api.Test;
 
@@ -70,7 +71,10 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         // then
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(repository.getActiveConfig().auth().clients()).containsKey("alice");
-        assertThat(repository.getActiveConfig().auth().clients().get("alice").password()).isEqualTo("secret");
+        assertThat(repository.getActiveConfig().auth().clients().get("alice").password())
+                .extracting(HashedPassword::encoded)
+                .asString()
+                .startsWith("pbkdf2-sha256$");
         assertThat(repository.updateCalls()).isEqualTo(1);
         assertThat(repository.updateAndWaitCalls()).isEqualTo(0);
     }
@@ -219,7 +223,8 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         // then
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(repository.getActiveConfig().auth().clients().get("alice"))
-                .isEqualTo(new ClientConfig("SCRAM-SHA-256", "secret"));
+                .isEqualTo(new ClientConfig("SCRAM-SHA-256",
+                        new HashedPassword("secret", "gateway-static-salt")));
     }
 
     @Test
@@ -251,7 +256,8 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         // then
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(repository.getActiveConfig().auth().clients().get("alice"))
-                .isEqualTo(new ClientConfig("PLAIN", "new-secret"));
+                .isEqualTo(new ClientConfig("PLAIN",
+                        new HashedPassword("new-secret", "gateway-static-salt")));
     }
 
     @Test

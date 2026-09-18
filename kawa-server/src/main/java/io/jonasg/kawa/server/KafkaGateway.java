@@ -84,7 +84,8 @@ public final class KafkaGateway implements Gateway {
         apiVersionsBuilder = new ApiVersionsResponseBuilder(SupportedVersions.from(kawaApiRegistry));
 
         // Dynamic config from the config topic (blocks until caught up)
-        dynamicState = new DynamicGatewayState(bootstrapServers, config.configTopic(), config.auth().brokerAuth());
+        dynamicState = new DynamicGatewayState(
+                bootstrapServers, config.configTopic(), config.auth().brokerAuth(), config.auth().salt());
         dynamicState.start();
 
         // Bind the client listener; resolve the advertised endpoint
@@ -114,7 +115,8 @@ public final class KafkaGateway implements Gateway {
 
         //  Admin surface
         if (config.admin().enabled()) {
-            admin = new AdminSurface(config.admin(), dynamicState, cache, bootstrapServers, config.auth().brokerAuth());
+            admin = new AdminSurface(config.admin(), dynamicState, cache, bootstrapServers,
+                    config.auth().brokerAuth(), config.auth().salt());
             admin.start();
         }
         running = true;

@@ -9,8 +9,17 @@ import java.util.stream.Collectors;
 public record AuthConfig(
         Set<String> mechanisms,
         Map<String, ClientConfig> clients,
-        BrokerAuthConfig brokerAuth
+        BrokerAuthConfig brokerAuth,
+        String salt
 ) {
+
+    public AuthConfig(
+            Set<String> mechanisms,
+            Map<String, ClientConfig> clients,
+            BrokerAuthConfig brokerAuth
+    ) {
+        this(mechanisms, clients, brokerAuth, null);
+    }
 
     public AuthConfig {
         mechanisms = mechanisms == null ? Set.of() : Set.copyOf(mechanisms);
@@ -38,7 +47,7 @@ public record AuthConfig(
             expanded.add(mechanism);
             newMechanisms = Set.copyOf(expanded);
         }
-        return new AuthConfig(newMechanisms, newClients, brokerAuth);
+        return new AuthConfig(newMechanisms, newClients, brokerAuth, salt);
     }
 
     /// Returns a new [AuthConfig] with the given client removed. The startup-only
@@ -46,7 +55,7 @@ public record AuthConfig(
     public AuthConfig removeClient(String username) {
         var newClients = new HashMap<>(clients);
         newClients.remove(username);
-        return new AuthConfig(mechanisms, newClients, brokerAuth);
+        return new AuthConfig(mechanisms, newClients, brokerAuth, salt);
     }
 
     private static Map<String, ClientConfig> resolveClientMechanisms(

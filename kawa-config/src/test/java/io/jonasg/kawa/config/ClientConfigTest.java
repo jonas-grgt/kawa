@@ -19,15 +19,15 @@ class ClientConfigTest {
 
     @Test
     void allowsMissingMechanismForGlobalInheritance() {
-        ClientConfig config = new ClientConfig(null, "secret");
+        ClientConfig config = new ClientConfig(null, HashedPassword.fromEncoded("secret"));
 
         assertThat(config.mechanism()).isNull();
-        assertThat(config.password()).isEqualTo("secret");
+        assertThat(config.password().encoded()).isEqualTo("secret");
     }
 
     @Test
     void rejectsNullPassword() {
-        assertThatThrownBy(() -> new ClientConfig("PLAIN", null))
+        assertThatThrownBy(() -> new ClientConfig("PLAIN", (HashedPassword) null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("password");
     }
@@ -43,14 +43,14 @@ class ClientConfigTest {
     void resolvesEnvironmentVariable() {
         ClientConfig config = ClientConfig.of("PLAIN", "${MY_SECRET}", ENV);
 
-        assertThat(config.password()).isEqualTo("s3cret-from-env");
+        assertThat(config.password().encoded()).isEqualTo("s3cret-from-env");
     }
 
     @Test
     void resolvesDefaultWhenEnvVarIsMissing() {
         ClientConfig config = ClientConfig.of("PLAIN", "${NONEXISTENT:-fallback}", EMPTY_ENV);
 
-        assertThat(config.password()).isEqualTo("fallback");
+        assertThat(config.password().encoded()).isEqualTo("fallback");
     }
 
     @Test
@@ -64,13 +64,13 @@ class ClientConfigTest {
     void passesLiteralPasswordThroughUnchanged() {
         ClientConfig config = ClientConfig.of("PLAIN", "plain-password", EMPTY_ENV);
 
-        assertThat(config.password()).isEqualTo("plain-password");
+        assertThat(config.password().encoded()).isEqualTo("plain-password");
     }
 
     @Test
     void publicConstructorUsesSystemGetenv() {
         ClientConfig config = new ClientConfig("PLAIN", "literal");
 
-        assertThat(config.password()).isEqualTo("literal");
+        assertThat(config.password().encoded()).isEqualTo("literal");
     }
 }

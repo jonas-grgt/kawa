@@ -12,6 +12,7 @@ import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
 import io.jonasg.kawa.config.RoleConfig;
 import io.jonasg.kawa.config.ClientConfig;
+import io.jonasg.kawa.config.HashedPassword;
 import io.jonasg.kawa.config.VirtualTopicConfig;
 import io.jonasg.kawa.server.KafkaGateway;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -73,6 +74,7 @@ abstract class GatewayTestSupport {
 	/// RBAC access to whatever principal they do define.
 	protected static final String DEFAULT_PRINCIPAL = "gateway-it";
 	protected static final String DEFAULT_PASSWORD = "gateway-it-secret";
+	private static final String AUTH_SALT = "gateway-it-salt";
 
 	@Container
 	static KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka-native:3.8.0"))
@@ -225,7 +227,7 @@ abstract class GatewayTestSupport {
 				Map.of("default", new ClusterConfig(List.of(brokerBootstrap))),
 				null,
 				new AdvertisedListener(1, "localhost", 0),
-				new AuthConfig(null, null, null),
+				new AuthConfig(null, null, null, AUTH_SALT),
 				null,
 				adminConfig(),
 				CONFIG_TOPIC, null);
@@ -244,10 +246,19 @@ abstract class GatewayTestSupport {
 				Map.of("default", new ClusterConfig(List.of(brokerBootstrap))),
 				typedVirtualTopics,
 				null,
-				authConfig(),
+				hashedAuthConfig(),
 				rbacConfig(),
 				null,
 				CONFIG_TOPIC, null);
+	}
+
+	private AuthConfig hashedAuthConfig() {
+		AuthConfig auth = authConfig();
+		var clients = auth.clients().entrySet().stream().collect(java.util.stream.Collectors.toUnmodifiableMap(
+				Map.Entry::getKey,
+				entry -> new ClientConfig(entry.getValue().mechanism(),
+						new HashedPassword(entry.getValue().password().encoded(), AUTH_SALT))));
+		return new AuthConfig(auth.mechanisms(), clients, auth.brokerAuth(), AUTH_SALT);
 	}
 
 	/// Serializes the full dynamic config as JSON and writes it to the config topic, so the

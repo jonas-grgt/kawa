@@ -54,4 +54,23 @@ class ConfigTopicRepositoryTest {
             assertThat(json).contains("\"virtualTopics\"", "\"auth\"", "\"rbac\"");
         }
     }
+
+    @Test
+    void serializesClientPasswordsWithoutTransformingThem() {
+        // given
+        try (var repository = new ConfigTopicRepository("localhost:9092", "__kawa", new Properties())) {
+            var config = new GatewayConfig(
+                    null, null, null, null,
+                    new AuthConfig(Set.of("PLAIN"),
+                            Map.of("alice", new ClientConfig("PLAIN", "secret")), null, "gateway-static-salt"),
+                    null, null, null, null);
+
+            // when
+            String json = repository.serialize(config);
+
+            // then
+            assertThat(json).contains("secret");
+            assertThat(json).doesNotContain("pbkdf2-sha256$");
+        }
+    }
 }

@@ -285,9 +285,21 @@ class ConfigLoaderTest {
         assertThat(config.auth().mechanisms()).containsExactlyInAnyOrder("PLAIN", "SCRAM-SHA-256");
         assertThat(config.auth().clients()).hasSize(2);
         assertThat(config.auth().clients().get("alice").mechanism()).isEqualTo("PLAIN");
-        assertThat(config.auth().clients().get("alice").password()).isEqualTo("s3cret");
+        assertThat(config.auth().clients().get("alice").password().encoded()).isEqualTo("s3cret");
         assertThat(config.auth().clients().get("bob").mechanism()).isEqualTo("SCRAM-SHA-256");
-        assertThat(config.auth().clients().get("bob").password()).isEqualTo("hunter2");
+        assertThat(config.auth().clients().get("bob").password().encoded()).isEqualTo("hunter2");
+    }
+
+    @Test
+    void loadsOptionalAuthPasswordSalt() {
+        GatewayConfig config = loader.loadFromYaml("""
+                auth:
+                  salt: gateway-static-salt
+                listeners:
+                  - port: 9092
+                """);
+
+        assertThat(config.auth().salt()).isEqualTo("gateway-static-salt");
     }
 
     @Test

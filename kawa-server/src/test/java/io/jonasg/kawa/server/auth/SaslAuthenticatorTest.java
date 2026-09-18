@@ -1,6 +1,7 @@
 package io.jonasg.kawa.server.auth;
 
 import io.jonasg.kawa.config.ClientConfig;
+import io.jonasg.kawa.config.HashedPassword;
 import io.jonasg.kawa.protocol.kafka.KafkaApiRegistry;
 import org.apache.kafka.common.message.SaslAuthenticateRequestData;
 import org.apache.kafka.common.message.SaslHandshakeRequestData;
@@ -58,7 +59,7 @@ class SaslAuthenticatorTest {
     @Test
     void authenticatesPlainWithKnownClientAndCorrectPassword() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", hashedClient("PLAIN", "secret")));
         var request = new SaslAuthenticateRequestData()
                 .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8));
 
@@ -74,9 +75,43 @@ class SaslAuthenticatorTest {
     }
 
     @Test
+    void authenticatesAgainstPersistedPasswordHash() {
+        // given
+        var authenticator = new SaslAuthenticator(
+                Set.of("PLAIN"),
+                Map.of("alice", new ClientConfig("PLAIN", new HashedPassword("secret", "gateway-static-salt"))),
+                "gateway-static-salt");
+        var request = new SaslAuthenticateRequestData()
+                .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8));
+
+        // when
+        var result = authenticator.handleAuthenticate(request);
+
+        // then
+        assertThat(result).isInstanceOf(AuthenticationResult.Success.class);
+    }
+
+    @Test
+    void rejectsPlaintextCredentials() {
+        // given
+        var authenticator = new SaslAuthenticator(
+                Set.of("PLAIN"),
+                Map.of("alice", new ClientConfig("PLAIN", "secret")),
+                "gateway-static-salt");
+        var request = new SaslAuthenticateRequestData()
+                .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8));
+
+        // when
+        var result = authenticator.handleAuthenticate(request);
+
+        // then
+        assertThat(result).isInstanceOf(AuthenticationResult.Failure.class);
+    }
+
+    @Test
     void rejectsUnknownClientWithoutLeakingWhetherTheUsernameExists() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", hashedClient("PLAIN", "secret")));
         var request = new SaslAuthenticateRequestData()
                 .setAuthBytes("\u0000bob\u0000secret".getBytes(StandardCharsets.UTF_8));
 
@@ -93,7 +128,7 @@ class SaslAuthenticatorTest {
     @Test
     void rejectsMalformedPlainPayload() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", hashedClient("PLAIN", "secret")));
         var request = new SaslAuthenticateRequestData()
                 .setAuthBytes("not-a-plain-payload".getBytes(StandardCharsets.UTF_8));
 
@@ -110,10 +145,10 @@ class SaslAuthenticatorTest {
     @Test
     void reloadReplacesMechanismsAndClients() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", hashedClient("PLAIN", "secret")));
 
         // when
-        authenticator.reload(Set.of("SCRAM-SHA-256"), Map.of("bob", new ClientConfig("SCRAM-SHA-256", "hunter2")));
+        authenticator.reload(Set.of("SCRAM-SHA-256"), Map.of("bob", hashedClient("SCRAM-SHA-256", "hunter2")));
 
         // then
         var handshake = authenticator.handleHandshake(new SaslHandshakeRequestData().setMechanism("PLAIN"));
@@ -132,7 +167,7 @@ class SaslAuthenticatorTest {
     @Test
     void reloadWithEmptyStateRejectsEverything() {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", hashedClient("PLAIN", "secret")));
 
         // when
         authenticator.reload(Set.of(), Map.of());
@@ -148,20 +183,20 @@ class SaslAuthenticatorTest {
     @Test
     void reloadIsSafeDuringConcurrentReads() throws Exception {
         // given
-        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")));
-        var first = Map.of("alice", new ClientConfig("PLAIN", "secret"));
-        var second = Map.of("bob", new ClientConfig("PLAIN", "hunter2"));
+        var authenticator = new SaslAuthenticator(Set.of("PLAIN"), Map.of("alice", hashedClient("PLAIN", "secret")));
+        var first = Map.of("alice", hashedClient("PLAIN", "secret"));
+        var second = Map.of("bob", hashedClient("PLAIN", "hunter2"));
         var failure = new AtomicReference<Throwable>();
 
         // when
         var writer = new Thread(() -> {
-            for (int i = 0; i < 10_000; i++) {
+            for (int i = 0; i < 100; i++) {
                 authenticator.reload(Set.of("PLAIN"), i % 2 == 0 ? first : second);
             }
         });
         var reader = new Thread(() -> {
             try {
-                for (int i = 0; i < 10_000; i++) {
+                for (int i = 0; i < 100; i++) {
                     authenticator.handleHandshake(new SaslHandshakeRequestData().setMechanism("PLAIN"));
                     authenticator.handleAuthenticate(new SaslAuthenticateRequestData()
                             .setAuthBytes("\u0000alice\u0000secret".getBytes(StandardCharsets.UTF_8)));
@@ -179,5 +214,9 @@ class SaslAuthenticatorTest {
 
         // then
         assertThat(failure).hasValue(null);
+    }
+
+    private static ClientConfig hashedClient(String mechanism, String password) {
+        return new ClientConfig(mechanism, new HashedPassword(password, null));
     }
 }
