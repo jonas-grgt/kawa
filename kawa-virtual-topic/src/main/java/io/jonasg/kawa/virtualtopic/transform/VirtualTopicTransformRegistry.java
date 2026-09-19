@@ -17,7 +17,8 @@ public final class VirtualTopicTransformRegistry {
         Map<Short, VirtualTopicTransform<?, ?>> byKey = new HashMap<>();
         for (VirtualTopicTransform<?, ?> transform : transforms) {
             if (byKey.put(transform.apiKey(), transform) != null) {
-                throw new IllegalArgumentException("Duplicate virtual-topic transform for api key " + transform.apiKey());
+                throw new IllegalArgumentException(
+                        "Duplicate virtual-topic transform for api key " + transform.apiKey());
             }
         }
         this.transforms = Map.copyOf(byKey);

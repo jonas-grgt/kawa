@@ -281,7 +281,7 @@ public final class MetadataClient {
         var brokers = data.brokers().stream()
                 .collect(
                         Collectors.toMap(MetadataResponseData.MetadataResponseBroker::nodeId,
-                        b -> BrokerNode.of(b.nodeId(), b.host(), b.port(), b.rack()))
+                                b -> BrokerNode.of(b.nodeId(), b.host(), b.port(), b.rack()))
                 );
         return MetadataSnapshot.of(topics, brokers, data.clusterId());
     }

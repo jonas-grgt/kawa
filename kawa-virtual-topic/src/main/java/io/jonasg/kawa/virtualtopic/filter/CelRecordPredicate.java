@@ -21,80 +21,78 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CelRecordPredicate implements RecordPredicate<CelFilterConfig> {
 
-	private static final CelCompiler COMPILER = CelCompilerFactory.standardCelCompilerBuilder()
-			.addVar("key", SimpleType.STRING)
-			.addVar("value", SimpleType.STRING)
-			.addVar("headers", MapType.create(SimpleType.STRING, SimpleType.STRING))
-			.addVar("timestamp", SimpleType.INT)
-			.build();
-	private static final CelRuntime RUNTIME = CelRuntimeFactory.plannerRuntimeBuilder().build();
+    private static final CelCompiler COMPILER = CelCompilerFactory.standardCelCompilerBuilder()
+            .addVar("key", SimpleType.STRING)
+            .addVar("value", SimpleType.STRING)
+            .addVar("headers", MapType.create(SimpleType.STRING, SimpleType.STRING))
+            .addVar("timestamp", SimpleType.INT)
+            .build();
+    private static final CelRuntime RUNTIME = CelRuntimeFactory.plannerRuntimeBuilder().build();
 
-	/// Compiled CEL programs keyed by expression string. Compilation is expensive and the same
-	/// expression is reused for every record of a virtual topic, so it is done once and cached.
-	/// `CelRuntime.Program` is thread-safe and side-effect free, so a single instance is shared.
-	private final Map<String, CelRuntime.Program> celPrograms = new ConcurrentHashMap<>();
+    /// Compiled CEL programs keyed by expression string. Compilation is expensive and the same
+    /// expression is reused for every record of a virtual topic, so it is done once and cached.
+    /// `CelRuntime.Program` is thread-safe and side-effect free, so a single instance is shared.
+    private final Map<String, CelRuntime.Program> celPrograms = new ConcurrentHashMap<>();
 
-	@Override
-	public boolean test(CelFilterConfig cfg, Record record) {
-		var program = celPrograms.computeIfAbsent(cfg.expression(), this::compile);
-		Map<String, Object> bindings = new HashMap<>(4);
-		bindings.put("key", decode(record.key()));
-		bindings.put("value", decode(record.value()));
-		bindings.put("headers", headers(record));
-		bindings.put("timestamp", record.timestamp());
-		try {
-			return Boolean.TRUE.equals(program.eval(bindings));
-		} catch (CelEvaluationException e) {
-			throw new IllegalStateException(
-					"Failed to evaluate CEL filter '" + cfg + "': " + e.getMessage(), e);
-		}
-	}
+    @Override
+    public boolean test(CelFilterConfig cfg, Record record) {
+        var program = celPrograms.computeIfAbsent(cfg.expression(), this::compile);
+        Map<String, Object> bindings = new HashMap<>(4);
+        bindings.put("key", decode(record.key()));
+        bindings.put("value", decode(record.value()));
+        bindings.put("headers", headers(record));
+        bindings.put("timestamp", record.timestamp());
+        try {
+            return Boolean.TRUE.equals(program.eval(bindings));
+        } catch (CelEvaluationException e) {
+            throw new IllegalStateException(
+                    "Failed to evaluate CEL filter '" + cfg + "': " + e.getMessage(), e);
+        }
+    }
 
-	private CelRuntime.Program compile(String expression) {
-		try {
-			CelAbstractSyntaxTree ast = COMPILER.compile(expression).getAst();
-			return RUNTIME.createProgram(ast);
-		} catch (CelValidationException | CelEvaluationException e) {
-			throw new IllegalArgumentException(
-					"Invalid CEL filter expression '" + expression + "': " + e.getMessage(), e);
-		}
-	}
+    private CelRuntime.Program compile(String expression) {
+        try {
+            CelAbstractSyntaxTree ast = COMPILER.compile(expression).getAst();
+            return RUNTIME.createProgram(ast);
+        } catch (CelValidationException | CelEvaluationException e) {
+            throw new IllegalArgumentException(
+                    "Invalid CEL filter expression '" + expression + "': " + e.getMessage(), e);
+        }
+    }
 
-	private static String decode(ByteBuffer buffer) {
-		if (buffer == null) {
-			return "";
-		}
-		byte[] bytes = new byte[buffer.remaining()];
-		buffer.duplicate().get(bytes);
-		return new String(bytes, StandardCharsets.UTF_8);
-	}
+    private static String decode(ByteBuffer buffer) {
+        if (buffer == null) {
+            return "";
+        }
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.duplicate().get(bytes);
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
 
-	private static Map<String, String> headers(Record record) {
-		Map<String, String> headers = new HashMap<>();
-		for (Header header : record.headers()) {
-			if (header.value() != null) {
-				headers.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
-			}
-		}
-		// A missing header resolves to "" so `headers.tenant == "acme"` is `false` rather than
-		// raising a CEL "key not present in map" evaluation error. Presence can still be tested
-		// explicitly with the `has(headers.tenant)` macro.
-		return new DefaultingMap(headers);
-	}
+    private static Map<String, String> headers(Record record) {
+        Map<String, String> headers = new HashMap<>();
+        for (Header header : record.headers()) {
+            if (header.value() != null) {
+                headers.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
+            }
+        }
+        // A missing header resolves to "" so `headers.tenant == "acme"` is `false` rather than
+        // raising a CEL "key not present in map" evaluation error. Presence can still be tested
+        // explicitly with the `has(headers.tenant)` macro.
+        return new DefaultingMap(headers);
+    }
 
-	/// A map that returns `""` for absent keys, so header lookups in CEL expressions are
-	/// falsy instead of erroring when a header is missing.
-	static final class DefaultingMap extends HashMap<String, String> {
+    /// A map that returns `""` for absent keys, so header lookups in CEL expressions are
+    /// falsy instead of erroring when a header is missing.
+    static final class DefaultingMap extends HashMap<String, String> {
 
-		public DefaultingMap(Map<String, String> headers) {
-			super(headers);
-		}
+        DefaultingMap(Map<String, String> headers) {
+            super(headers);
+        }
 
-		@Override
-		public String get(Object key) {
-			return containsKey(key) ? super.get(key) : "";
-		}
-	}
-
-
+        @Override
+        public String get(Object key) {
+            return containsKey(key) ? super.get(key) : "";
+        }
+    }
 }

@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 /// The regex is validated at config load time so an invalid pattern fails fast.
 ///
 /// @param header header key to compare
-/// @param value regular expression the header value must fully match
+/// @param value  regular expression the header value must fully match
 public record HeaderMatchesFilterConfig(
         String header,
         String value

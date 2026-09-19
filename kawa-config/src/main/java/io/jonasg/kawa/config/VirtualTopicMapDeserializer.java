@@ -23,7 +23,8 @@ import java.util.Map;
 public final class VirtualTopicMapDeserializer extends ValueDeserializer<Map<String, VirtualTopicConfig>> {
 
     private static final TypeReference<Map<String, JsonNode>> RAW =
-            new TypeReference<>() {};
+            new TypeReference<>() {
+            };
 
     @Override
     public Map<String, VirtualTopicConfig> deserialize(
@@ -41,7 +42,7 @@ public final class VirtualTopicMapDeserializer extends ValueDeserializer<Map<Str
             } else {
                 throw new IllegalArgumentException(
                         "Invalid virtual topic mapping for topic '" + entry.getKey()
-                                + "': expected a topic name string or a map with a 'topic' key");
+                        + "': expected a topic name string or a map with a 'topic' key");
             }
         }
         return Map.copyOf(result);
@@ -56,7 +57,7 @@ public final class VirtualTopicMapDeserializer extends ValueDeserializer<Map<Str
         if (topicNode == null || !topicNode.isString()) {
             throw new IllegalArgumentException(
                     "Invalid virtual topic mapping for topic '" + virtualTopic
-                            + "': expected a topic name string or a map with a 'topic' key");
+                    + "': expected a topic name string or a map with a 'topic' key");
         }
         VirtualTopicFilterConfig filter = parseFilter(virtualTopic, object.get("filter"), context);
         boolean exposePhysicalTopic = parseExposePhysicalTopic(virtualTopic, object.get("exposePhysicalTopic"));
@@ -73,7 +74,7 @@ public final class VirtualTopicMapDeserializer extends ValueDeserializer<Map<Str
         if (!node.isBoolean()) {
             throw new IllegalArgumentException(
                     "Invalid virtual topic mapping for topic '" + virtualTopic
-                            + "': 'exposePhysicalTopic' must be a boolean");
+                    + "': 'exposePhysicalTopic' must be a boolean");
         }
         return node.booleanValue();
     }
@@ -92,7 +93,7 @@ public final class VirtualTopicMapDeserializer extends ValueDeserializer<Map<Str
         if (!filterNode.isObject()) {
             throw new IllegalArgumentException(
                     "Invalid filter config for virtual topic '" + virtualTopic
-                            + "': expected an object with a required 'type' key");
+                    + "': expected an object with a required 'type' key");
         }
         try {
             return context.readTreeAsValue(filterNode, VirtualTopicFilterConfig.class);

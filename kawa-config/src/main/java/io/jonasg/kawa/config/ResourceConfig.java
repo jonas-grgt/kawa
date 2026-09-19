@@ -10,8 +10,8 @@ import org.apache.kafka.common.resource.ResourceType;
 /// A [PatternType#PREFIXED] resource may carry an empty `pattern`, which matches every
 /// resource of that type - the sanctioned way to express "any TOPIC" or "any GROUP".
 ///
-/// @param type the resource type
-/// @param pattern the resource name, or `null` for [ResourceType#CLUSTER]
+/// @param type        the resource type
+/// @param pattern     the resource name, or `null` for [ResourceType#CLUSTER]
 /// @param patternType how `pattern` is matched
 public record ResourceConfig(
         ResourceType type,

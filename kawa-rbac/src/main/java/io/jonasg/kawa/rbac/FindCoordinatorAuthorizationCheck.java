@@ -47,8 +47,7 @@ public final class FindCoordinatorAuthorizationCheck
         }
         Target target = switch (data.keyType()) {
             case COORDINATOR_TYPE_GROUP -> new Target(ResourceType.GROUP, Errors.GROUP_AUTHORIZATION_FAILED);
-            case COORDINATOR_TYPE_TRANSACTION ->
-                    new Target(ResourceType.TRANSACTIONAL_ID, Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED);
+            case COORDINATOR_TYPE_TRANSACTION -> new Target(ResourceType.TRANSACTIONAL_ID, Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED);
             default -> null; // unrecognized keyType - nothing to authorize against, forward unchanged
         };
         if (target == null) {

@@ -18,7 +18,8 @@ class HeaderMatchesRecordPredicateTest {
     @Test
     void headerMatchesMatchesRecordWithMatchingHeader() {
         // given a headerMatches filter for tenant matching "eu.*"
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new HeaderMatchesFilterConfig("tenant", "eu.*"));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new HeaderMatchesFilterConfig("tenant", "eu.*"));
         var record = record(new SimpleRecord(
                 1000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8),
                 new Header[]{new RecordHeader("tenant", "eu-west-1".getBytes(StandardCharsets.UTF_8))}));
@@ -33,7 +34,8 @@ class HeaderMatchesRecordPredicateTest {
     @Test
     void headerMatchesRejectsRecordWithPartiallyMatchingHeader() {
         // given a headerMatches filter for tenant matching "west" (full match required)
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new HeaderMatchesFilterConfig("tenant", "west"));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new HeaderMatchesFilterConfig("tenant", "west"));
         var record = record(new SimpleRecord(
                 1000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8),
                 new Header[]{new RecordHeader("tenant", "eu-west-1".getBytes(StandardCharsets.UTF_8))}));
@@ -48,7 +50,8 @@ class HeaderMatchesRecordPredicateTest {
     @Test
     void headerMatchesRejectsRecordWithMissingHeader() {
         // given a headerMatches filter for tenant matching "eu.*"
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new HeaderMatchesFilterConfig("tenant", "eu.*"));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new HeaderMatchesFilterConfig("tenant", "eu.*"));
         var record = record(new SimpleRecord(
                 1000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8),
                 new Header[]{new RecordHeader("region", "eu".getBytes(StandardCharsets.UTF_8))}));

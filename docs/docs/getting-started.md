@@ -5,16 +5,14 @@ sidebar_position: 2
 
 # Getting started
 
-The fastest way to run kawa is the bundled Docker Compose setup, which starts a Kafka
-broker and a gateway. The gateway boots **empty**: no virtual topics are configured and
-RBAC is **default-deny**, so nothing can be produced or consumed until dynamic config is
-applied (see [Dynamic config](/docs/configuration#dynamic-config)).
+The fastest way to run kawa is the bundled Docker Compose setup, which starts a Kafka broker and a gateway. The gateway
+boots **empty**: no virtual topics are configured and RBAC is **default-deny**, so nothing can be produced or consumed
+until dynamic config is applied (see [Dynamic config](/docs/configuration#dynamic-config)).
 
 ## Prerequisites
 
 - Docker (with Compose v2)
-- Kafka command-line tools, including `kafka-console-producer.sh` (available on
-  your `PATH`)
+- Kafka command-line tools, including `kafka-console-producer.sh` (available on your `PATH`)
 
 ## Run the demo stack
 
@@ -22,34 +20,34 @@ applied (see [Dynamic config](/docs/configuration#dynamic-config)).
 make up
 ```
 
-This always rebuilds the gateway image and force-recreates the containers, so code and
-config changes are picked up reliably. (A plain `docker compose up` can silently keep
-running a stale image or container.) The SASL-enabled variant is `make up-sasl`; see
+This always rebuilds the gateway image and force-recreates the containers, so code and config changes are picked up
+reliably. (A plain `docker compose up` can silently keep running a stale image or container.) The SASL-enabled variant
+is `make up-sasl`; see
 `make help` for the full list of targets.
 
 This starts three services:
 
-| Service | Image | Port |
-|---|---|---|
-| `kafka` | `apache/kafka-native:4.3.1` | `19092` on the host (inspection only) |
-| `kafka-init` | `apache/kafka:4.3.1` | creates the physical topic `orders-v2`, then exits |
-| `gateway` | built from this repo's Dockerfile | `9092` — **connect your clients here** |
+| Service      | Image                             | Port                                               |
+|--------------|-----------------------------------|----------------------------------------------------|
+| `kafka`      | `apache/kafka-native:4.3.1`       | `19092` on the host (inspection only)              |
+| `kafka-init` | `apache/kafka:4.3.1`              | creates the physical topic `orders-v2`, then exits |
+| `gateway`    | built from this repo's Dockerfile | `9092` — **connect your clients here**             |
 
-The gateway is mounted with [`docker/gateway.yaml`](https://GITHUB_URL/blob/main/docker/gateway.yaml),
-which carries only startup-only settings:
+The gateway is mounted with [`docker/gateway.yaml`](https://GITHUB_URL/blob/main/docker/gateway.yaml), which carries
+only startup-only settings:
 
 - a listener on `0.0.0.0:9092`
 - an upstream cluster pointing at `kafka:9092`
 - an advertised listener at `localhost:9092`
 - an admin API on `0.0.0.0:8080`
 
-Virtual topics, RBAC, client authentication and governance are not in this file — they
-are dynamic (see [Dynamic config](/docs/configuration#dynamic-config)).
+Virtual topics, RBAC, client authentication and governance are not in this file — they are dynamic
+(see [Dynamic config](/docs/configuration#dynamic-config)).
 
 ## Configure a virtual topic and produce through the gateway
 
-The `orders.eu` virtual topic no longer ships in the static config. Configure virtual
-topics at runtime — via the admin API or by writing a config-topic snapshot (see
+The `orders.eu` virtual topic no longer ships in the static config. Configure virtual topics at runtime — via the admin
+API or by writing a config-topic snapshot (see
 [Admin API](/docs/configuration#admin-api)). This maps `orders.eu` to the physical topic
 `orders-v2` created by `kafka-init`:
 
@@ -59,8 +57,8 @@ curl -X POST http://localhost:8080/topics \
   -d '{"type": "virtual", "name": "orders.eu", "topic": "orders-v2"}'
 ```
 
-Because RBAC is **default-deny** and client auth is empty on first boot, producing also
-needs grants. The following creates a PLAIN client with broad demo access:
+Because RBAC is **default-deny** and client auth is empty on first boot, producing also needs grants. The following
+creates a PLAIN client with broad demo access:
 
 ```bash
 curl -X PUT http://localhost:8080/auth/clients/alice \
@@ -117,6 +115,6 @@ If `--config` is omitted, kawa looks for `config.yaml` in the working directory.
 
 ## Verify it works
 
-With the stack running, connect any Kafka tool to `localhost:9092`. Metadata requests
-return a single broker — the gateway itself — advertising `localhost:9092`, so every
-subsequent connection also lands on kawa instead of the real cluster.
+With the stack running, connect any Kafka tool to `localhost:9092`. Metadata requests return a single broker — the
+gateway itself — advertising `localhost:9092`, so every subsequent connection also lands on kawa instead of the real
+cluster.

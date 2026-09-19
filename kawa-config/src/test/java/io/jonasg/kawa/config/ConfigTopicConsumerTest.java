@@ -53,9 +53,9 @@ class ConfigTopicConsumerTest {
         AtomicInteger calls = new AtomicInteger();
         ConfigTopicConsumer consumer = new ConfigTopicConsumer(
                 "localhost:9092", TOPIC, _ -> {
-                    calls.incrementAndGet();
-                    throw new IllegalArgumentException("rejected");
-                });
+            calls.incrementAndGet();
+            throw new IllegalArgumentException("rejected");
+        });
 
         // when
         assertThatCode(() -> consumer.handle(record("{}")))
@@ -88,7 +88,9 @@ class ConfigTopicConsumerTest {
                 "localhost:9092", TOPIC, received::add);
 
         // when
-        consumer.handle(record("{\"name\":\"old\",\"metrics\":{\"enabled\":false,\"prometheusPort\":0},\"virtualTopics\":{\"orders\":\"orders-v2\"}}"));
+        consumer.handle(record(
+                "{\"name\":\"old\",\"metrics\":{\"enabled\":false,\"prometheusPort\":0},"
+                + "\"virtualTopics\":{\"orders\":\"orders-v2\"}}"));
 
         // then
         assertThat(received).hasSize(1);

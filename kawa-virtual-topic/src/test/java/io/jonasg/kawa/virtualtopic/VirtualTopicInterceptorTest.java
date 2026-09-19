@@ -455,7 +455,10 @@ class VirtualTopicInterceptorTest {
 
     @Test
     void unfilteredFetchResponseRecordsPassThroughUntouched() {
-        var record = new SimpleRecord(1000L, "k1".getBytes(StandardCharsets.UTF_8), "v1".getBytes(StandardCharsets.UTF_8));
+        var record = new SimpleRecord(
+                1000L,
+                "k1".getBytes(StandardCharsets.UTF_8),
+                "v1".getBytes(StandardCharsets.UTF_8));
         var records = MemoryRecords.withRecords(Compression.NONE, record);
 
         var responseData = new FetchResponseData();

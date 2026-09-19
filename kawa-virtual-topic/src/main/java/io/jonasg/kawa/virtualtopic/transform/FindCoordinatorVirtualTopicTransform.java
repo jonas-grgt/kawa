@@ -4,7 +4,8 @@ import io.jonasg.kawa.config.AdvertisedListener;
 import io.jonasg.kawa.core.GatewayContext;
 import org.apache.kafka.common.message.FindCoordinatorResponseData;
 
-public final class FindCoordinatorVirtualTopicTransform implements VirtualTopicTransform<Object, FindCoordinatorResponseData> {
+public final class FindCoordinatorVirtualTopicTransform
+        implements VirtualTopicTransform<Object, FindCoordinatorResponseData> {
 
     private final AdvertisedListener advertised;
 

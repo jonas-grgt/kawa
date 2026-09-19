@@ -47,7 +47,7 @@ public record ClientConfig(
                 } else {
                     throw new IllegalArgumentException(
                             "Environment variable '" + varName
-                                    + "' is not set and no default is configured");
+                            + "' is not set and no default is configured");
                 }
             }
             matcher.appendReplacement(result, Matcher.quoteReplacement(resolved));

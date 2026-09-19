@@ -18,7 +18,12 @@ import java.util.Optional;
 /// Topic names that are not virtualized map to themselves (identity) and carry no filter.
 public final class VirtualTopicManager {
 
-    private record Entry(String virtual, String physical, VirtualTopicFilterConfig filter, boolean exposePhysicalTopic) {
+    private record Entry(
+            String virtual,
+            String physical,
+            VirtualTopicFilterConfig filter,
+            boolean exposePhysicalTopic
+    ) {
     }
 
     /// Immutable snapshot of all three lookup maps. Published as a unit so a reload can never

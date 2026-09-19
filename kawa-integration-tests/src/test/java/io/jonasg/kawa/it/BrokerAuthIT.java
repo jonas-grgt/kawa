@@ -20,7 +20,6 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringSerializer;
 import tools.jackson.databind.json.JsonMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.acl.AclOperation;
@@ -98,16 +97,16 @@ class BrokerAuthIT {
             })
             .withCommand("bash", "-c",
                     "mkdir -p /etc/kafka/secrets && "
-                            + "cat > /etc/kafka/secrets/kafka_server_jaas.conf << 'EOF'\n"
-                            + "KafkaServer {\n"
-                            + "  org.apache.kafka.common.security.plain.PlainLoginModule required\n"
-                            + "  username=\"" + BROKER_USER + "\"\n"
-                            + "  password=\"" + BROKER_PASSWORD + "\"\n"
-                            + "  user_" + BROKER_USER + "=\"" + BROKER_PASSWORD + "\";\n"
-                            + "};\n"
-                            + "EOF\n"
-                            + "export KAFKA_OPTS='-Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf' && "
-                            + "/etc/confluent/docker/run")
+                    + "cat > /etc/kafka/secrets/kafka_server_jaas.conf << 'EOF'\n"
+                    + "KafkaServer {\n"
+                    + "  org.apache.kafka.common.security.plain.PlainLoginModule required\n"
+                    + "  username=\"" + BROKER_USER + "\"\n"
+                    + "  password=\"" + BROKER_PASSWORD + "\"\n"
+                    + "  user_" + BROKER_USER + "=\"" + BROKER_PASSWORD + "\";\n"
+                    + "};\n"
+                    + "EOF\n"
+                    + "export KAFKA_OPTS='-Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf' && "
+                    + "/etc/confluent/docker/run")
             .waitingFor(Wait.forLogMessage(".*Kafka Server started.*", 1))
             .withStartupTimeout(Duration.ofMinutes(2));
 
@@ -184,7 +183,7 @@ class BrokerAuthIT {
         } catch (ConditionTimeoutException e) {
             throw new IllegalStateException(
                     "Broker SASL listener never became reachable on localhost:" + HOST_SASL_PORT
-                            + "; container logs:\n" + container.getLogs(), e);
+                    + "; container logs:\n" + container.getLogs(), e);
         }
     }
 
@@ -223,7 +222,7 @@ class BrokerAuthIT {
         props.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
         props.put(SaslConfigs.SASL_JAAS_CONFIG,
                 "org.apache.kafka.common.security.plain.PlainLoginModule required "
-                        + "username=\"" + BROKER_USER + "\" password=\"" + BROKER_PASSWORD + "\";");
+                + "username=\"" + BROKER_USER + "\" password=\"" + BROKER_PASSWORD + "\";");
         return props;
     }
 
@@ -260,7 +259,7 @@ class BrokerAuthIT {
         producerProps.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
         producerProps.put(SaslConfigs.SASL_JAAS_CONFIG,
                 "org.apache.kafka.common.security.plain.PlainLoginModule required "
-                        + "username=\"client\" password=\"client-secret\";");
+                + "username=\"client\" password=\"client-secret\";");
 
         try (var producer = new org.apache.kafka.clients.producer.KafkaProducer<String, String>(producerProps)) {
             producer.send(new ProducerRecord<>("broker-auth-test", "key", "value")).get();
@@ -276,7 +275,7 @@ class BrokerAuthIT {
         consumerProps.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
         consumerProps.put(SaslConfigs.SASL_JAAS_CONFIG,
                 "org.apache.kafka.common.security.plain.PlainLoginModule required "
-                        + "username=\"client\" password=\"client-secret\";");
+                + "username=\"client\" password=\"client-secret\";");
 
         try (var consumer = new org.apache.kafka.clients.consumer.KafkaConsumer<String, String>(consumerProps)) {
             consumer.subscribe(List.of("broker-auth-test"));

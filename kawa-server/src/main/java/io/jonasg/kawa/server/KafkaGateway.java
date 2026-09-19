@@ -1,9 +1,7 @@
 package io.jonasg.kawa.server;
 
 import io.jonasg.kawa.config.AdvertisedListener;
-import io.jonasg.kawa.config.ClusterConfig;
 import io.jonasg.kawa.config.GatewayConfig;
-import io.jonasg.kawa.config.ListenerConfig;
 import io.jonasg.kawa.core.Gateway;
 import io.jonasg.kawa.core.Interceptor;
 import io.jonasg.kawa.core.InterceptorPipeline;

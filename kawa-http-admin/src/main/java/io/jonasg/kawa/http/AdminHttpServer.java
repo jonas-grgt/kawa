@@ -34,7 +34,7 @@ public final class AdminHttpServer {
     private static final Logger log = LoggerFactory.getLogger(AdminHttpServer.class);
 
     private final AdminConfig config;
-	private final TopicAdmin topicAdmin;
+    private final TopicAdmin topicAdmin;
     private final Router router;
     private final int routerExecutorThreads;
 
@@ -52,7 +52,7 @@ public final class AdminHttpServer {
             TopicAdmin topicAdmin
     ) {
         this.config = config;
-		this.topicAdmin = topicAdmin;
+        this.topicAdmin = topicAdmin;
         this.routerExecutorThreads = Math.max(4, Runtime.getRuntime().availableProcessors());
         this.router = new Router()
                 .get("/topics", new GetTopicsHandler(virtualTopics, cache))

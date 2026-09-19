@@ -73,7 +73,7 @@ public record AuthConfig(
         if (mechanism == null || mechanism.isBlank()) {
             if (globalMechanism == null) {
                 throw new IllegalArgumentException("client '" + username
-                        + "' has no mechanism and no global mechanism is configured");
+                                                   + "' has no mechanism and no global mechanism is configured");
             }
             return new ClientConfig(globalMechanism, client.password());
         }
@@ -90,7 +90,7 @@ public record AuthConfig(
             if (!mechanisms.contains(mechanism)) {
                 throw new IllegalArgumentException(
                         "Client '" + username + "' uses mechanism '" + mechanism
-                                + "' which is not in the configured mechanisms list " + mechanisms);
+                        + "' which is not in the configured mechanisms list " + mechanisms);
             }
         }
     }

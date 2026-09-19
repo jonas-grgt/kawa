@@ -36,7 +36,7 @@ services:
     container_name: kawa-kafka-init-sasl
     depends_on:
       - kafka
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: [ "/bin/sh", "-c" ]
     command:
       - |
         cat > /tmp/admin.properties << 'EOF'

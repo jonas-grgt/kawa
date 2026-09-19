@@ -18,7 +18,8 @@ class HeaderEqualsRecordPredicateTest {
     @Test
     void headerEqualsMatchesRecordWithMatchingHeader() {
         // given a headerEquals filter for tenant=acme
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new HeaderEqualsFilterConfig("tenant", "acme"));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new HeaderEqualsFilterConfig("tenant", "acme"));
         var record = record(new SimpleRecord(
                 1000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8),
                 new Header[]{new RecordHeader("tenant", "acme".getBytes(StandardCharsets.UTF_8))}));
@@ -33,7 +34,8 @@ class HeaderEqualsRecordPredicateTest {
     @Test
     void headerEqualsRejectsRecordWithNonMatchingHeader() {
         // given a headerEquals filter for tenant=acme
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new HeaderEqualsFilterConfig("tenant", "acme"));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new HeaderEqualsFilterConfig("tenant", "acme"));
         var record = record(new SimpleRecord(
                 1000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8),
                 new Header[]{new RecordHeader("tenant", "other".getBytes(StandardCharsets.UTF_8))}));

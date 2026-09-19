@@ -80,6 +80,6 @@ public final class DeleteTopicVirtualTopicTransform
                 .setName(name)
                 .setErrorCode(Errors.INVALID_REQUEST.code())
                 .setErrorMessage("virtual topic '" + name + "' is reserved; use '"
-                        + virtualTopics.toPhysical(name) + "'");
+                                 + virtualTopics.toPhysical(name) + "'");
     }
 }

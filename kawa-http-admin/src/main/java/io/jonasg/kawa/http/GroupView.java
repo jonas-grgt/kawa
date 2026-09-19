@@ -4,9 +4,9 @@ import java.util.List;
 
 /// A single RBAC group in the admin `/rbac/groups` response.
 ///
-/// @param name the group name
+/// @param name    the group name
 /// @param clients the usernames in this group
-/// @param roles the roles whose ACLs every client inherits
+/// @param roles   the roles whose ACLs every client inherits
 public record GroupView(
         String name,
         List<String> clients,

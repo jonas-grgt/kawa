@@ -6,10 +6,10 @@ import java.util.Map;
 /// replication factor, and topic configs. A `-1` partitions or replication factor means the
 /// client left it to the broker default.
 ///
-/// @param name the topic name
-/// @param partitions requested partitions, or `-1` for the broker default
+/// @param name              the topic name
+/// @param partitions        requested partitions, or `-1` for the broker default
 /// @param replicationFactor requested replication factor, or `-1` for the broker default
-/// @param configs topic configs, keyed by config name
+/// @param configs           topic configs, keyed by config name
 public record TopicSpec(
         String name,
         int partitions,

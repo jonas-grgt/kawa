@@ -40,7 +40,7 @@ public final class FetchSessionRegistry {
     /// the given physical topics and records activity. No-op for full fetches (session not yet
     /// created) or unknown sessions.
     public void onFetchRequest(Object client, int sessionId, Map<String, String> physicalToVirtual,
-                        List<String> forgottenPhysical) {
+                               List<String> forgottenPhysical) {
         if (sessionId == 0) {
             return;
         }

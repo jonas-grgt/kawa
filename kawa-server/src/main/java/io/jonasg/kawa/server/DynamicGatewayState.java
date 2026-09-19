@@ -1,7 +1,6 @@
 package io.jonasg.kawa.server;
 
 import io.jonasg.kawa.config.BrokerAuthConfig;
-import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GovernanceConfig;
 import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.core.VirtualTopicManager;
@@ -91,7 +90,7 @@ public final class DynamicGatewayState implements AutoCloseable {
             props.put("sasl.mechanism", brokerAuth.mechanism());
             props.put("sasl.jaas.config",
                     "org.apache.kafka.common.security.plain.PlainLoginModule required "
-                            + "username=\"" + brokerAuth.username() + "\" password=\"" + brokerAuth.password() + "\";");
+                    + "username=\"" + brokerAuth.username() + "\" password=\"" + brokerAuth.password() + "\";");
         }
         return props;
     }

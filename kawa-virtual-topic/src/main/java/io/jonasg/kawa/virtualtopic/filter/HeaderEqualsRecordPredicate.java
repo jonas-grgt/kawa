@@ -5,9 +5,9 @@ import org.apache.kafka.common.record.internal.Record;
 
 public class HeaderEqualsRecordPredicate implements RecordPredicate<HeaderEqualsFilterConfig> {
 
-	@Override
-	public boolean test(HeaderEqualsFilterConfig config, Record record) {
-		return HeaderValues.of(record, config.header()).stream()
-				.anyMatch(value -> config.value().equals(value));
-	}
+    @Override
+    public boolean test(HeaderEqualsFilterConfig config, Record record) {
+        return HeaderValues.of(record, config.header()).stream()
+                .anyMatch(value -> config.value().equals(value));
+    }
 }

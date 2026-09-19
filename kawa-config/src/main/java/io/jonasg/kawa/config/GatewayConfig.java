@@ -9,15 +9,15 @@ import java.util.stream.Collectors;
 
 /// Immutable gateway configuration.
 ///
-/// @param listeners client-facing listeners
-/// @param clusters upstream Kafka clusters
+/// @param listeners     client-facing listeners
+/// @param clusters      upstream Kafka clusters
 /// @param virtualTopics virtual topic config map
-/// @param advertised the endpoint advertised to clients in rewritten metadata
-/// @param auth client SASL authentication configuration
-/// @param rbac role-based access control configuration
-/// @param admin admin HTTP listener configuration
-/// @param configTopic the topic that holds the dynamic gateway config (defaults to `__kawa`)
-/// @param governance topic governance configuration
+/// @param advertised    the endpoint advertised to clients in rewritten metadata
+/// @param auth          client SASL authentication configuration
+/// @param rbac          role-based access control configuration
+/// @param admin         admin HTTP listener configuration
+/// @param configTopic   the topic that holds the dynamic gateway config (defaults to `__kawa`)
+/// @param governance    topic governance configuration
 public record GatewayConfig(
         List<ListenerConfig> listeners,
         Map<String, ClusterConfig> clusters,
@@ -77,9 +77,9 @@ public record GatewayConfig(
         Map<String, VirtualTopicConfig> typedVirtualTopics = virtualTopics == null
                 ? null
                 : virtualTopics.entrySet().stream()
-                        .collect(Collectors.toUnmodifiableMap(
-                                Map.Entry::getKey,
-                                entry -> new VirtualTopicConfig(entry.getValue())));
+                .collect(Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey,
+                        entry -> new VirtualTopicConfig(entry.getValue())));
         return new GatewayConfig(listeners, clusters, typedVirtualTopics, advertised, auth, null, null, null, null);
     }
 
@@ -131,6 +131,7 @@ public record GatewayConfig(
             RbacConfig rbac,
             GovernanceConfig governance
     ) {
-        return new GatewayConfig(listeners, clusters, virtualTopics, advertised, auth, rbac, admin, configTopic, governance);
+        return new GatewayConfig(
+                listeners, clusters, virtualTopics, advertised, auth, rbac, admin, configTopic, governance);
     }
 }

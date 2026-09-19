@@ -174,16 +174,16 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         // when
         var response = send("POST", "/topics",
                 """
-                         {
-                           "type": "physical",
-                           "name": "orders",
-                           "partitions": 3,
-                           "replicationFactor": 3,
-                           "configs": {
-                             "cleanup.policy": "compact"
-                           }
-                         }
-                         """);
+                        {
+                          "type": "physical",
+                          "name": "orders",
+                          "partitions": 3,
+                          "replicationFactor": 3,
+                          "configs": {
+                            "cleanup.policy": "compact"
+                          }
+                        }
+                        """);
 
         // then
         assertThat(response.statusCode()).isEqualTo(201);
@@ -449,16 +449,16 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         // when
         var response = send("PATCH", "/topics/orders",
                 """
-                         {
-                           "topic": "orders-v2",
-                           "filter": {
-                             "type": "headerEquals",
-                             "header": "region",
-                             "value": "eu"
-                           },
-                           "exposePhysicalTopic": true
-                         }
-                         """);
+                        {
+                          "topic": "orders-v2",
+                          "filter": {
+                            "type": "headerEquals",
+                            "header": "region",
+                            "value": "eu"
+                          },
+                          "exposePhysicalTopic": true
+                        }
+                        """);
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);

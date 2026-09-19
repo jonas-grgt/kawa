@@ -18,7 +18,8 @@ class CelRecordPredicateTest {
     @Test
     void celExpressionMatchesHeader() {
         // given a CEL filter for tenant=acme
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new CelFilterConfig("headers.tenant == \"acme\""));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new CelFilterConfig("headers.tenant == \"acme\""));
         var record = record(new SimpleRecord(
                 1000L, "k1".getBytes(StandardCharsets.UTF_8), "v1".getBytes(StandardCharsets.UTF_8),
                 new Header[]{new RecordHeader("tenant", "acme".getBytes(StandardCharsets.UTF_8))}));
@@ -33,7 +34,8 @@ class CelRecordPredicateTest {
     @Test
     void celExpressionRejectsNonMatchingHeader() {
         // given a CEL filter for tenant=acme
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new CelFilterConfig("headers.tenant == \"acme\""));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new CelFilterConfig("headers.tenant == \"acme\""));
         var record = record(new SimpleRecord(
                 1000L, "k1".getBytes(StandardCharsets.UTF_8), "v1".getBytes(StandardCharsets.UTF_8),
                 new Header[]{new RecordHeader("tenant", "other".getBytes(StandardCharsets.UTF_8))}));
@@ -48,9 +50,12 @@ class CelRecordPredicateTest {
     @Test
     void celExpressionMatchesKeyPrefix() {
         // given a CEL filter matching keys starting with "order-"
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new CelFilterConfig("key.startsWith(\"order-\")"));
-        var matching = record(new SimpleRecord(1000L, "order-123".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8)));
-        var nonMatching = record(new SimpleRecord(1000L, "event-456".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8)));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new CelFilterConfig("key.startsWith(\"order-\")"));
+        var matching = record(new SimpleRecord(
+                1000L, "order-123".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8)));
+        var nonMatching = record(new SimpleRecord(
+                1000L, "event-456".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8)));
 
         // when / then
         assertThat(filter.matches(matching)).isTrue();
@@ -60,7 +65,8 @@ class CelRecordPredicateTest {
     @Test
     void celExpressionWithBooleanConjunction() {
         // given a CEL filter requiring both tenant=acme AND env=prod
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new CelFilterConfig("headers.tenant == \"acme\" && headers.env == \"prod\""));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new CelFilterConfig("headers.tenant == \"acme\" && headers.env == \"prod\""));
         var matching = record(new SimpleRecord(
                 1000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8),
                 new Header[]{
@@ -105,9 +111,12 @@ class CelRecordPredicateTest {
     @Test
     void celExpressionMatchesValueContains() {
         // given a CEL filter checking if value contains "error"
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new CelFilterConfig("value.contains(\"error\")"));
-        var matching = record(new SimpleRecord(1000L, "k".getBytes(StandardCharsets.UTF_8), "error in request".getBytes(StandardCharsets.UTF_8)));
-        var nonMatching = record(new SimpleRecord(1000L, "k".getBytes(StandardCharsets.UTF_8), "success".getBytes(StandardCharsets.UTF_8)));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new CelFilterConfig("value.contains(\"error\")"));
+        var matching = record(new SimpleRecord(
+                1000L, "k".getBytes(StandardCharsets.UTF_8), "error in request".getBytes(StandardCharsets.UTF_8)));
+        var nonMatching = record(new SimpleRecord(
+                1000L, "k".getBytes(StandardCharsets.UTF_8), "success".getBytes(StandardCharsets.UTF_8)));
 
         // when / then
         assertThat(filter.matches(matching)).isTrue();
@@ -118,8 +127,10 @@ class CelRecordPredicateTest {
     void celExpressionMatchesTimestampComparison() {
         // given a CEL filter for timestamp > 2000
         var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new CelFilterConfig("timestamp > 2000"));
-        var after = record(new SimpleRecord(3000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8)));
-        var before = record(new SimpleRecord(1000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8)));
+        var after = record(new SimpleRecord(
+                3000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8)));
+        var before = record(new SimpleRecord(
+                1000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8)));
 
         // when / then
         assertThat(filter.matches(after)).isTrue();
@@ -129,7 +140,8 @@ class CelRecordPredicateTest {
     @Test
     void celExpressionRejectsRecordWhenHeaderMissing() {
         // given a CEL filter for tenant=acme
-        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(new CelFilterConfig("headers.tenant == \"acme\""));
+        var filter = new VirtualTopicRecordFilter.EvaluatingRecordFilter(
+                new CelFilterConfig("headers.tenant == \"acme\""));
         var record = record(new SimpleRecord(
                 1000L, "k".getBytes(StandardCharsets.UTF_8), "v".getBytes(StandardCharsets.UTF_8)));
 

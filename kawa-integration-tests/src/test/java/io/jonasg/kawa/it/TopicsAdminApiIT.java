@@ -11,13 +11,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TopicsAdminApiIT extends AdminHTTPTestSupport {
 
-	@Test
-	void createsAndDeletesPhysicalTopicViaAdminApi() throws Exception {
-		// given - a physical topic
-		var createResp = httpExec(
-				reqBuilder("/topics")
-						.POST(HttpRequest.BodyPublishers.ofString(
-								"""
+    @Test
+    void createsAndDeletesPhysicalTopicViaAdminApi() throws Exception {
+        // given - a physical topic
+        var createResp = httpExec(
+                reqBuilder("/topics")
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                """
                                         {
                                           "type": "physical",
                                           "name": "orders",
@@ -25,116 +25,116 @@ class TopicsAdminApiIT extends AdminHTTPTestSupport {
                                           "replicationFactor": 1
                                         }
                                         """))
-						.build()
-		);
+                        .build()
+        );
 
-		// and - the topic exists on the broker
-		assertThat(createResp.statusCode()).isEqualTo(201);
-		Awaitility.await()
-				.atMost(Duration.ofSeconds(30))
-				.pollInterval(Duration.ofMillis(500))
-				.untilAsserted(() ->
-						assertThat(brokerAdmin.listTopics().names().get()).contains("orders"));
+        // and - the topic exists on the broker
+        assertThat(createResp.statusCode()).isEqualTo(201);
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() ->
+                        assertThat(brokerAdmin.listTopics().names().get()).contains("orders"));
 
-		// and - the gateway's metadata cache knows the topic before it can be deleted
-		Awaitility.await()
-				.atMost(Duration.ofSeconds(30))
-				.pollInterval(Duration.ofMillis(500))
-				.untilAsserted(() -> {
-					HttpResponse<String> list = httpExec(reqBuilder("/topics").GET().build());
-					assertThat(list.body()).contains("\"type\":\"physical\"", "\"name\":\"orders\"");
-				});
+        // and - the gateway's metadata cache knows the topic before it can be deleted
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() -> {
+                    HttpResponse<String> list = httpExec(reqBuilder("/topics").GET().build());
+                    assertThat(list.body()).contains("\"type\":\"physical\"", "\"name\":\"orders\"");
+                });
 
-		// when - the topic is deleted through the unified /topics surface
-		var deleteResp = httpExec(
-				reqBuilder("/topics/orders")
-						.DELETE()
-						.build()
-		);
+        // when - the topic is deleted through the unified /topics surface
+        var deleteResp = httpExec(
+                reqBuilder("/topics/orders")
+                        .DELETE()
+                        .build()
+        );
 
-		// then - the topic is gone from the broker
-		assertThat(deleteResp.statusCode()).isEqualTo(204);
-		Awaitility.await()
-				.atMost(Duration.ofSeconds(30))
-				.pollInterval(Duration.ofMillis(500))
-				.untilAsserted(() ->
-						assertThat(brokerAdmin.listTopics().names().get()).doesNotContain("orders"));
-	}
+        // then - the topic is gone from the broker
+        assertThat(deleteResp.statusCode()).isEqualTo(204);
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() ->
+                        assertThat(brokerAdmin.listTopics().names().get()).doesNotContain("orders"));
+    }
 
-	@Test
-	void createsUpdatesAndDeletesVirtualTopicViaAdminApi() throws Exception {
-		// given - a fresh gateway with the admin HTTP server enabled
+    @Test
+    void createsUpdatesAndDeletesVirtualTopicViaAdminApi() throws Exception {
+        // given - a fresh gateway with the admin HTTP server enabled
 
-		// when - a virtual topic is created through the unified /topics surface
-		var createReq = httpExec(
-				reqBuilder("/topics?consistency=applied")
-						.POST(HttpRequest.BodyPublishers.ofString(
-								"""
+        // when - a virtual topic is created through the unified /topics surface
+        var createReq = httpExec(
+                reqBuilder("/topics?consistency=applied")
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                """
                                         {
                                           "type": "virtual",
                                           "name": "orders",
                                           "topic": "orders-v2"
                                         }
                                         """))
-						.build());
+                        .build());
 
-		// then - the virtual topic is listed by GET /topics once the consumer applies it
-		assertThat(createReq.statusCode()).isEqualTo(201);
-		Awaitility.await()
-				.atMost(Duration.ofSeconds(30))
-				.pollInterval(Duration.ofMillis(500))
-				.untilAsserted(() -> {
-					HttpResponse<String> list = httpExec(reqBuilder("/topics").GET().build());
-					assertThat(list.body()).contains("\"type\":\"virtual\"", "\"name\":\"orders\"");
-				});
+        // then - the virtual topic is listed by GET /topics once the consumer applies it
+        assertThat(createReq.statusCode()).isEqualTo(201);
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() -> {
+                    HttpResponse<String> list = httpExec(reqBuilder("/topics").GET().build());
+                    assertThat(list.body()).contains("\"type\":\"virtual\"", "\"name\":\"orders\"");
+                });
 
-		// when - the virtual topic config is updated
-		var updateResp = httpExec(
-				reqBuilder("/topics/orders?consistency=applied")
-						.PUT(HttpRequest.BodyPublishers.ofString("""
+        // when - the virtual topic config is updated
+        var updateResp = httpExec(
+                reqBuilder("/topics/orders?consistency=applied")
+                        .PUT(HttpRequest.BodyPublishers.ofString("""
                                 {
                                   "type": "virtual",
                                   "topic": "orders-v3"
                                 }
                                 """))
-						.build());
+                        .build());
 
-		// then - the update is persisted
-		assertThat(updateResp.statusCode()).isEqualTo(200);
+        // then - the update is persisted
+        assertThat(updateResp.statusCode()).isEqualTo(200);
 
-		// when - the virtual topic is deleted
-		var deleteResp = httpExec(
-				reqBuilder("/topics/orders?consistency=applied")
-						.DELETE()
-						.build());
+        // when - the virtual topic is deleted
+        var deleteResp = httpExec(
+                reqBuilder("/topics/orders?consistency=applied")
+                        .DELETE()
+                        .build());
 
-		// then - the virtual topic is no longer listed
-		assertThat(deleteResp.statusCode()).isEqualTo(204);
-		HttpResponse<String> list = httpExec(reqBuilder("/topics").GET().build());
-		assertThat(list.body()).doesNotContain("\"name\":\"orders\"");
-	}
+        // then - the virtual topic is no longer listed
+        assertThat(deleteResp.statusCode()).isEqualTo(204);
+        HttpResponse<String> list = httpExec(reqBuilder("/topics").GET().build());
+        assertThat(list.body()).doesNotContain("\"name\":\"orders\"");
+    }
 
-	@Test
-	void patchesAndRenamesVirtualTopicViaAdminApi() throws Exception {
-		// given - a virtual topic persisted through the admin API
-		var createResp = httpExec(
-				reqBuilder("/topics")
-						.POST(HttpRequest.BodyPublishers.ofString(
-								"""
+    @Test
+    void patchesAndRenamesVirtualTopicViaAdminApi() throws Exception {
+        // given - a virtual topic persisted through the admin API
+        var createResp = httpExec(
+                reqBuilder("/topics")
+                        .POST(HttpRequest.BodyPublishers.ofString(
+                                """
                                         {
                                           "type": "virtual",
                                           "name": "audit",
                                           "topic": "audit-v1"
                                         }
                                         """))
-						.build());
-		assertThat(createResp.statusCode()).isEqualTo(201);
+                        .build());
+        assertThat(createResp.statusCode()).isEqualTo(201);
 
-		// when - the virtual topic is updated and renamed in one request
-		var updateResp = httpExec(
-				reqBuilder("/topics/audit?consistency=applied")
-						.method("PATCH", HttpRequest.BodyPublishers.ofString(
-								"""
+        // when - the virtual topic is updated and renamed in one request
+        var updateResp = httpExec(
+                reqBuilder("/topics/audit?consistency=applied")
+                        .method("PATCH", HttpRequest.BodyPublishers.ofString(
+                                """
                                         {
                                           "name": "eu-audit",
                                           "topic": "audit-v2",
@@ -146,15 +146,15 @@ class TopicsAdminApiIT extends AdminHTTPTestSupport {
                                           "exposePhysicalTopic": true
                                         }
                                         """))
-						.build());
+                        .build());
 
-		// then - the resulting configuration is returned and applied to the gateway
-		assertThat(updateResp.statusCode()).isEqualTo(200);
-		assertThat(updateResp.body()).contains(
-				"\"topic\":\"audit-v2\"",
-				"\"exposePhysicalTopic\":true");
-		HttpResponse<String> list = httpExec(reqBuilder("/topics").GET().build());
-		assertThat(list.body()).contains("\"type\":\"virtual\"", "\"name\":\"eu-audit\"");
-		assertThat(list.body()).doesNotContain("\"name\":\"audit\"");
-	}
+        // then - the resulting configuration is returned and applied to the gateway
+        assertThat(updateResp.statusCode()).isEqualTo(200);
+        assertThat(updateResp.body()).contains(
+                "\"topic\":\"audit-v2\"",
+                "\"exposePhysicalTopic\":true");
+        HttpResponse<String> list = httpExec(reqBuilder("/topics").GET().build());
+        assertThat(list.body()).contains("\"type\":\"virtual\"", "\"name\":\"eu-audit\"");
+        assertThat(list.body()).doesNotContain("\"name\":\"audit\"");
+    }
 }

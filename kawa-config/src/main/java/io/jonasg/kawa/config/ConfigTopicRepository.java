@@ -34,8 +34,8 @@ public final class ConfigTopicRepository implements OffsetAwareGatewayConfigRepo
     private volatile GatewayConfig lastWritten;
 
     /// @param bootstrapServers `host:port` list of the cluster hosting the config topic
-    /// @param topic the config topic name
-    /// @param extraProps extra producer properties (e.g. SASL/security settings for the
+    /// @param topic            the config topic name
+    /// @param extraProps       extra producer properties (e.g. SASL/security settings for the
     ///                   config topic) on top of the base bootstrap/serializer configuration
     public ConfigTopicRepository(String bootstrapServers, String topic, Properties extraProps) {
         this.topic = topic;

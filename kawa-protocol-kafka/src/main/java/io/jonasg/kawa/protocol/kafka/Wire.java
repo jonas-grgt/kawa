@@ -65,7 +65,7 @@ final class Wire {
             return varIntSize(0);
         }
         return varIntSize(value.getBytes(StandardCharsets.UTF_8).length + 1)
-                + value.getBytes(StandardCharsets.UTF_8).length;
+               + value.getBytes(StandardCharsets.UTF_8).length;
     }
 
     static int readUnsignedVarInt(ByteBuf in) {

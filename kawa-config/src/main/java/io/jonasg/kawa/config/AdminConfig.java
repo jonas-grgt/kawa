@@ -3,9 +3,9 @@ package io.jonasg.kawa.config;
 /// Admin HTTP listener configuration for the gateway's management/UI surface.
 ///
 /// @param enabled whether the admin HTTP server is started (`false` disables it)
-/// @param host bind address (defaults to `0.0.0.0`)
-/// @param port bind port, or `0` to bind an ephemeral port (defaults to `8080`)
-/// @param cors CORS configuration for browser-based UIs served from another host/port
+/// @param host    bind address (defaults to `0.0.0.0`)
+/// @param port    bind port, or `0` to bind an ephemeral port (defaults to `8080`)
+/// @param cors    CORS configuration for browser-based UIs served from another host/port
 ///             (`null` disables CORS entirely)
 public record AdminConfig(boolean enabled, String host, Integer port, CorsConfig cors) {
 

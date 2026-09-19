@@ -56,16 +56,11 @@ public final class GetTopicsHandler implements Router.Handler {
     private static TopicFilterView toFilterView(VirtualTopicFilterConfig filter) {
         return switch (filter) {
             case null -> null;
-            case HeaderEqualsFilterConfig header ->
-                    new TopicFilterView("header", header.header() + "=" + header.value());
-            case HeaderContainsFilterConfig header ->
-                    new TopicFilterView("headerContains", header.header() + " contains " + header.value());
-            case HeaderStartsWithFilterConfig header ->
-                    new TopicFilterView("headerStartsWith", header.header() + " starts with " + header.value());
-            case HeaderMatchesFilterConfig header ->
-                    new TopicFilterView("headerMatches", header.header() + " matches " + header.value());
-            case CelFilterConfig cel ->
-                    new TopicFilterView("cel", cel.expression());
+            case HeaderEqualsFilterConfig header -> new TopicFilterView("header", header.header() + "=" + header.value());
+            case HeaderContainsFilterConfig header -> new TopicFilterView("headerContains", header.header() + " contains " + header.value());
+            case HeaderStartsWithFilterConfig header -> new TopicFilterView("headerStartsWith", header.header() + " starts with " + header.value());
+            case HeaderMatchesFilterConfig header -> new TopicFilterView("headerMatches", header.header() + " matches " + header.value());
+            case CelFilterConfig cel -> new TopicFilterView("cel", cel.expression());
         };
     }
 }

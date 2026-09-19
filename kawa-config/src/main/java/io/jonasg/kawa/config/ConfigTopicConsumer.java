@@ -51,8 +51,8 @@ public final class ConfigTopicConsumer implements AutoCloseable {
     private Thread thread;
 
     /// @param bootstrapServers `host:port` list of the cluster hosting the config topic
-    /// @param topic the config topic name
-    /// @param onConfig invoked for every valid config snapshot, in offset order
+    /// @param topic            the config topic name
+    /// @param onConfig         invoked for every valid config snapshot, in offset order
     public ConfigTopicConsumer(
             String bootstrapServers,
             String topic,

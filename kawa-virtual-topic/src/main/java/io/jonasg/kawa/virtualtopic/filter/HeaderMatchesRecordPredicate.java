@@ -8,15 +8,15 @@ import java.util.regex.Pattern;
 
 public class HeaderMatchesRecordPredicate implements RecordPredicate<HeaderMatchesFilterConfig> {
 
-	/// Compiled patterns keyed by pattern string. The config record already validates the regex
-	/// at load time, so the cache only ever sees valid patterns; it exists to keep the hot path
-	/// free of per-record `Pattern.compile`.
-	private final ConcurrentHashMap<String, Pattern> patterns = new ConcurrentHashMap<>();
+    /// Compiled patterns keyed by pattern string. The config record already validates the regex
+    /// at load time, so the cache only ever sees valid patterns; it exists to keep the hot path
+    /// free of per-record `Pattern.compile`.
+    private final ConcurrentHashMap<String, Pattern> patterns = new ConcurrentHashMap<>();
 
-	@Override
-	public boolean test(HeaderMatchesFilterConfig config, Record record) {
-		Pattern pattern = patterns.computeIfAbsent(config.value(), Pattern::compile);
-		return HeaderValues.of(record, config.header()).stream()
-				.anyMatch(value -> pattern.matcher(value).matches());
-	}
+    @Override
+    public boolean test(HeaderMatchesFilterConfig config, Record record) {
+        Pattern pattern = patterns.computeIfAbsent(config.value(), Pattern::compile);
+        return HeaderValues.of(record, config.header()).stream()
+                .anyMatch(value -> pattern.matcher(value).matches());
+    }
 }

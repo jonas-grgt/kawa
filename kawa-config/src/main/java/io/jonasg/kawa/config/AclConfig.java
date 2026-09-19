@@ -6,8 +6,8 @@ import org.apache.kafka.common.acl.AclPermissionType;
 /// A single access-control entry: a resource, an operation, and whether access is granted
 /// or denied. Permission defaults to [AclPermissionType#ALLOW] when omitted.
 ///
-/// @param resource the resource this ACL applies to
-/// @param operation the operation being granted or denied
+/// @param resource   the resource this ACL applies to
+/// @param operation  the operation being granted or denied
 /// @param permission whether access is allowed or denied
 public record AclConfig(
         ResourceConfig resource,

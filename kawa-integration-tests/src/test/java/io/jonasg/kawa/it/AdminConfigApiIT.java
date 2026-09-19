@@ -121,7 +121,7 @@ class AdminConfigApiIT {
         props.put(SaslConfigs.SASL_MECHANISM, "PLAIN");
         props.put(SaslConfigs.SASL_JAAS_CONFIG,
                 "org.apache.kafka.common.security.plain.PlainLoginModule required "
-                        + "username=\"alice\" password=\"secret\";");
+                + "username=\"alice\" password=\"secret\";");
         try (var admin = AdminClient.create(props)) {
             // then - the consumer applies the snapshot and the client can talk to the cluster
             Awaitility.await()

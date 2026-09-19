@@ -2,6 +2,7 @@ package io.jonasg.kawa.http;
 
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
+
 import java.util.function.UnaryOperator;
 
 /// In-memory [GatewayConfigRepository] for handler tests: [update] replaces the current

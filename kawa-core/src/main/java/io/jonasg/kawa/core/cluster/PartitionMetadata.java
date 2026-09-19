@@ -2,10 +2,10 @@ package io.jonasg.kawa.core.cluster;
 
 import java.util.List;
 
-/// @param index partition id
-/// @param leaderId id of the broker currently leading the partition
-/// @param replicas broker ids holding replicas
-/// @param isr in-sync replica broker ids
+/// @param index           partition id
+/// @param leaderId        id of the broker currently leading the partition
+/// @param replicas        broker ids holding replicas
+/// @param isr             in-sync replica broker ids
 /// @param offlineReplicas offline replica broker ids
 public record PartitionMetadata(
         int index,

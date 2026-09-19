@@ -18,7 +18,8 @@ import java.nio.ByteBuffer;
 /// Applies a virtual topic's configured consume filter to a fetched partition's records:
 /// decodes the batch(es), drops records the filter rejects, and re-encodes a valid batch.
 ///
-/// Built on Kafka's own [MemoryRecords#filterTo(TopicPartition, MemoryRecords.RecordFilter, ByteBuffer, int, BufferSupplier)], the same decode-filter-reencode
+/// Built on Kafka's own [MemoryRecords#filterTo(TopicPartition, MemoryRecords.RecordFilter,
+/// ByteBuffer, int, BufferSupplier)], the same decode-filter-reencode
 /// mechanism the broker's log cleaner (compaction) and client-side down-conversion use to drop
 /// records from a batch and re-emit a valid one - rather than hand-rolling batch encoding.
 /// Surviving records keep their original offsets (this is what makes offset gaps in a fetch

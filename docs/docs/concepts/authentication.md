@@ -5,15 +5,14 @@ sidebar_position: 3
 
 # Authentication
 
-kawa terminates client authentication itself. Clients authenticate to kawa
-directly via the standard Kafka SASL handshake; kawa authenticates to the
-upstream cluster separately as one dedicated service identity. Adding a kawa
-client never requires provisioning a matching Kafka principal.
+kawa terminates client authentication itself. Clients authenticate to kawa directly via the standard Kafka SASL
+handshake; kawa authenticates to the upstream cluster separately as one dedicated service identity. Adding a kawa client
+never requires provisioning a matching Kafka principal.
 
 ## Protocol
 
-The same `SaslHandshake` + `SaslAuthenticate` flow every Kafka client already
-implements. No custom client configuration — point any client at kawa with
+The same `SaslHandshake` + `SaslAuthenticate` flow every Kafka client already implements. No custom client
+configuration — point any client at kawa with
 `security.protocol=SASL_PLAINTEXT`.
 
 ## Configuration
@@ -29,11 +28,11 @@ auth:
       password: "${ALICE_PASSWORD}"
 ```
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `mechanisms` | string list | yes | Advertised in `SaslHandshake` responses. Must include every mechanism any client needs. |
-| `clients.<name>.password` | string | yes | Plain-text or `${VAR}` / `${VAR:-default}` for env interpolation. |
-| `clients.<name>.mechanism` | string | no | Per-client override. Inherits `mechanisms[0]` when omitted. |
+| Field                      | Type        | Required | Description                                                                             |
+|----------------------------|-------------|----------|-----------------------------------------------------------------------------------------|
+| `mechanisms`               | string list | yes      | Advertised in `SaslHandshake` responses. Must include every mechanism any client needs. |
+| `clients.<name>.password`  | string      | yes      | Plain-text or `${VAR}` / `${VAR:-default}` for env interpolation.                       |
+| `clients.<name>.mechanism` | string      | no       | Per-client override. Inherits `mechanisms[0]` when omitted.                             |
 
 ### Per-client mechanism override
 
@@ -52,14 +51,12 @@ auth:
       password: "${ALICE_PASSWORD}"
 ```
 
-Every client mechanism must appear in the `mechanisms` list — the gateway
-advertises this list during handshake, so a mechanism not listed will be
-rejected before authentication is even attempted.
+Every client mechanism must appear in the `mechanisms` list — the gateway advertises this list during handshake, so a
+mechanism not listed will be rejected before authentication is even attempted.
 
 ### Environment variable interpolation
 
-Passwords support `${VAR}` and `${VAR:-default}` syntax. Missing variables
-without a default cause a startup error.
+Passwords support `${VAR}` and `${VAR:-default}` syntax. Missing variables without a default cause a startup error.
 
 ```yaml
 auth:
@@ -82,8 +79,8 @@ kawa validates auth config at startup:
 
 ## Upstream broker authentication
 
-kawa can authenticate to the upstream Kafka cluster when the broker requires SASL.
-Configure `auth.brokerAuth` with the credentials kawa uses as a client:
+kawa can authenticate to the upstream Kafka cluster when the broker requires SASL. Configure `auth.brokerAuth` with the
+credentials kawa uses as a client:
 
 ```yaml
 auth:
@@ -93,17 +90,16 @@ auth:
     password: "${KAFKA_PASSWORD}"
 ```
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `mechanism` | string | yes | SASL mechanism (`PLAIN` for now) |
-| `username` | string | yes | Broker SASL username |
-| `password` | string | yes | Plain-text or `${VAR}` / `${VAR:-default}` |
+| Field       | Type   | Required | Description                                |
+|-------------|--------|----------|--------------------------------------------|
+| `mechanism` | string | yes      | SASL mechanism (`PLAIN` for now)           |
+| `username`  | string | yes      | Broker SASL username                       |
+| `password`  | string | yes      | Plain-text or `${VAR}` / `${VAR:-default}` |
 
 The gateway authenticates during connection setup — `SaslHandshake` + `SaslAuthenticate`
-— before any client traffic is forwarded. This is transparent to clients: they
-authenticate to the gateway independently.
+— before any client traffic is forwarded. This is transparent to clients: they authenticate to the gateway
+independently.
 
-:::note
-Only `PLAIN` is supported for upstream broker authentication. SCRAM would require
-the `javax.security.sasl.Sasl` API and is not yet implemented.
+:::note Only `PLAIN` is supported for upstream broker authentication. SCRAM would require the `javax.security.sasl.Sasl`
+API and is not yet implemented.
 :::

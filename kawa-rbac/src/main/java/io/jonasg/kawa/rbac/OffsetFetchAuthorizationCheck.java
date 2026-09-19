@@ -11,7 +11,6 @@ import org.apache.kafka.common.resource.ResourceType;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 
 /// Gates OffsetFetch on two resources: a whole-request GROUP DESCRIBE check on the request's
 /// groupId, and a per-topic TOPIC DESCRIBE check on each named topic. If the group gate fails

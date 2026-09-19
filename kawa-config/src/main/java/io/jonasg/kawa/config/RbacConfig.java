@@ -8,7 +8,7 @@ import java.util.Map;
 /// reference roles and list their clients. A user's effective ACLs are the union of every
 /// role referenced by every group they belong to.
 ///
-/// @param roles named roles, each a list of ACLs
+/// @param roles  named roles, each a list of ACLs
 /// @param groups named groups, each a client list plus the roles those clients inherit
 public record RbacConfig(
         Map<String, RoleConfig> roles,

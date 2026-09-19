@@ -54,7 +54,7 @@ public final class KafkaTopicAdmin implements TopicAdmin {
             props.put(SaslConfigs.SASL_MECHANISM, brokerAuth.mechanism());
             props.put(SaslConfigs.SASL_JAAS_CONFIG,
                     "org.apache.kafka.common.security.plain.PlainLoginModule required "
-                            + "username=\"" + brokerAuth.username() + "\" password=\"" + brokerAuth.password() + "\";");
+                    + "username=\"" + brokerAuth.username() + "\" password=\"" + brokerAuth.password() + "\";");
         }
         return props;
     }

@@ -6,23 +6,16 @@ import io.jonasg.kawa.protocol.kafka.KafkaBodyCodec;
 import io.jonasg.kawa.protocol.kafka.KafkaFrameDecoder;
 import io.jonasg.kawa.protocol.kafka.KafkaFrameEncoder;
 import io.jonasg.kawa.protocol.kafka.KafkaHeader;
-import io.jonasg.kawa.protocol.kafka.RequestHeaderCodec;
 import io.jonasg.kawa.protocol.kafka.ResponseHeaderCodec;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.embedded.EmbeddedChannel;
-import org.apache.kafka.common.message.SaslAuthenticateRequestData;
-import org.apache.kafka.common.message.SaslHandshakeRequestData;
 import org.apache.kafka.common.message.SaslHandshakeResponseData;
 import org.apache.kafka.common.message.SaslAuthenticateResponseData;
 import org.apache.kafka.common.protocol.ApiKeys;
 import org.apache.kafka.common.protocol.Errors;
 import org.junit.jupiter.api.Test;
 
-import java.nio.charset.StandardCharsets;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class BrokerSaslAuthenticatorTest {
 

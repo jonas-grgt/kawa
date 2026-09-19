@@ -45,7 +45,6 @@ import org.apache.kafka.common.requests.ResponseHeader;
 import org.apache.kafka.common.requests.SaslAuthenticateRequest;
 import org.apache.kafka.common.requests.SaslAuthenticateResponse;
 import org.apache.kafka.common.requests.SaslHandshakeRequest;
-import org.apache.kafka.common.requests.SaslHandshakeResponse;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.awaitility.Awaitility;
@@ -85,86 +84,86 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /// virtual topic name to its physical topic before forwarding to the broker.
 class VirtualTopicsIT extends GatewayTestSupport {
 
-	@Override
-	protected Map<String, String> virtualTopics() {
-		return Map.of("foo", "foo-v2", "session", "session-v3");
-	}
+    @Override
+    protected Map<String, String> virtualTopics() {
+        return Map.of("foo", "foo-v2", "session", "session-v3");
+    }
 
-	@Override
-	protected Map<String, VirtualTopicConfig> filteredVirtualTopics() {
-		return Map.of("events", new VirtualTopicConfig("events-v2",
-				new HeaderEqualsFilterConfig("tenant", "acme")));
-	}
+    @Override
+    protected Map<String, VirtualTopicConfig> filteredVirtualTopics() {
+        return Map.of("events", new VirtualTopicConfig("events-v2",
+                new HeaderEqualsFilterConfig("tenant", "acme")));
+    }
 
-	@Override
-	protected List<NewTopic> initialTopics() {
-		return List.of(new NewTopic("foo-v2", 1, (short) 1)
-						.configs(Map.of("retention.ms", "987654321")),
-				new NewTopic("bar", 1, (short) 1),
-				new NewTopic("session-v3", 1, (short) 1),
-				new NewTopic("events-v2", 1, (short) 1));
-	}
+    @Override
+    protected List<NewTopic> initialTopics() {
+        return List.of(new NewTopic("foo-v2", 1, (short) 1)
+                        .configs(Map.of("retention.ms", "987654321")),
+                new NewTopic("bar", 1, (short) 1),
+                new NewTopic("session-v3", 1, (short) 1),
+                new NewTopic("events-v2", 1, (short) 1));
+    }
 
-	@Override
-	protected String groupId() {
-		return "virtual-topics-it";
-	}
+    @Override
+    protected String groupId() {
+        return "virtual-topics-it";
+    }
 
-	@Nested
-	class ProduceOnVirtualTopicThroughGateway {
+    @Nested
+    class ProduceOnVirtualTopicThroughGateway {
 
-		private String value;
+        private String value;
 
-		@BeforeEach
-		void produceOnVirtualTopicThroughGateway() throws ExecutionException, InterruptedException, TimeoutException {
-			this.value = "hello-" + System.nanoTime();
+        @BeforeEach
+        void produceOnVirtualTopicThroughGateway() throws ExecutionException, InterruptedException, TimeoutException {
+            this.value = "hello-" + System.nanoTime();
 
-			gatewayProducer.send(new ProducerRecord<>("foo", "key", this.value)).get(5, TimeUnit.SECONDS);
-		}
+            gatewayProducer.send(new ProducerRecord<>("foo", "key", this.value)).get(5, TimeUnit.SECONDS);
+        }
 
-		@Test
-		void consumeFromPhysicalThroughBroker() {
-			Kassertions.consume(brokerConsumer)
-					.assignedTo("foo-v2")
-					.fromBeginning()
-					.filter(rec -> rec.topic().equals("foo-v2"))
-					.anySatisfy(rec -> assertThat(rec.value()).isEqualTo(this.value));
-		}
+        @Test
+        void consumeFromPhysicalThroughBroker() {
+            Kassertions.consume(brokerConsumer)
+                    .assignedTo("foo-v2")
+                    .fromBeginning()
+                    .filter(rec -> rec.topic().equals("foo-v2"))
+                    .anySatisfy(rec -> assertThat(rec.value()).isEqualTo(this.value));
+        }
 
-		@Test
-		void consumeFromPhysicalThroughGateway() {
-			Kassertions.consume(gatewayConsumer)
-					.assignedTo("foo")
-					.fromBeginning()
-					.filter(rec -> rec.topic().equals("foo"))
-					.anySatisfy(rec -> assertThat(rec.value()).isEqualTo(this.value));
-		}
+        @Test
+        void consumeFromPhysicalThroughGateway() {
+            Kassertions.consume(gatewayConsumer)
+                    .assignedTo("foo")
+                    .fromBeginning()
+                    .filter(rec -> rec.topic().equals("foo"))
+                    .anySatisfy(rec -> assertThat(rec.value()).isEqualTo(this.value));
+        }
 
-		@Test
-		void consumeFromVirtualTopicThroughGateway() {
-			Kassertions.consume(gatewayConsumer)
-					.assignedTo("foo")
-					.fromBeginning()
-					.filter(rec -> rec.topic().equals("foo"))
-					.anySatisfy(rec -> assertThat(rec.value()).isEqualTo(this.value));
-		}
-	}
+        @Test
+        void consumeFromVirtualTopicThroughGateway() {
+            Kassertions.consume(gatewayConsumer)
+                    .assignedTo("foo")
+                    .fromBeginning()
+                    .filter(rec -> rec.topic().equals("foo"))
+                    .anySatisfy(rec -> assertThat(rec.value()).isEqualTo(this.value));
+        }
+    }
 
-	@Test
-	void listsVirtualOnlyTopicsThroughGateway() throws Exception {
-		assertThat(gatewayAdmin.listTopics().names().get())
-				.describedAs("client must see virtual topics only")
-				.contains("foo", "bar", "events");
-	}
+    @Test
+    void listsVirtualOnlyTopicsThroughGateway() throws Exception {
+        assertThat(gatewayAdmin.listTopics().names().get())
+                .describedAs("client must see virtual topics only")
+                .contains("foo", "bar", "events");
+    }
 
-	@Test
-	void creatingVirtualTopicNameFails() throws Exception {
-		var result = gatewayAdmin.createTopics(List.of(new NewTopic("foo", 1, (short) 1)));
-		assertThatThrownBy(() -> result.values().get("foo").get())
-				.hasCauseInstanceOf(InvalidRequestException.class);
-	}
+    @Test
+    void creatingVirtualTopicNameFails() throws Exception {
+        var result = gatewayAdmin.createTopics(List.of(new NewTopic("foo", 1, (short) 1)));
+        assertThatThrownBy(() -> result.values().get("foo").get())
+                .hasCauseInstanceOf(InvalidRequestException.class);
+    }
 
-	@Test
+    @Test
     void creatingPhysicalTopicThroughGatewaySucceeds() throws Exception {
         String topic = "baz-" + System.nanoTime();
         gatewayAdmin.createTopics(List.of(new NewTopic(topic, 1, (short) 1))).all().get(5, TimeUnit.SECONDS);
@@ -254,8 +253,8 @@ class VirtualTopicsIT extends GatewayTestSupport {
     void describingAclsWithVirtualTopicFilterReturnsVirtualTopicNames() throws Exception {
         // given an acl on the physical topic foo-v2
         brokerAdmin.createAcls(List.of(new AclBinding(
-                new ResourcePattern(ResourceType.TOPIC, "foo-v2", PatternType.LITERAL),
-                new AccessControlEntry("User:alice", "*", AclOperation.READ, AclPermissionType.ALLOW))))
+                        new ResourcePattern(ResourceType.TOPIC, "foo-v2", PatternType.LITERAL),
+                        new AccessControlEntry("User:alice", "*", AclOperation.READ, AclPermissionType.ALLOW))))
                 .all().get(5, TimeUnit.SECONDS);
 
         // when describing acls for the virtual topic through the gateway
@@ -277,12 +276,12 @@ class VirtualTopicsIT extends GatewayTestSupport {
     void deletingAclsByVirtualTopicFilterRemovesPhysicalTopicAcl() throws Exception {
         // given acls on the physical topic foo-v2 and on group "orders"
         brokerAdmin.createAcls(List.of(
-                new AclBinding(
-                        new ResourcePattern(ResourceType.TOPIC, "foo-v2", PatternType.LITERAL),
-                        new AccessControlEntry("User:alice", "*", AclOperation.READ, AclPermissionType.ALLOW)),
-                new AclBinding(
-                        new ResourcePattern(ResourceType.GROUP, "orders", PatternType.LITERAL),
-                        new AccessControlEntry("User:bob", "*", AclOperation.READ, AclPermissionType.ALLOW))))
+                        new AclBinding(
+                                new ResourcePattern(ResourceType.TOPIC, "foo-v2", PatternType.LITERAL),
+                                new AccessControlEntry("User:alice", "*", AclOperation.READ, AclPermissionType.ALLOW)),
+                        new AclBinding(
+                                new ResourcePattern(ResourceType.GROUP, "orders", PatternType.LITERAL),
+                                new AccessControlEntry("User:bob", "*", AclOperation.READ, AclPermissionType.ALLOW))))
                 .all().get(5, TimeUnit.SECONDS);
 
         // when deleting acls filtered by the virtual topic name through the gateway
@@ -490,7 +489,7 @@ class VirtualTopicsIT extends GatewayTestSupport {
             consumer.seekToBeginning(List.of(virtual));
             long deadline = System.currentTimeMillis() + 5000;
             while (System.currentTimeMillis() < deadline
-                    && values.stream().noneMatch(v -> v.startsWith(marker))) {
+                   && values.stream().noneMatch(v -> v.startsWith(marker))) {
                 consumer.poll(java.time.Duration.ofMillis(200))
                         .forEach(record -> values.add(record.value()));
             }
@@ -503,203 +502,203 @@ class VirtualTopicsIT extends GatewayTestSupport {
                 .doesNotContain(marker + "-other-1");
     }
 
-	@Test
-	void consumerNeverSeesPhysicalTopicNameAcrossIdleFetchSession() {
-		String value = "idle-" + System.nanoTime();
-		produceAfterDelay("session", "key", value, 1500);
+    @Test
+    void consumerNeverSeesPhysicalTopicNameAcrossIdleFetchSession() {
+        String value = "idle-" + System.nanoTime();
+        produceAfterDelay("session", "key", value, 1500);
 
-		Kassertions.consume(newGatewayConsumer())
-				.assignedTo("session", 0)
-				.fromBeginning()
-				.within(5, TimeUnit.SECONDS)
-				.filter(rec -> rec.topic().equals("session"))
-				.anySatisfy(rec -> assertThat(rec.value()).isEqualTo(value));
-	}
+        Kassertions.consume(newGatewayConsumer())
+                .assignedTo("session", 0)
+                .fromBeginning()
+                .within(5, TimeUnit.SECONDS)
+                .filter(rec -> rec.topic().equals("session"))
+                .anySatisfy(rec -> assertThat(rec.value()).isEqualTo(value));
+    }
 
-	@Test
-	void idleIncrementalFetchResponseCarriesVirtualTopicName() throws Exception {
-		String value = "wire-" + System.nanoTime();
-		TopicPartition session = new TopicPartition("session", 0);
+    @Test
+    void idleIncrementalFetchResponseCarriesVirtualTopicName() throws Exception {
+        String value = "wire-" + System.nanoTime();
+        TopicPartition session = new TopicPartition("session", 0);
 
-		try (RawFetchSession raw = new RawFetchSession(gatewayBootstrap)) {
-			FetchResponse created = raw.fetch(
-					Map.of(session,
-							new FetchRequest.PartitionData(Uuid.ZERO_UUID, 0L, 0L, 1024 * 1024, Optional.empty())),
-					FetchMetadata.INITIAL, 500);
-			assertThat(created.sessionId())
-					.describedAs("full fetch must establish a fetch session")
-					.isNotZero();
+        try (RawFetchSession raw = new RawFetchSession(gatewayBootstrap)) {
+            FetchResponse created = raw.fetch(
+                    Map.of(session,
+                            new FetchRequest.PartitionData(Uuid.ZERO_UUID, 0L, 0L, 1024 * 1024, Optional.empty())),
+                    FetchMetadata.INITIAL, 500);
+            assertThat(created.sessionId())
+                    .describedAs("full fetch must establish a fetch session")
+                    .isNotZero();
 
-			gatewayProducer.send(new ProducerRecord<>("session", "key", value)).get(5, TimeUnit.SECONDS);
+            gatewayProducer.send(new ProducerRecord<>("session", "key", value)).get(5, TimeUnit.SECONDS);
 
-			FetchResponse incremental = raw.fetch(Map.of(),
-					new FetchMetadata(created.sessionId(), 1), 1000);
+            FetchResponse incremental = raw.fetch(Map.of(),
+                    new FetchMetadata(created.sessionId(), 1), 1000);
 
-			assertThat(incremental.data().responses())
-					.describedAs("idle incremental fetch must carry the produced record back")
-					.isNotEmpty();
-			FetchResponseData.FetchableTopicResponse response = incremental.data().responses().get(0);
-			assertThat(response.topic())
-					.describedAs("idle incremental fetch response must rename physical topic back to virtual topic")
-					.isEqualTo("session");
-		}
-	}
+            assertThat(incremental.data().responses())
+                    .describedAs("idle incremental fetch must carry the produced record back")
+                    .isNotEmpty();
+            FetchResponseData.FetchableTopicResponse response = incremental.data().responses().get(0);
+            assertThat(response.topic())
+                    .describedAs("idle incremental fetch response must rename physical topic back to virtual topic")
+                    .isEqualTo("session");
+        }
+    }
 
-	@Test
-	void transactionalOffsetCommitRewritesVirtualTopicToPhysical() throws Exception {
-		String transactionalId = "txn-" + System.nanoTime();
-		String group = "txn-group-" + System.nanoTime();
+    @Test
+    void transactionalOffsetCommitRewritesVirtualTopicToPhysical() throws Exception {
+        String transactionalId = "txn-" + System.nanoTime();
+        String group = "txn-group-" + System.nanoTime();
 
-		Properties producerProps = saslProps(gatewayBootstrap);
-		producerProps.put(KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-		producerProps.put(VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-		producerProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId);
+        Properties producerProps = saslProps(gatewayBootstrap);
+        producerProps.put(KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        producerProps.put(VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        producerProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId);
 
-		try (KafkaProducer<String, String> txnProducer = new KafkaProducer<>(producerProps)) {
-			txnProducer.initTransactions();
-			txnProducer.beginTransaction();
-			txnProducer.sendOffsetsToTransaction(
-					Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(5L)),
-					new ConsumerGroupMetadata(group));
-			txnProducer.commitTransaction();
-		}
+        try (KafkaProducer<String, String> txnProducer = new KafkaProducer<>(producerProps)) {
+            txnProducer.initTransactions();
+            txnProducer.beginTransaction();
+            txnProducer.sendOffsetsToTransaction(
+                    Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(5L)),
+                    new ConsumerGroupMetadata(group));
+            txnProducer.commitTransaction();
+        }
 
-		TopicPartition physicalPartition = new TopicPartition("foo-v2", 0);
-		Map<TopicPartition, OffsetAndMetadata> physicalOffsets = brokerAdmin
-				.listConsumerGroupOffsets(Map.of(group,
-						new ListConsumerGroupOffsetsSpec().topicPartitions(List.of(physicalPartition))))
-				.partitionsToOffsetAndMetadata(group).get(5, TimeUnit.SECONDS);
-		assertThat(physicalOffsets.get(physicalPartition).offset())
-				.describedAs("broker must see the transactional offset commit under the physical topic name")
-				.isEqualTo(5L);
+        TopicPartition physicalPartition = new TopicPartition("foo-v2", 0);
+        Map<TopicPartition, OffsetAndMetadata> physicalOffsets = brokerAdmin
+                .listConsumerGroupOffsets(Map.of(group,
+                        new ListConsumerGroupOffsetsSpec().topicPartitions(List.of(physicalPartition))))
+                .partitionsToOffsetAndMetadata(group).get(5, TimeUnit.SECONDS);
+        assertThat(physicalOffsets.get(physicalPartition).offset())
+                .describedAs("broker must see the transactional offset commit under the physical topic name")
+                .isEqualTo(5L);
 
-		TopicPartition virtualPartition = new TopicPartition("foo", 0);
-		Map<TopicPartition, OffsetAndMetadata> virtualOffsets = gatewayAdmin
-				.listConsumerGroupOffsets(Map.of(group,
-						new ListConsumerGroupOffsetsSpec().topicPartitions(List.of(virtualPartition))))
-				.partitionsToOffsetAndMetadata(group).get(5, TimeUnit.SECONDS);
-		assertThat(virtualOffsets.get(virtualPartition).offset())
-				.describedAs("gateway client must see the committed offset under the virtual topic name")
-				.isEqualTo(5L);
-	}
+        TopicPartition virtualPartition = new TopicPartition("foo", 0);
+        Map<TopicPartition, OffsetAndMetadata> virtualOffsets = gatewayAdmin
+                .listConsumerGroupOffsets(Map.of(group,
+                        new ListConsumerGroupOffsetsSpec().topicPartitions(List.of(virtualPartition))))
+                .partitionsToOffsetAndMetadata(group).get(5, TimeUnit.SECONDS);
+        assertThat(virtualOffsets.get(virtualPartition).offset())
+                .describedAs("gateway client must see the committed offset under the virtual topic name")
+                .isEqualTo(5L);
+    }
 
-	private KafkaConsumer<String, String> newGatewayConsumer() {
-		Properties props = saslProps(gatewayBootstrap);
-		props.put(GROUP_ID_CONFIG, groupId() + "-" + System.nanoTime());
-		props.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-		props.put(VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-		return new KafkaConsumer<>(props);
-	}
+    private KafkaConsumer<String, String> newGatewayConsumer() {
+        Properties props = saslProps(gatewayBootstrap);
+        props.put(GROUP_ID_CONFIG, groupId() + "-" + System.nanoTime());
+        props.put(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        return new KafkaConsumer<>(props);
+    }
 
-	private void produceAfterDelay(String topic, String key, String value, long delayMillis) {
-		CompletableFuture.runAsync(() -> {
-			try {
-				Thread.sleep(delayMillis);
-				gatewayProducer.send(new ProducerRecord<>(topic, key, value)).get(5, TimeUnit.SECONDS);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			} catch (ExecutionException | TimeoutException e) {
-				throw new RuntimeException(e);
-			}
-		});
-	}
+    private void produceAfterDelay(String topic, String key, String value, long delayMillis) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(delayMillis);
+                gatewayProducer.send(new ProducerRecord<>(topic, key, value)).get(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (ExecutionException | TimeoutException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
 
-	/// Minimal raw TCP client that drives Kafka fetch sessions over the wire (no consumer),
-	/// so the actual bytes the gateway forwards can be inspected without kafka-clients
-	/// discarding or rewriting them. Uses Fetch v11 (the version modern consumers negotiate).
-	private static final class RawFetchSession implements AutoCloseable {
+    /// Minimal raw TCP client that drives Kafka fetch sessions over the wire (no consumer),
+    /// so the actual bytes the gateway forwards can be inspected without kafka-clients
+    /// discarding or rewriting them. Uses Fetch v11 (the version modern consumers negotiate).
+    private static final class RawFetchSession implements AutoCloseable {
 
-		private static final short VERSION = 11;
+        private static final short VERSION = 11;
 
-		private final Socket socket;
-		private final DataInputStream in;
-		private final DataOutputStream out;
-		private int correlationId = 1;
+        private final Socket socket;
+        private final DataInputStream in;
+        private final DataOutputStream out;
+        private int correlationId = 1;
 
-		RawFetchSession(String bootstrap) throws IOException {
-			String[] parts = bootstrap.split(":");
-			int port = Integer.parseInt(parts[1]);
-			Socket chosen = null;
-			for (InetAddress address : InetAddress.getAllByName(parts[0])) {
-				try {
-					chosen = new Socket();
-					chosen.connect(new InetSocketAddress(address, port), 5000);
-					break;
-				} catch (IOException ignored) {
-				}
-			}
-			if (chosen == null) {
-				throw new IOException("could not connect to " + bootstrap);
-			}
-			this.socket = chosen;
-			this.socket.setSoTimeout(10_000);
-			this.in = new DataInputStream(socket.getInputStream());
-			this.out = new DataOutputStream(socket.getOutputStream());
-			authenticate();
-		}
+        RawFetchSession(String bootstrap) throws IOException {
+            String[] parts = bootstrap.split(":");
+            int port = Integer.parseInt(parts[1]);
+            Socket chosen = null;
+            for (InetAddress address : InetAddress.getAllByName(parts[0])) {
+                try {
+                    chosen = new Socket();
+                    chosen.connect(new InetSocketAddress(address, port), 5000);
+                    break;
+                } catch (IOException ignored) {
+                }
+            }
+            if (chosen == null) {
+                throw new IOException("could not connect to " + bootstrap);
+            }
+            this.socket = chosen;
+            this.socket.setSoTimeout(10_000);
+            this.in = new DataInputStream(socket.getInputStream());
+            this.out = new DataOutputStream(socket.getOutputStream());
+            authenticate();
+        }
 
-		/// Performs the SASL handshake and PLAIN authentication over the raw socket, since RBAC
-		/// is always enforced and an unauthenticated fetch is denied.
-		private void authenticate() throws IOException {
-			RequestHeader handshakeHeader =
-					new RequestHeader(ApiKeys.SASL_HANDSHAKE, (short) 1, "kawa-raw-it", correlationId++);
-			var handshake = new SaslHandshakeRequest(new SaslHandshakeRequestData().setMechanism("PLAIN"), (short) 1);
-			write(handshake.serializeWithHeader(handshakeHeader));
-			readResponse(ApiKeys.SASL_HANDSHAKE, (short) 1);
+        /// Performs the SASL handshake and PLAIN authentication over the raw socket, since RBAC
+        /// is always enforced and an unauthenticated fetch is denied.
+        private void authenticate() throws IOException {
+            RequestHeader handshakeHeader =
+                    new RequestHeader(ApiKeys.SASL_HANDSHAKE, (short) 1, "kawa-raw-it", correlationId++);
+            var handshake = new SaslHandshakeRequest(new SaslHandshakeRequestData().setMechanism("PLAIN"), (short) 1);
+            write(handshake.serializeWithHeader(handshakeHeader));
+            readResponse(ApiKeys.SASL_HANDSHAKE, (short) 1);
 
-			RequestHeader authHeader =
-					new RequestHeader(ApiKeys.SASL_AUTHENTICATE, (short) 2, "kawa-raw-it", correlationId++);
-			String payload = "\u0000" + DEFAULT_PRINCIPAL + "\u0000" + DEFAULT_PASSWORD;
-			var authenticate = new SaslAuthenticateRequest(
-					new SaslAuthenticateRequestData().setAuthBytes(payload.getBytes(StandardCharsets.UTF_8)),
-					(short) 2);
-			write(authenticate.serializeWithHeader(authHeader));
-			readResponse(ApiKeys.SASL_AUTHENTICATE, (short) 2);
-		}
+            RequestHeader authHeader =
+                    new RequestHeader(ApiKeys.SASL_AUTHENTICATE, (short) 2, "kawa-raw-it", correlationId++);
+            String payload = "\u0000" + DEFAULT_PRINCIPAL + "\u0000" + DEFAULT_PASSWORD;
+            var authenticate = new SaslAuthenticateRequest(
+                    new SaslAuthenticateRequestData().setAuthBytes(payload.getBytes(StandardCharsets.UTF_8)),
+                    (short) 2);
+            write(authenticate.serializeWithHeader(authHeader));
+            readResponse(ApiKeys.SASL_AUTHENTICATE, (short) 2);
+        }
 
-		private void write(ByteBuffer payload) throws IOException {
-			out.writeInt(payload.remaining());
-			out.write(payload.array(), payload.position(), payload.remaining());
-			out.flush();
-		}
+        private void write(ByteBuffer payload) throws IOException {
+            out.writeInt(payload.remaining());
+            out.write(payload.array(), payload.position(), payload.remaining());
+            out.flush();
+        }
 
-		private void readResponse(ApiKeys apiKey, short version) throws IOException {
-			int size = in.readInt();
-			byte[] bytes = new byte[size];
-			in.readFully(bytes);
-			ByteBuffer buffer = ByteBuffer.wrap(bytes);
-			short responseHeaderVersion = apiKey.responseHeaderVersion(version);
-			ResponseHeader.parse(buffer, responseHeaderVersion);
-			if (apiKey == ApiKeys.SASL_AUTHENTICATE) {
-				SaslAuthenticateResponse response = SaslAuthenticateResponse.parse(new ByteBufferAccessor(buffer), version);
-				if (response.data().errorCode() != Errors.NONE.code()) {
-					throw new IOException("SASL authentication failed: " + response.data().errorMessage());
-				}
-			}
-		}
+        private void readResponse(ApiKeys apiKey, short version) throws IOException {
+            int size = in.readInt();
+            byte[] bytes = new byte[size];
+            in.readFully(bytes);
+            ByteBuffer buffer = ByteBuffer.wrap(bytes);
+            short responseHeaderVersion = apiKey.responseHeaderVersion(version);
+            ResponseHeader.parse(buffer, responseHeaderVersion);
+            if (apiKey == ApiKeys.SASL_AUTHENTICATE) {
+                SaslAuthenticateResponse response = SaslAuthenticateResponse.parse(new ByteBufferAccessor(buffer), version);
+                if (response.data().errorCode() != Errors.NONE.code()) {
+                    throw new IOException("SASL authentication failed: " + response.data().errorMessage());
+                }
+            }
+        }
 
-		FetchResponse fetch(Map<TopicPartition, FetchRequest.PartitionData> toFetch, FetchMetadata metadata,
-				int maxWaitMs) throws IOException {
-			RequestHeader header = new RequestHeader(ApiKeys.FETCH, VERSION, "kawa-raw-it", correlationId++);
-			FetchRequest request = FetchRequest.Builder.forConsumer(VERSION, maxWaitMs, 1, toFetch)
-					.metadata(metadata)
-					.build();
-			ByteBuffer payload = request.serializeWithHeader(header);
-			out.writeInt(payload.remaining());
-			out.write(payload.array(), payload.position(), payload.remaining());
-			out.flush();
+        FetchResponse fetch(Map<TopicPartition, FetchRequest.PartitionData> toFetch, FetchMetadata metadata,
+                            int maxWaitMs) throws IOException {
+            RequestHeader header = new RequestHeader(ApiKeys.FETCH, VERSION, "kawa-raw-it", correlationId++);
+            FetchRequest request = FetchRequest.Builder.forConsumer(VERSION, maxWaitMs, 1, toFetch)
+                    .metadata(metadata)
+                    .build();
+            ByteBuffer payload = request.serializeWithHeader(header);
+            out.writeInt(payload.remaining());
+            out.write(payload.array(), payload.position(), payload.remaining());
+            out.flush();
 
-			int size = in.readInt();
-			byte[] bytes = new byte[size];
-			in.readFully(bytes);
-			ByteBuffer buffer = ByteBuffer.wrap(bytes);
-			buffer.position(4);
-			return FetchResponse.parse(new ByteBufferAccessor(buffer), VERSION);
-		}
+            int size = in.readInt();
+            byte[] bytes = new byte[size];
+            in.readFully(bytes);
+            ByteBuffer buffer = ByteBuffer.wrap(bytes);
+            buffer.position(4);
+            return FetchResponse.parse(new ByteBufferAccessor(buffer), VERSION);
+        }
 
-		@Override
-		public void close() throws IOException {
-			socket.close();
-		}
-	}
+        @Override
+        public void close() throws IOException {
+            socket.close();
+        }
+    }
 }

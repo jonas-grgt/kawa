@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 /// the exemption to apply. Two patterns rather than a name-only one: a topic-only exemption
 /// would be a bypass, because anyone could name a topic `...-changelog` to skip enforcement.
 ///
-/// @param principal regex matched against the requesting principal
+/// @param principal    regex matched against the requesting principal
 /// @param topicPattern regex matched against the topic name
 public record GovernanceExemptionConfig(String principal, String topicPattern) {
 

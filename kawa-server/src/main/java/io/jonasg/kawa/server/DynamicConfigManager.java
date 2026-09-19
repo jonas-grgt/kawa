@@ -216,8 +216,8 @@ public final class DynamicConfigManager implements GatewayConfigRepository, Auto
                 if (remainingNanos <= 0) {
                     throw new IllegalStateException(
                             "timed out waiting for config apply after persist; targetOffset=" + targetOffset
-                                    + ", lastAppliedOffset=" + lastAppliedOffset
-                                    + ", timeout=" + applyWaitTimeout.toMillis() + "ms");
+                            + ", lastAppliedOffset=" + lastAppliedOffset
+                            + ", timeout=" + applyWaitTimeout.toMillis() + "ms");
                 }
                 try {
                     TimeUnit.NANOSECONDS.timedWait(applyProgressLock, remainingNanos);

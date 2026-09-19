@@ -8,11 +8,11 @@ import java.util.concurrent.ScheduledFuture;
 
 /// A request forwarded to a broker whose response is still expected.
 ///
-/// @param session client connection to write the response back to
-/// @param context the request's gateway context (metrics, route, timings)
-/// @param requestHeader the client's original header (api key, version, correlation id)
+/// @param session             client connection to write the response back to
+/// @param context             the request's gateway context (metrics, route, timings)
+/// @param requestHeader       the client's original header (api key, version, correlation id)
 /// @param brokerCorrelationId correlation id used on the broker connection
-/// @param timeoutTask scheduled timeout; cancelled when the response arrives
+/// @param timeoutTask         scheduled timeout; cancelled when the response arrives
 public record PendingRequest(
         ClientSession session,
         GatewayContext context,

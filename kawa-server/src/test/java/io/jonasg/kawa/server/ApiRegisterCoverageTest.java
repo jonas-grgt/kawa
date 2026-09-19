@@ -44,7 +44,7 @@ class ApiRegisterCoverageTest {
 
         assertThat(ungated)
                 .as("every decoded and advertised API must be authorized, or listed in "
-                        + "INTENTIONALLY_UNGATED with a comment saying why")
+                    + "INTENTIONALLY_UNGATED with a comment saying why")
                 .isEmpty();
     }
 
@@ -61,7 +61,7 @@ class ApiRegisterCoverageTest {
 
         assertThat(dead)
                 .as("a check for an unregistered API never sees a decoded body - it either denies "
-                        + "everything or silently does nothing")
+                    + "everything or silently does nothing")
                 .isEmpty();
     }
 }

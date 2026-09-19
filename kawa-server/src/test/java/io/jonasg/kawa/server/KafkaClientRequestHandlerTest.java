@@ -196,7 +196,7 @@ class KafkaClientRequestHandlerTest {
         MetadataClient metadataClient =
                 new MetadataClient("localhost", 9092, group, codec, cache, brokerPool, metrics);
         return new KafkaClientRequestHandler(
-				codec, apiVersionsBuilder, pipeline,
+                codec, apiVersionsBuilder, pipeline,
                 new LeaderRouter(cache), brokerPool, metadataClient, metrics, new FetchSessionRegistry(),
                 new SaslAuthenticator(Set.of("PLAIN"), java.util.Map.of("alice", new ClientConfig("PLAIN", "secret"))));
     }

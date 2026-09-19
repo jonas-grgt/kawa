@@ -91,7 +91,7 @@ public final class GovernancePolicy {
         Snapshot current = snapshot;
         for (GovernanceExemptionConfig exemption : current.exemptions().values()) {
             if (Pattern.matches(exemption.principal(), principal)
-                    && Pattern.matches(exemption.topicPattern(), topicName)) {
+                && Pattern.matches(exemption.topicPattern(), topicName)) {
                 return true;
             }
         }
@@ -150,7 +150,7 @@ public final class GovernancePolicy {
     /// `in` operator, which relies on `containsKey` and is unaffected by this override.
     private static final class DefaultingMap extends HashMap<String, String> {
 
-        public DefaultingMap(Map<String, String> configs) {
+        DefaultingMap(Map<String, String> configs) {
             super(configs);
         }
 

@@ -4,8 +4,8 @@ package io.jonasg.kawa.config;
 /// FindCoordinator responses, so that all client traffic is routed through the gateway.
 ///
 /// @param nodeId broker node id the gateway advertises itself as
-/// @param host host clients connect to (defaults to `localhost`)
-/// @param port port clients connect to; `0` or `null` means "use the bound listener port"
+/// @param host   host clients connect to (defaults to `localhost`)
+/// @param port   port clients connect to; `0` or `null` means "use the bound listener port"
 public record AdvertisedListener(Integer nodeId, String host, Integer port) {
 
     public AdvertisedListener {
