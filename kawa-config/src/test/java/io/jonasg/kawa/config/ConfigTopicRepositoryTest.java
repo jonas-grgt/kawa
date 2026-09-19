@@ -22,7 +22,8 @@ class ConfigTopicRepositoryTest {
                     null, null,
                     Map.of("orders", new VirtualTopicConfig("raw-orders")),
                     null,
-                    new AuthConfig(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")), null),
+                     new AuthConfig(Set.of("PLAIN"),
+                             Map.of("alice", new ClientConfig("PLAIN", new HashedPassword("secret", null))), null),
                     new RbacConfig(Map.of("reader", new RoleConfig(List.of())), null),
                     null, null, null);
 
@@ -43,7 +44,8 @@ class ConfigTopicRepositoryTest {
                     null, null,
                     Map.of("orders", new VirtualTopicConfig("raw-orders")),
                     null,
-                    new AuthConfig(Set.of("PLAIN"), Map.of("alice", new ClientConfig("PLAIN", "secret")), null),
+                     new AuthConfig(Set.of("PLAIN"),
+                             Map.of("alice", new ClientConfig("PLAIN", new HashedPassword("secret", null))), null),
                     new RbacConfig(Map.of("reader", new RoleConfig(List.of())), null),
                     null, null, null);
 
@@ -56,21 +58,22 @@ class ConfigTopicRepositoryTest {
     }
 
     @Test
-    void serializesClientPasswordsWithoutTransformingThem() {
+    void serializesClientPasswordsAsHashes() {
         // given
         try (var repository = new ConfigTopicRepository("localhost:9092", "__kawa", new Properties())) {
             var config = new GatewayConfig(
                     null, null, null, null,
                     new AuthConfig(Set.of("PLAIN"),
-                            Map.of("alice", new ClientConfig("PLAIN", "secret")), null, "gateway-static-salt"),
+                            Map.of("alice", new ClientConfig("PLAIN", HashedPassword.fromEncoded("secret"))),
+                            null, "gateway-static-salt"),
                     null, null, null, null);
 
             // when
             String json = repository.serialize(config);
 
             // then
-            assertThat(json).contains("secret");
-            assertThat(json).doesNotContain("pbkdf2-sha256$");
+            assertThat(json).doesNotContain("\"password\":\"secret\"");
+            assertThat(json).contains("pbkdf2-sha256$");
         }
     }
 }

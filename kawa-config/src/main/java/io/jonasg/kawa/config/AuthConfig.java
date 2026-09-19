@@ -58,6 +58,16 @@ public record AuthConfig(
         return new AuthConfig(mechanisms, newClients, brokerAuth, salt);
     }
 
+    /// Returns a copy whose client passwords are encoded with the configured salt.
+    public AuthConfig withHashedClientPasswords() {
+        var hashedClients = clients.entrySet().stream().collect(Collectors.toUnmodifiableMap(
+                Map.Entry::getKey,
+                entry -> new ClientConfig(
+                        entry.getValue().mechanism(),
+                        new HashedPassword(entry.getValue().password().encoded(), salt))));
+        return new AuthConfig(mechanisms, hashedClients, brokerAuth, salt);
+    }
+
     private static Map<String, ClientConfig> resolveClientMechanisms(
             Map<String, ClientConfig> clients,
             Set<String> mechanisms
