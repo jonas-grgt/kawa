@@ -17,7 +17,14 @@ class TopicsAdminApiIT extends AdminHTTPTestSupport {
 		var createResp = httpExec(
 				reqBuilder("/topics")
 						.POST(HttpRequest.BodyPublishers.ofString(
-								"{\"type\":\"physical\",\"name\":\"orders\",\"partitions\":3,\"replicationFactor\":1}"))
+								"""
+                                        {
+                                          "type": "physical",
+                                          "name": "orders",
+                                          "partitions": 3,
+                                          "replicationFactor": 1
+                                        }
+                                        """))
 						.build()
 		);
 
@@ -62,7 +69,13 @@ class TopicsAdminApiIT extends AdminHTTPTestSupport {
 		var createReq = httpExec(
 				reqBuilder("/topics?consistency=applied")
 						.POST(HttpRequest.BodyPublishers.ofString(
-								"{\"type\":\"virtual\",\"name\":\"orders\",\"topic\":\"orders-v2\"}"))
+								"""
+                                        {
+                                          "type": "virtual",
+                                          "name": "orders",
+                                          "topic": "orders-v2"
+                                        }
+                                        """))
 						.build());
 
 		// then - the virtual topic is listed by GET /topics once the consumer applies it
@@ -78,7 +91,12 @@ class TopicsAdminApiIT extends AdminHTTPTestSupport {
 		// when - the virtual topic config is updated
 		var updateResp = httpExec(
 				reqBuilder("/topics/orders?consistency=applied")
-						.PUT(HttpRequest.BodyPublishers.ofString("{\"type\":\"virtual\",\"topic\":\"orders-v3\"}"))
+						.PUT(HttpRequest.BodyPublishers.ofString("""
+                                {
+                                  "type": "virtual",
+                                  "topic": "orders-v3"
+                                }
+                                """))
 						.build());
 
 		// then - the update is persisted
@@ -102,7 +120,13 @@ class TopicsAdminApiIT extends AdminHTTPTestSupport {
 		var createResp = httpExec(
 				reqBuilder("/topics")
 						.POST(HttpRequest.BodyPublishers.ofString(
-								"{\"type\":\"virtual\",\"name\":\"audit\",\"topic\":\"audit-v1\"}"))
+								"""
+                                        {
+                                          "type": "virtual",
+                                          "name": "audit",
+                                          "topic": "audit-v1"
+                                        }
+                                        """))
 						.build());
 		assertThat(createResp.statusCode()).isEqualTo(201);
 
@@ -110,9 +134,18 @@ class TopicsAdminApiIT extends AdminHTTPTestSupport {
 		var updateResp = httpExec(
 				reqBuilder("/topics/audit?consistency=applied")
 						.method("PATCH", HttpRequest.BodyPublishers.ofString(
-								"{\"name\":\"eu-audit\",\"topic\":\"audit-v2\","
-								+ "\"filter\":{\"type\":\"headerEquals\",\"header\":\"region\","
-								+ "\"value\":\"eu\"},\"exposePhysicalTopic\":true}"))
+								"""
+                                        {
+                                          "name": "eu-audit",
+                                          "topic": "audit-v2",
+                                          "filter": {
+                                            "type": "headerEquals",
+                                            "header": "region",
+                                            "value": "eu"
+                                          },
+                                          "exposePhysicalTopic": true
+                                        }
+                                        """))
 						.build());
 
 		// then - the resulting configuration is returned and applied to the gateway

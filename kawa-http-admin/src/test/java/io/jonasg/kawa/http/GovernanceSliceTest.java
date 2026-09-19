@@ -58,9 +58,22 @@ class GovernanceSliceTest extends AdminHttpSliceTestBase {
 
         // when
         var response = send("PUT", "/governance",
-                "{\"topicRules\":{\"min-replication\":{\"message\":\"replication factor must be at least 3\","
-                        + "\"expression\":\"topic.replicationFactor >= 3\"}},"
-                        + "\"exemptions\":{\"ops\":{\"principal\":\".*\",\"topicPattern\":\".*-changelog\"}}}");
+                """
+                         {
+                           "topicRules": {
+                             "min-replication": {
+                               "message": "replication factor must be at least 3",
+                               "expression": "topic.replicationFactor >= 3"
+                             }
+                           },
+                           "exemptions": {
+                             "ops": {
+                               "principal": ".*",
+                               "topicPattern": ".*-changelog"
+                             }
+                           }
+                         }
+                         """);
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
@@ -77,9 +90,22 @@ class GovernanceSliceTest extends AdminHttpSliceTestBase {
 
         // when
         var response = send("PUT", "/governance?consistency=applied",
-                "{\"topicRules\":{\"min-replication\":{\"message\":\"replication factor must be at least 3\","
-                        + "\"expression\":\"topic.replicationFactor >= 3\"}},"
-                        + "\"exemptions\":{\"ops\":{\"principal\":\".*\",\"topicPattern\":\".*-changelog\"}}}");
+                """
+                         {
+                           "topicRules": {
+                             "min-replication": {
+                               "message": "replication factor must be at least 3",
+                               "expression": "topic.replicationFactor >= 3"
+                             }
+                           },
+                           "exemptions": {
+                             "ops": {
+                               "principal": ".*",
+                               "topicPattern": ".*-changelog"
+                             }
+                           }
+                         }
+                         """);
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
@@ -94,8 +120,16 @@ class GovernanceSliceTest extends AdminHttpSliceTestBase {
 
         // when
         var response = send("PUT", "/governance?consistency=eventual",
-                "{\"topicRules\":{\"min-replication\":{\"message\":\"replication factor must be at least 3\","
-                        + "\"expression\":\"topic.replicationFactor >= 3\"}}}");
+                """
+                         {
+                           "topicRules": {
+                             "min-replication": {
+                               "message": "replication factor must be at least 3",
+                               "expression": "topic.replicationFactor >= 3"
+                             }
+                           }
+                         }
+                         """);
 
         // then
         assertThat(response.statusCode()).isEqualTo(400);
@@ -111,8 +145,16 @@ class GovernanceSliceTest extends AdminHttpSliceTestBase {
 
         // when
         var response = send("PUT", "/governance",
-                "{\"topicRules\":{\"broken\":{\"message\":\"must be valid\","
-                        + "\"expression\":\"topic.replicationFactor >=\"}}}");
+                """
+                         {
+                           "topicRules": {
+                             "broken": {
+                               "message": "must be valid",
+                               "expression": "topic.replicationFactor >="
+                             }
+                           }
+                         }
+                         """);
 
         // then
         assertThat(response.statusCode()).isEqualTo(400);
