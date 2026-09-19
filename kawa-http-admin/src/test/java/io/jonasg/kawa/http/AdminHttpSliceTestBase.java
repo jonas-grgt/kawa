@@ -54,7 +54,7 @@ abstract class AdminHttpSliceTestBase {
     protected void startServer() throws InterruptedException {
         server = new AdminHttpServer(
                 new AdminConfig(true, "127.0.0.1", 0, cors),
-                virtualTopics, cache, repository, governance, topicAdmin);
+                virtualTopics, cache, repository, governance, topicAdmin, "gateway-static-salt");
         server.start();
     }
 

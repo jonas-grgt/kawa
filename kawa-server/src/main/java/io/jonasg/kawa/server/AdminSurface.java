@@ -14,10 +14,10 @@ public final class AdminSurface implements AutoCloseable {
     private final AdminHttpServer server;
 
     public AdminSurface(AdminConfig config, DynamicGatewayState state, MetadataCache cache,
-                        String bootstrapServers, BrokerAuthConfig brokerAuth) {
+                        String bootstrapServers, BrokerAuthConfig brokerAuth, String passwordSalt) {
         var topicAdmin = new KafkaTopicAdmin(bootstrapServers, brokerAuth);
         server = new AdminHttpServer(config, state.virtualTopics(), cache, state.configManager(),
-                state.governance(), topicAdmin);
+                state.governance(), topicAdmin, passwordSalt);
     }
 
     public void start() throws InterruptedException {

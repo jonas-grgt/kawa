@@ -6,28 +6,27 @@ import java.util.regex.Pattern;
 
 public record ClientConfig(
         String mechanism,
-        String password
+        HashedPassword password
 ) {
 
     private static final Pattern ENV_VAR_PATTERN =
             Pattern.compile("\\$\\{([^}:]+)(?::-(.+?))?\\}");
 
     public ClientConfig {
-        if (password == null || password.isBlank()) {
-            throw new IllegalArgumentException("password must not be null or blank");
+        if (password == null) {
+            throw new IllegalArgumentException("password must not be null");
         }
-        password = resolveEnvVars(password, System::getenv);
     }
 
-    static ClientConfig of(
-            String mechanism,
-            String password,
-            Function<String, String> envLookup
-    ) {
+    public ClientConfig(String mechanism, String password) {
+        this(mechanism, HashedPassword.fromEncoded(resolvePassword(password, System::getenv)));
+    }
+
+    private static String resolvePassword(String password, Function<String, String> envLookup) {
         if (password == null || password.isBlank()) {
             throw new IllegalArgumentException("password must not be null or blank");
         }
-        return new ClientConfig(mechanism, resolveEnvVars(password, envLookup));
+        return resolveEnvVars(password, envLookup);
     }
 
     static String resolveEnvVars(String value, Function<String, String> envLookup) {

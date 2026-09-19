@@ -15,6 +15,7 @@ import io.jonasg.kawa.config.RbacConfig;
 import io.jonasg.kawa.config.ResourceConfig;
 import io.jonasg.kawa.config.RoleConfig;
 import io.jonasg.kawa.config.ClientConfig;
+import io.jonasg.kawa.config.HashedPassword;
 import io.jonasg.kawa.server.KafkaGateway;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -122,8 +123,9 @@ class BrokerAuthIT {
 
         var auth = new AuthConfig(
                 Set.of("PLAIN"),
-                Map.of("client", new ClientConfig("PLAIN", "client-secret")),
-                new BrokerAuthConfig("PLAIN", BROKER_USER, BROKER_PASSWORD));
+                Map.of("client", new ClientConfig("PLAIN",
+                        new HashedPassword("client-secret", AUTH_SALT))),
+                new BrokerAuthConfig("PLAIN", BROKER_USER, BROKER_PASSWORD), AUTH_SALT);
 
         var allowAllRole = new RoleConfig(List.of(
                 new AclConfig(new ResourceConfig(ResourceType.TOPIC, "", PatternType.PREFIXED), AclOperation.ALL),
@@ -147,7 +149,7 @@ class BrokerAuthIT {
                 Map.of("default", new ClusterConfig(List.of(brokerBootstrap))),
                 null,
                 new AdvertisedListener(1, "localhost", 0),
-                new AuthConfig(null, null, new BrokerAuthConfig("PLAIN", BROKER_USER, BROKER_PASSWORD)),
+                new AuthConfig(null, null, new BrokerAuthConfig("PLAIN", BROKER_USER, BROKER_PASSWORD), AUTH_SALT),
                 null,
                 null,
                 CONFIG_TOPIC, null);
@@ -214,6 +216,7 @@ class BrokerAuthIT {
     }
 
     static final String CONFIG_TOPIC = "__kawa";
+    private static final String AUTH_SALT = "broker-auth-it-salt";
 
     /// `Properties` that authenticate to the SASL broker as the gateway's own broker user.
     private static Properties saslBrokerProps(String bootstrap) {

@@ -22,6 +22,7 @@ implements. No custom client configuration — point any client at kawa with
 auth:
   mechanisms:
     - PLAIN
+  salt: "a-stable-static-salt"
   clients:
     john:
       password: doe
@@ -32,6 +33,7 @@ auth:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `mechanisms` | string list | yes | Advertised in `SaslHandshake` responses. Must include every mechanism any client needs. |
+| `salt` | string | no | Static value used when hashing client passwords persisted to the `__kawa` config topic. Keep it stable across gateway restarts. |
 | `clients.<name>.password` | string | yes | Plain-text or `${VAR}` / `${VAR:-default}` for env interpolation. |
 | `clients.<name>.mechanism` | string | no | Per-client override. Inherits `mechanisms[0]` when omitted. |
 
@@ -79,6 +81,10 @@ kawa validates auth config at startup:
 - A client without `mechanism` + no global `mechanisms` → error
 - A client with `mechanism` not in the `mechanisms` list → error
 - Blank or missing password → error
+
+Client passwords are stored as PBKDF2 hashes in the `__kawa` config topic, never
+as plain text. The salt is optional; when configured, it must be supplied
+consistently by the static YAML configuration.
 
 ## Upstream broker authentication
 

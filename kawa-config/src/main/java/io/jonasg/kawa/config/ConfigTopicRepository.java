@@ -93,7 +93,8 @@ public final class ConfigTopicRepository implements OffsetAwareGatewayConfigRepo
     /// message-encoding path is testable without a broker.
     String serialize(GatewayConfig config) {
         try {
-            return mapper.writeValueAsString(config);
+            GatewayConfig hashedConfig = config.updateAuth(config.auth().withHashedClientPasswords());
+            return mapper.writeValueAsString(hashedConfig);
         } catch (Exception e) {
             throw new IllegalStateException("failed to serialize config snapshot", e);
         }

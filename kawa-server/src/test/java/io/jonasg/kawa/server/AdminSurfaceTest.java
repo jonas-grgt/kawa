@@ -14,7 +14,7 @@ class AdminSurfaceTest {
         var state = new DynamicGatewayState("localhost:9092", "__kawa", null);
         var cache = new MetadataCache();
         var admin = new AdminSurface(
-                new AdminConfig(true, "127.0.0.1", 0, null), state, cache, "localhost:9092", null);
+                new AdminConfig(true, "127.0.0.1", 0, null), state, cache, "localhost:9092", null, null);
 
         // when
         admin.start();

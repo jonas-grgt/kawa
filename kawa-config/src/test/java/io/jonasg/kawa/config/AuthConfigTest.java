@@ -84,7 +84,7 @@ class AuthConfigTest {
 
         // then
         assertThat(updated.clients()).hasSize(1);
-        assertThat(updated.clients().get("alice").password()).isEqualTo("new-secret");
+        assertThat(updated.clients().get("alice").password().encoded()).isEqualTo("new-secret");
     }
 
     @Test

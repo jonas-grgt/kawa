@@ -4,6 +4,7 @@ import io.jonasg.kawa.config.AuthConfig;
 import io.jonasg.kawa.config.ClientConfig;
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
+import io.jonasg.kawa.config.HashedPassword;
 
 import java.util.Comparator;
 import java.util.List;
@@ -16,8 +17,11 @@ import java.util.Map;
 /// mechanism, so the first client can be added to an empty config.
 public final class AuthClientsConfigHandler extends ConfigSectionHandler<ClientConfig> {
 
-    public AuthClientsConfigHandler(GatewayConfigRepository repository) {
+    private final String passwordSalt;
+
+    public AuthClientsConfigHandler(GatewayConfigRepository repository, String passwordSalt) {
         super(repository, ClientConfig.class, "client");
+        this.passwordSalt = passwordSalt;
     }
 
     @Override
@@ -35,7 +39,9 @@ public final class AuthClientsConfigHandler extends ConfigSectionHandler<ClientC
 
     @Override
     protected GatewayConfig upsert(GatewayConfig config, String name, ClientConfig value) {
-        AuthConfig auth = config.auth().withClient(name, value);
+        ClientConfig hashed = new ClientConfig(value.mechanism(),
+                new HashedPassword(value.password().encoded(), passwordSalt));
+        AuthConfig auth = config.auth().withClient(name, hashed);
         return config.updateAuth(auth);
     }
 
@@ -81,7 +87,7 @@ public final class AuthClientsConfigHandler extends ConfigSectionHandler<ClientC
             return Router.Response.badRequest("no fields to patch");
         }
         String mechanism = patch.mechanism() != null ? patch.mechanism() : current.mechanism();
-        String password = patch.password() != null ? patch.password() : current.password();
+        String password = patch.password() != null ? patch.password() : current.password().encoded();
         try {
             updater.update(request, config -> upsert(config, name, new ClientConfig(mechanism, password)));
         } catch (IllegalArgumentException e) {

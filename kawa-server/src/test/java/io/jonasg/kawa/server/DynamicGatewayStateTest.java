@@ -2,6 +2,7 @@ package io.jonasg.kawa.server;
 
 import io.jonasg.kawa.config.AclConfig;
 import io.jonasg.kawa.config.AuthConfig;
+import io.jonasg.kawa.config.HashedPassword;
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GovernanceConfig;
 import io.jonasg.kawa.config.GovernanceRuleConfig;
@@ -39,7 +40,7 @@ class DynamicGatewayStateTest {
                                 AclOperation.READ)))),
                         Map.of("readers", new GroupConfig(List.of("alice"), List.of("reader")))))
                 .updateAuth(new AuthConfig(Set.of("PLAIN"),
-                        Map.of("alice", new ClientConfig("PLAIN", "secret")), null))
+                        Map.of("alice", new ClientConfig("PLAIN", new HashedPassword("secret", null))), null))
                 .updateGovernance(new GovernanceConfig(
                         Map.of("no-delete", new GovernanceRuleConfig(
                                 "must not delete", "topic.name != 'deleted'")), Map.of()));

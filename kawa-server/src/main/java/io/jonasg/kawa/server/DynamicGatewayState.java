@@ -34,11 +34,20 @@ public final class DynamicGatewayState implements AutoCloseable {
     private final DynamicConfigManager configManager;
 
     public DynamicGatewayState(String bootstrapServers, String topic, BrokerAuthConfig brokerAuth) {
+        this(bootstrapServers, topic, brokerAuth, null);
+    }
+
+    public DynamicGatewayState(
+            String bootstrapServers,
+            String topic,
+            BrokerAuthConfig brokerAuth,
+            String passwordSalt
+    ) {
         this.bootstrapServers = bootstrapServers;
         this.topic = topic;
         virtualTopics = new VirtualTopicManager(Map.of());
         authorizer = new RbacAuthorizer(new RbacConfig(Map.of(), Map.of()));
-        saslAuthenticator = new SaslAuthenticator(Set.of());
+        saslAuthenticator = new SaslAuthenticator(Set.of(), Map.of(), passwordSalt);
         governance = new GovernancePolicy(new GovernanceConfig(null, null));
         // Direct partition assignment: the config consumer re-reads the full topic from the
         // earliest offset on every boot, so no consumer group is needed (and none is
