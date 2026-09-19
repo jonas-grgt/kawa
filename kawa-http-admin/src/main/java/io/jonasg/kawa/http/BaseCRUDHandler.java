@@ -15,7 +15,7 @@ import java.util.Map;
 /// `GET` lists the section, `PUT /{name}` upserts one entry (persisting the new snapshot via
 /// the [GatewayConfigRepository] and returning the stored entry), `DELETE /{name}` removes it
 /// (404 when it does not exist). The section starts empty when no snapshot has been applied yet.
-abstract class ConfigSectionHandler<T> implements Router.Handler {
+abstract class BaseCRUDHandler<T> {
 
     protected final GatewayConfigRepository repository;
     protected final ConsistencyAwareUpdater updater;
@@ -23,7 +23,7 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
     private final Class<T> valueType;
     private final String sectionName;
 
-    ConfigSectionHandler(GatewayConfigRepository repository, Class<T> valueType, String sectionName) {
+    BaseCRUDHandler(GatewayConfigRepository repository, Class<T> valueType, String sectionName) {
         this.repository = repository;
         this.updater = new ConsistencyAwareUpdater(repository);
         this.valueType = valueType;
@@ -54,42 +54,42 @@ abstract class ConfigSectionHandler<T> implements Router.Handler {
         return null;
     }
 
-    @Override
-    public Router.Response<?> handle(Router.Request request) {
+    Router.Response<?> get(Router.Request request) {
+        GatewayConfig base = repository.getActiveConfigOrEmpty();
+        return Router.Response.ok(listView(base));
+    }
+
+    Router.Response<?> put(Router.Request request) {
+        String name = request.pathParams().get("name");
+        T value;
+        try {
+            value = mapper.readValue(request.body(), valueType);
+        } catch (Exception e) {
+            return Router.Response.badRequest("invalid " + sectionName + " body: " + e.getMessage());
+        }
+        try {
+            updater.update(request, config -> upsert(config, name, value));
+        } catch (IllegalArgumentException e) {
+            return Router.Response.badRequest(e.getMessage());
+        }
+        return Router.Response.ok(value);
+    }
+
+    Router.Response<?> delete(Router.Request request) {
         GatewayConfig base = repository.getActiveConfigOrEmpty();
         String name = request.pathParams().get("name");
-        return switch (request.method()) {
-            case "GET" -> Router.Response.ok(listView(base));
-            case "PUT" -> {
-                T value;
-                try {
-                    value = mapper.readValue(request.body(), valueType);
-                } catch (Exception e) {
-                    yield Router.Response.badRequest("invalid " + sectionName + " body: " + e.getMessage());
-                }
-                try {
-                    updater.update(request, config -> upsert(config, name, value));
-                } catch (IllegalArgumentException e) {
-                    yield Router.Response.badRequest(e.getMessage());
-                }
-                yield Router.Response.ok(value);
-            }
-            case "DELETE" -> {
-                if (!entries(base).containsKey(name)) {
-                    yield Router.Response.notFound(sectionName + " '" + name + "' not found");
-                }
-                Router.Response<?> rejection = validateRemove(base, name);
-                if (rejection != null) {
-                    yield rejection;
-                }
-                try {
-                    updater.update(request, config -> remove(config, name));
-                } catch (IllegalArgumentException e) {
-                    yield Router.Response.badRequest(e.getMessage());
-                }
-                yield Router.Response.noContent();
-            }
-            default -> Router.Response.badRequest("unsupported method " + request.method());
-        };
+        if (!entries(base).containsKey(name)) {
+            return Router.Response.notFound(sectionName + " '" + name + "' not found");
+        }
+        Router.Response<?> rejection = validateRemove(base, name);
+        if (rejection != null) {
+            return rejection;
+        }
+        try {
+            updater.update(request, config -> remove(config, name));
+        } catch (IllegalArgumentException e) {
+            return Router.Response.badRequest(e.getMessage());
+        }
+        return Router.Response.noContent();
     }
 }

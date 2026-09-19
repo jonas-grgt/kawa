@@ -15,14 +15,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/// Serves `/config/auth/clients`: lists the clients, upserts one entry via
-/// `PUT /config/auth/clients/{name}` and removes it via `DELETE /config/auth/clients/{name}`.
-/// Each write persists a full [GatewayConfig] snapshot through the [GatewayConfigRepository].
-/// Adding a client auto-expands the advertised SASL mechanisms to include the client's
-/// mechanism, so the first client can be added to an empty config.
-public final class AuthClientsConfigHandler extends ConfigSectionHandler<ClientConfig> {
+final class AuthClientsCRUDHandler extends BaseCRUDHandler<ClientConfig> {
 
-    public AuthClientsConfigHandler(GatewayConfigRepository repository) {
+    AuthClientsCRUDHandler(GatewayConfigRepository repository) {
         super(repository, ClientConfig.class, "client");
     }
 
@@ -63,46 +58,50 @@ public final class AuthClientsConfigHandler extends ConfigSectionHandler<ClientC
         return Router.Response.conflict("client '" + name + "' is still in groups " + groups);
     }
 
-    /// `PATCH` updates one or both credential fields of an existing client; a field left out
-    /// of the body keeps its stored value. The password stays write-only — it is never
-    /// returned.
-    @Override
-    public Router.Response<?> handle(Router.Request request) {
-        if (!"PATCH".equals(request.method()) && !"PUT".equals(request.method())) {
-            return super.handle(request);
-        }
+    Router.Response<?> patch(Router.Request request) {
         GatewayConfig base = repository.getActiveConfigOrEmpty();
         String name = request.pathParams().get("name");
         ClientConfig current = entries(base).get(name);
-        boolean patchRequest = "PATCH".equals(request.method());
         ClientConfigRequest body;
         try {
-            body = patchRequest
-                    ? mapper.readValue(request.body(), ClientConfigPatch.class).toRequest()
-                    : mapper.readValue(request.body(), ClientConfigRequest.class);
+            body = mapper.readValue(request.body(), ClientConfigPatch.class).toRequest();
         } catch (Exception e) {
             return Router.Response.badRequest("invalid client body: " + e.getMessage());
         }
-        if (patchRequest && current == null) {
+        if (current == null) {
             return Router.Response.notFound("client '" + name + "' not found");
         }
-        if (patchRequest && body.mechanism() == null && body.password() == null && body.groups() == null) {
+        if (body.mechanism() == null && body.password() == null && body.groups() == null) {
             return Router.Response.badRequest("no fields to patch");
         }
-        String mechanism = body.mechanism() != null || current == null
-                ? body.mechanism() : current.mechanism();
-        String password = body.password() != null || current == null
-                ? body.password() : current.password();
-        List<String> groups = patchRequest || body.groups() != null ? body.groups() : List.of();
+        String mechanism = body.mechanism() == null ? current.mechanism() : body.mechanism();
+        String password = body.password() == null ? current.password() : body.password();
         try {
             updater.update(request, config -> updateClient(
-                    config, name, new ClientConfig(mechanism, password), groups));
+                    config, name, new ClientConfig(mechanism, password), body.groups()));
         } catch (IllegalArgumentException e) {
             return Router.Response.badRequest(e.getMessage());
         }
-        return patchRequest
-                ? Router.Response.ok(new ClientView(name, mechanism))
-                : Router.Response.ok(new ClientConfig(mechanism, password));
+        return Router.Response.ok(new ClientView(name, mechanism));
+    }
+
+    @Override
+    Router.Response<?> put(Router.Request request) {
+        String name = request.pathParams().get("name");
+        ClientConfigRequest body;
+        try {
+            body = mapper.readValue(request.body(), ClientConfigRequest.class);
+        } catch (Exception e) {
+            return Router.Response.badRequest("invalid client body: " + e.getMessage());
+        }
+        try {
+            updater.update(request, config -> updateClient(
+                    config, name, new ClientConfig(body.mechanism(), body.password()),
+                    body.groups() == null ? List.of() : body.groups()));
+        } catch (IllegalArgumentException e) {
+            return Router.Response.badRequest(e.getMessage());
+        }
+        return Router.Response.ok(new ClientConfig(body.mechanism(), body.password()));
     }
 
     private GatewayConfig updateClient(

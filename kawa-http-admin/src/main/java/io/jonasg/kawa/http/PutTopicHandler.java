@@ -7,13 +7,13 @@ import tools.jackson.databind.json.JsonMapper;
 /// Serves `PUT /topics/{name}`: upserts the virtual topic config for `name`. The body uses
 /// the same `type` discriminator as `POST /topics`; only `"type": "virtual"` is supported
 /// (physical topic alteration is not implemented).
-public final class UpdateTopicHandler implements Router.Handler {
+public final class PutTopicHandler implements Router.Handler {
 
     private final GatewayConfigRepository repository;
     private final ConsistencyAwareUpdater updater;
     private final JsonMapper mapper = JsonMapper.builder().build();
 
-    public UpdateTopicHandler(GatewayConfigRepository repository) {
+    public PutTopicHandler(GatewayConfigRepository repository) {
         this.repository = repository;
         this.updater = new ConsistencyAwareUpdater(repository);
     }
