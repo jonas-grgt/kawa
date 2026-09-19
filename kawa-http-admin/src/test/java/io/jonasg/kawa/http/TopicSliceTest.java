@@ -5,7 +5,10 @@ import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GovernanceConfig;
 import io.jonasg.kawa.config.GovernanceExemptionConfig;
 import io.jonasg.kawa.config.GovernanceRuleConfig;
+import io.jonasg.kawa.config.HeaderContainsFilterConfig;
 import io.jonasg.kawa.config.HeaderEqualsFilterConfig;
+import io.jonasg.kawa.config.HeaderMatchesFilterConfig;
+import io.jonasg.kawa.config.HeaderStartsWithFilterConfig;
 import io.jonasg.kawa.config.VirtualTopicConfig;
 import io.jonasg.kawa.core.VirtualTopicManager;
 import io.jonasg.kawa.governance.GovernancePolicy;
@@ -140,6 +143,89 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
                   "physicalTopic": null
                 }]
                 """);
+    }
+
+    @Test
+    void describesHeaderFilterDetailsForVirtualTopics() throws Exception {
+        // given
+        virtualTopics = new VirtualTopicManager(Map.of(
+                "contains", new VirtualTopicConfig("contains-v1",
+                        new HeaderContainsFilterConfig("tenant", "acm"), false),
+                "startsWith", new VirtualTopicConfig("starts-v1",
+                        new HeaderStartsWithFilterConfig("tenant", "ac"), false),
+                "matches", new VirtualTopicConfig("matches-v1",
+                        new HeaderMatchesFilterConfig("tenant", "eu.*"), false)));
+        cache = cacheWith(topic("contains-v1", 1, 1), topic("starts-v1", 1, 1), topic("matches-v1", 1, 1));
+        startServer();
+
+        // when
+        var topicsResp = send("GET", "/topics", null);
+
+        // then
+        assertThat(topicsResp.statusCode()).isEqualTo(200);
+        assertThatJson(topicsResp.body())
+                .when(IGNORING_ARRAY_ORDER)
+                .isEqualTo("""
+                        [
+                          {
+                            "type": "virtual",
+                            "name": "contains",
+                            "partitions": 1,
+                            "replicationFactor": 1,
+                            "filter": {
+                              "kind": "headerContains",
+                              "expression": "tenant contains acm"
+                            },
+                            "physicalTopic": "contains-v1"
+                          },
+                          {
+                            "type": "virtual",
+                            "name": "startsWith",
+                            "partitions": 1,
+                            "replicationFactor": 1,
+                            "filter": {
+                              "kind": "headerStartsWith",
+                              "expression": "tenant starts with ac"
+                            },
+                            "physicalTopic": "starts-v1"
+                          },
+                          {
+                            "type": "virtual",
+                            "name": "matches",
+                            "partitions": 1,
+                            "replicationFactor": 1,
+                            "filter": {
+                              "kind": "headerMatches",
+                              "expression": "tenant matches eu.*"
+                            },
+                            "physicalTopic": "matches-v1"
+                          },
+                          {
+                            "type": "physical",
+                            "name": "contains-v1",
+                            "partitions": 1,
+                            "replicationFactor": 1,
+                            "filter": null,
+                            "physicalTopic": null
+                          },
+                          {
+                            "type": "physical",
+                            "name": "starts-v1",
+                            "partitions": 1,
+                            "replicationFactor": 1,
+                            "filter": null,
+                            "physicalTopic": null
+                          },
+                          {
+                            "type": "physical",
+                            "name": "matches-v1",
+                            "partitions": 1,
+                            "replicationFactor": 1,
+                            "filter": null,
+                            "physicalTopic": null
+                          }
+                        ]
+                        """);
     }
 
     @Test
