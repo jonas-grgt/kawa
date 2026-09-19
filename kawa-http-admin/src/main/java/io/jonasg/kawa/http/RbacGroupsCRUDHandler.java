@@ -7,12 +7,9 @@ import io.jonasg.kawa.config.GroupConfig;
 import java.util.Comparator;
 import java.util.Map;
 
-/// Serves `/config/rbac/groups`: lists the groups, upserts one entry via
-/// `PUT /config/rbac/groups/{name}` and removes it via `DELETE /config/rbac/groups/{name}`.
-/// Each write persists a full [GatewayConfig] snapshot through the [GatewayConfigRepository].
-public final class RbacGroupsConfigHandler extends ConfigSectionHandler<GroupConfig> {
+final class RbacGroupsCRUDHandler extends BaseCRUDHandler<GroupConfig> {
 
-    public RbacGroupsConfigHandler(GatewayConfigRepository repository) {
+    RbacGroupsCRUDHandler(GatewayConfigRepository repository) {
         super(repository, GroupConfig.class, "group");
     }
 
@@ -48,13 +45,7 @@ public final class RbacGroupsConfigHandler extends ConfigSectionHandler<GroupCon
         return config.updateRbac(config.rbac().removeGroup(name));
     }
 
-    /// `PATCH` renames the group: the body carries the new name, and the group's clients and
-    /// roles move with it. The old name must exist and the new name must be free.
-    @Override
-    public Router.Response<?> handle(Router.Request request) {
-        if (!"PATCH".equals(request.method())) {
-            return super.handle(request);
-        }
+    Router.Response<?> patch(Router.Request request) {
         GatewayConfig base = repository.getActiveConfigOrEmpty();
         String name = request.pathParams().get("name");
         GroupConfig current = entries(base).get(name);

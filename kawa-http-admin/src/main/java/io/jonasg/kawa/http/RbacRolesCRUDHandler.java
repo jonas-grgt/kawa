@@ -7,12 +7,9 @@ import io.jonasg.kawa.config.RoleConfig;
 import java.util.Comparator;
 import java.util.Map;
 
-/// Serves `/config/rbac/roles`: lists the roles, upserts one entry via
-/// `PUT /config/rbac/roles/{name}` and removes it via `DELETE /config/rbac/roles/{name}`.
-/// Each write persists a full [GatewayConfig] snapshot through the [GatewayConfigRepository].
-public final class RbacRolesConfigHandler extends ConfigSectionHandler<RoleConfig> {
+final class RbacRolesCRUDHandler extends BaseCRUDHandler<RoleConfig> {
 
-    public RbacRolesConfigHandler(GatewayConfigRepository repository) {
+    RbacRolesCRUDHandler(GatewayConfigRepository repository) {
         super(repository, RoleConfig.class, "role");
     }
 

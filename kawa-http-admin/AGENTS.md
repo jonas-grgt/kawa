@@ -4,6 +4,13 @@
 
 These instructions apply to the `kawa-http-admin` module only.
 
+## Handler naming
+
+Name HTTP handlers after the HTTP method they own: `Get`, `Post`, `Put`, `Patch`, or `Delete`,
+followed by the resource name. Use singular or plural resource names according to the route's
+resource shape. Keep handlers method-specific rather than combining multiple HTTP methods in one
+class.
+
 ## HTTP tests
 
 - HTTP slice tests must exercise the real `AdminHttpServer` through an ephemeral port, following

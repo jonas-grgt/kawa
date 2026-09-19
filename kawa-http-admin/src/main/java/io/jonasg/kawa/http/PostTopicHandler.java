@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 /// writes a virtual topic config through the [GatewayConfigRepository]; a
 /// `"type": "physical"` body runs the governance admission check and then creates the topic
 /// on the broker through the [TopicAdmin].
-public final class CreateTopicHandler implements Router.Handler {
+public final class PostTopicHandler implements Router.Handler {
 
     /// Placeholder principal until the admin HTTP layer has authentication.
     private static final String PRINCIPAL = "admin";
@@ -28,7 +28,7 @@ public final class CreateTopicHandler implements Router.Handler {
     private final TopicAdmin topicAdmin;
     private final JsonMapper mapper = JsonMapper.builder().build();
 
-    public CreateTopicHandler(
+    public PostTopicHandler(
             GovernancePolicy governance,
             GatewayConfigRepository repository,
             TopicAdmin topicAdmin
