@@ -18,6 +18,7 @@ WORKDIR /workspace
 COPY mvnw ./
 COPY .mvn .mvn
 COPY pom.xml ./
+COPY checkstyle.xml ./
 COPY kawa-config/pom.xml kawa-config/
 COPY kawa-core/pom.xml kawa-core/
 COPY kawa-protocol-kafka/pom.xml kawa-protocol-kafka/
