@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Slice tests for the `/auth/clients` admin surface: real HTTP requests through a booted
@@ -25,7 +26,9 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains("\"username\":\"alice\"", "\"PLAIN\"");
+        assertThatJson(response.body()).isEqualTo("""
+                [{"username":"alice","mechanism":"PLAIN"}]
+                """);
     }
 
     @Test
@@ -42,7 +45,12 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body().indexOf("\"alice\"")).isLessThan(response.body().indexOf("\"bob\""));
+        assertThatJson(response.body()).isEqualTo("""
+                [
+                  {"username":"alice","mechanism":"PLAIN"},
+                  {"username":"bob","mechanism":"PLAIN"}
+                ]
+                """);
     }
 
     @Test
@@ -56,7 +64,7 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo("[]");
+        assertThatJson(response.body()).isEqualTo("[]");
     }
 
     @Test

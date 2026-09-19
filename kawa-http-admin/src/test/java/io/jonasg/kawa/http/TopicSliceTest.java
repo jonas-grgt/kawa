@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
+import static net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Slice tests for the `/topics` admin surface: real HTTP requests through a booted
@@ -35,21 +37,59 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         startServer();
 
         // when
-        var response = send("GET", "/topics", null);
+        var topicsResp = send("GET", "/topics", null);
 
         // then
-        assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains(
-                "\"type\":\"virtual\"",
-                "\"name\":\"orders\"",
-                "\"partitions\":3",
-                "\"replicationFactor\":2",
-                "\"physicalTopic\":\"orders-v2\"",
-                "\"type\":\"physical\"",
-                "\"name\":\"orders-v2\"",
-                "\"name\":\"customers\"",
-                "\"filter\":{\"kind\":\"header\",\"expression\":\"tenant=acme\"}",
-                "\"name\":\"raw-events\"");
+        assertThat(topicsResp.statusCode()).isEqualTo(200);
+        assertThatJson(topicsResp.body())
+                .when(IGNORING_ARRAY_ORDER)
+                .isEqualTo("""
+                        [
+                          {
+                            "type": "virtual",
+                            "name": "orders",
+                            "partitions": 3,
+                            "replicationFactor": 2,
+                            "filter": null,
+                            "physicalTopic": "orders-v2"
+                          },
+                          {
+                            "type": "physical",
+                            "name": "orders-v2",
+                            "partitions": 3,
+                            "replicationFactor": 2,
+                            "filter": null,
+                            "physicalTopic": null
+                          },
+                          {
+                            "type": "virtual",
+                            "name": "customers",
+                            "partitions": 2,
+                            "replicationFactor": 3,
+                            "filter": {
+                              "kind": "header",
+                              "expression": "tenant=acme"
+                            },
+                            "physicalTopic": "crm.customers"
+                          },
+                          {
+                            "type": "physical",
+                            "name": "crm.customers",
+                            "partitions": 2,
+                            "replicationFactor": 3,
+                            "filter": null,
+                            "physicalTopic": null
+                          },
+                          {
+                            "type": "physical",
+                            "name": "raw-events",
+                            "partitions": 1,
+                            "replicationFactor": 1,
+                            "filter": null,
+                            "physicalTopic": null
+                          }
+                        ]
+                        """);
     }
 
     @Test
@@ -62,7 +102,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo("[]");
+        assertThatJson(response.body()).isEqualTo("[]");
     }
 
     @Test
@@ -79,9 +119,27 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains(
-                "\"name\":\"audit\"",
-                "\"filter\":{\"kind\":\"cel\",\"expression\":\"headers.tenant == \\\"acme\\\"\"}");
+        assertThatJson(response.body()).isEqualTo("""
+                [{
+                  "type": "virtual",
+                  "name": "audit",
+                  "partitions": 1,
+                  "replicationFactor": 1,
+                  "filter": {
+                    "kind": "cel",
+                    "expression": "headers.tenant == \\\"acme\\\""
+                  },
+                  "physicalTopic": "audit-v1"
+                },
+                {
+                  "type": "physical",
+                  "name": "audit-v1",
+                  "partitions": 1,
+                  "replicationFactor": 1,
+                  "filter": null,
+                  "physicalTopic": null
+                }]
+                """);
     }
 
     @Test
@@ -96,12 +154,16 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains(
-                "\"type\":\"virtual\"",
-                "\"name\":\"orders\"",
-                "\"partitions\":0",
-                "\"replicationFactor\":0",
-                "\"physicalTopic\":\"orders-v2\"");
+        assertThatJson(response.body()).isEqualTo("""
+                [{
+                  "type": "virtual",
+                  "name": "orders",
+                  "partitions": 0,
+                  "replicationFactor": 0,
+                  "filter": null,
+                  "physicalTopic": "orders-v2"
+                }]
+                """);
     }
 
     @Test
@@ -125,11 +187,14 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(201);
-        assertThat(response.body()).contains(
-                "\"name\":\"orders\"",
-                "\"partitions\":3",
-                "\"replicationFactor\":3",
-                "\"configs\":{\"cleanup.policy\":\"compact\"}");
+        assertThatJson(response.body()).isEqualTo("""
+                {
+                  "name": "orders",
+                  "partitions": 3,
+                  "replicationFactor": 3,
+                  "configs": {"cleanup.policy": "compact"}
+                }
+                """);
         assertThat(topicAdmin.created)
                 .containsExactly(new TopicSpec("orders", 3, 3, Map.of("cleanup.policy", "compact")));
     }
@@ -237,7 +302,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(201);
-        assertThat(response.body()).contains("\"topic\":\"orders-v2\"");
+        assertThatJson(response.body()).inPath("topic").isEqualTo("orders-v2");
         assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("orders-v2"));
         assertThat(topicAdmin.created).isEmpty();
@@ -297,7 +362,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains("\"topic\":\"raw-orders\"");
+        assertThatJson(response.body()).inPath("topic").isEqualTo("raw-orders");
         assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("raw-orders"));
         assertThat(repository.updateCalls()).isEqualTo(1);
@@ -400,11 +465,17 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         assertThat(repository.getActiveConfig().virtualTopics())
                 .containsEntry("orders", new VirtualTopicConfig("orders-v2",
                         new HeaderEqualsFilterConfig("region", "eu"), true));
-        assertThat(response.body()).contains(
-                "\"topic\":\"orders-v2\"",
-                "\"header\":\"region\"",
-                "\"value\":\"eu\"",
-                "\"exposePhysicalTopic\":true");
+        assertThatJson(response.body()).isEqualTo("""
+                {
+                  "topic": "orders-v2",
+                  "filter": {
+                    "type": "headerEquals",
+                    "header": "region",
+                    "value": "eu"
+                  },
+                  "exposePhysicalTopic": true
+                }
+                """);
     }
 
     @Test

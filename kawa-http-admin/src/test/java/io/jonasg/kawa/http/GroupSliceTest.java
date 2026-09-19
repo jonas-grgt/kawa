@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Slice tests for the `/rbac/groups` admin surface: real HTTP requests through a booted
@@ -24,7 +25,9 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains("\"name\":\"producers\"", "\"clients\":[]", "\"roles\":[]");
+        assertThatJson(response.body()).isEqualTo("""
+                [{"name":"producers","clients":[],"roles":[]}]
+                """);
     }
 
     @Test
@@ -41,7 +44,12 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body().indexOf("\"producers\"")).isLessThan(response.body().indexOf("\"writers\""));
+        assertThatJson(response.body()).isEqualTo("""
+                [
+                  {"name":"producers","clients":[],"roles":[]},
+                  {"name":"writers","clients":[],"roles":[]}
+                ]
+                """);
     }
 
     @Test
@@ -55,7 +63,7 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo("[]");
+        assertThatJson(response.body()).isEqualTo("[]");
     }
 
     @Test
@@ -143,7 +151,9 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains("\"name\":\"publishers\"", "\"alice\"", "\"reader\"");
+        assertThatJson(response.body()).isEqualTo("""
+                {"name":"publishers","clients":["alice"],"roles":["reader"]}
+                """);
         assertThat(repository.getActiveConfig().rbac().groups()).doesNotContainKey("producers");
         assertThat(repository.getActiveConfig().rbac().groups().get("publishers"))
                 .isEqualTo(new GroupConfig(List.of("alice"), List.of("reader")));

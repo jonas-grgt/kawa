@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Slice tests for the `/governance` admin surface: real HTTP requests through a booted
@@ -30,11 +31,22 @@ class GovernanceSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains(
-                "\"min-replication\"",
-                "\"topic.replicationFactor >= 3\"",
-                "\"ops\"",
-                "\".*-changelog\"");
+        assertThatJson(response.body()).isEqualTo("""
+                {
+                  "topicRules": {
+                    "min-replication": {
+                      "message": "replication factor must be at least 3",
+                      "expression": "topic.replicationFactor >= 3"
+                    }
+                  },
+                  "exemptions": {
+                    "ops": {
+                      "principal": ".*",
+                      "topicPattern": ".*-changelog"
+                    }
+                  }
+                }
+                """);
     }
 
     @Test
@@ -48,7 +60,9 @@ class GovernanceSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains("\"topicRules\"", "\"exemptions\"");
+        assertThatJson(response.body()).isEqualTo("""
+                {"topicRules":{},"exemptions":{}}
+                """);
     }
 
     @Test

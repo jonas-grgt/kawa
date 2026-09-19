@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class RouterTest {
@@ -31,7 +32,7 @@ class RouterTest {
         // then
         assertThat(response.status()).isEqualTo(HttpResponseStatus.OK);
         assertThat(response.headers().get("Content-Type")).isEqualTo(JSON);
-        assertThat(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("[]");
+        assertThatJson(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("[]");
     }
 
     @Test
@@ -82,7 +83,8 @@ class RouterTest {
 
         // then
         assertThat(response.status()).isEqualTo(HttpResponseStatus.OK);
-        assertThat(response.content().toString(StandardCharsets.UTF_8)).contains("roles");
+        assertThatJson(response.content().toString(StandardCharsets.UTF_8))
+                .isEqualTo("\"{\\\"roles\\\":{}}\"");
     }
 
     @Test
@@ -96,7 +98,8 @@ class RouterTest {
 
         // then
         assertThat(response.status()).isEqualTo(HttpResponseStatus.BAD_REQUEST);
-        assertThat(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("{\"error\":\"nope\"}");
+        assertThatJson(response.content().toString(StandardCharsets.UTF_8))
+                .isEqualTo("{\"error\":\"nope\"}");
     }
 
     @Test
@@ -136,7 +139,7 @@ class RouterTest {
 
         // then
         assertThat(response.status()).isEqualTo(HttpResponseStatus.OK);
-        assertThat(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("\"orders\"");
+        assertThatJson(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("\"orders\"");
     }
 
     @Test
@@ -151,7 +154,7 @@ class RouterTest {
 
         // then
         assertThat(response.status()).isEqualTo(HttpResponseStatus.OK);
-        assertThat(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("\"alice\"");
+        assertThatJson(response.content().toString(StandardCharsets.UTF_8)).isEqualTo("\"alice\"");
     }
 
     @Test

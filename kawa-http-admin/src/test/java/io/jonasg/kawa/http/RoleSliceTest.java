@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /// Slice tests for the `/rbac/roles` admin surface: real HTTP requests through a booted
@@ -25,7 +26,9 @@ class RoleSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).contains("\"name\":\"reader\"", "\"acls\":[]");
+        assertThatJson(response.body()).isEqualTo("""
+                [{"name":"reader","acls":[]}]
+                """);
     }
 
     @Test
@@ -42,7 +45,12 @@ class RoleSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body().indexOf("\"reader\"")).isLessThan(response.body().indexOf("\"writer\""));
+        assertThatJson(response.body()).isEqualTo("""
+                [
+                  {"name":"reader","acls":[]},
+                  {"name":"writer","acls":[]}
+                ]
+                """);
     }
 
     @Test
@@ -56,7 +64,7 @@ class RoleSliceTest extends AdminHttpSliceTestBase {
 
         // then
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.body()).isEqualTo("[]");
+        assertThatJson(response.body()).isEqualTo("[]");
     }
 
     @Test
