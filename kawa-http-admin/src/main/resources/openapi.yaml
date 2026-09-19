@@ -711,6 +711,11 @@ components:
         password:
           type: string
           description: Password; may reference environment variables as ${VAR} or ${VAR:-default}.
+        groups:
+          type: array
+          items:
+            type: string
+          description: Existing RBAC groups the client should belong to; omitted means no groups on create.
     ClientConfigPatch:
       type: object
       properties:
@@ -720,6 +725,11 @@ components:
         password:
           type: string
           description: New password; may reference environment variables as ${VAR} or ${VAR:-default}. Omitted to keep the current password.
+        groups:
+          type: array
+          items:
+            type: string
+          description: Replaces the client's RBAC group memberships; omitted to keep current memberships.
     ClientView:
       type: object
       required:

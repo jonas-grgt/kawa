@@ -84,6 +84,28 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     }
 
     @Test
+    void addsClientToSelectedGroups() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of(), List.of("writer")))
+                        .withGroup("admins", new GroupConfig(List.of("bob"), List.of("admin")))));
+        startServer();
+
+        // when
+        var response = send("PUT", "/auth/clients/alice", """
+                {"mechanism":"PLAIN","password":"secret","groups":["producers","admins"]}
+                """);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.getActiveConfig().rbac().groups().get("producers").clients())
+                .containsExactly("alice");
+        assertThat(repository.getActiveConfig().rbac().groups().get("admins").clients())
+                .containsExactly("bob", "alice");
+    }
+
+    @Test
     void addsClientWithAppliedConsistencyWaitsForApplyMode() throws Exception {
         // given
         startServer();
@@ -260,6 +282,44 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(repository.getActiveConfig().auth().clients().get("alice"))
                 .isEqualTo(new ClientConfig("PLAIN", "new-secret"));
+    }
+
+    @Test
+    void patchReplacesClientGroups() throws Exception {
+        // given
+        repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
+                .updateAuth(GatewayConfig.empty().auth()
+                        .withClient("alice", new ClientConfig("PLAIN", "secret")))
+                .updateRbac(GatewayConfig.empty().rbac()
+                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("writer")))
+                        .withGroup("admins", new GroupConfig(List.of(), List.of("admin")))));
+        startServer();
+
+        // when
+        var response = send("PATCH", "/auth/clients/alice", """
+                {"groups":["admins"]}
+                """);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(repository.getActiveConfig().rbac().groups().get("producers").clients()).isEmpty();
+        assertThat(repository.getActiveConfig().rbac().groups().get("admins").clients())
+                .containsExactly("alice");
+    }
+
+    @Test
+    void rejectsUnknownClientGroup() throws Exception {
+        // given
+        startServer();
+
+        // when
+        var response = send("PUT", "/auth/clients/alice", """
+                {"mechanism":"PLAIN","password":"secret","groups":["missing"]}
+                """);
+
+        // then
+        assertThat(response.statusCode()).isEqualTo(400);
+        assertThat(repository.getActiveConfig().auth().clients()).doesNotContainKey("alice");
     }
 
     @Test

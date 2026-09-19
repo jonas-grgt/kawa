@@ -4,10 +4,16 @@ import io.jonasg.kawa.config.AuthConfig;
 import io.jonasg.kawa.config.ClientConfig;
 import io.jonasg.kawa.config.GatewayConfig;
 import io.jonasg.kawa.config.GatewayConfigRepository;
+import io.jonasg.kawa.config.GroupConfig;
+import io.jonasg.kawa.config.RbacConfig;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /// Serves `/config/auth/clients`: lists the clients, upserts one entry via
 /// `PUT /config/auth/clients/{name}` and removes it via `DELETE /config/auth/clients/{name}`.
@@ -62,31 +68,78 @@ public final class AuthClientsConfigHandler extends ConfigSectionHandler<ClientC
     /// returned.
     @Override
     public Router.Response<?> handle(Router.Request request) {
-        if (!"PATCH".equals(request.method())) {
+        if (!"PATCH".equals(request.method()) && !"PUT".equals(request.method())) {
             return super.handle(request);
         }
         GatewayConfig base = repository.getActiveConfigOrEmpty();
         String name = request.pathParams().get("name");
         ClientConfig current = entries(base).get(name);
-        if (current == null) {
-            return Router.Response.notFound("client '" + name + "' not found");
-        }
-        ClientConfigPatch patch;
+        boolean patchRequest = "PATCH".equals(request.method());
+        ClientConfigRequest body;
         try {
-            patch = mapper.readValue(request.body(), ClientConfigPatch.class);
+            body = patchRequest
+                    ? mapper.readValue(request.body(), ClientConfigPatch.class).toRequest()
+                    : mapper.readValue(request.body(), ClientConfigRequest.class);
         } catch (Exception e) {
             return Router.Response.badRequest("invalid client body: " + e.getMessage());
         }
-        if (patch.mechanism() == null && patch.password() == null) {
+        if (patchRequest && current == null) {
+            return Router.Response.notFound("client '" + name + "' not found");
+        }
+        if (patchRequest && body.mechanism() == null && body.password() == null && body.groups() == null) {
             return Router.Response.badRequest("no fields to patch");
         }
-        String mechanism = patch.mechanism() != null ? patch.mechanism() : current.mechanism();
-        String password = patch.password() != null ? patch.password() : current.password();
+        String mechanism = body.mechanism() != null || current == null
+                ? body.mechanism() : current.mechanism();
+        String password = body.password() != null || current == null
+                ? body.password() : current.password();
+        List<String> groups = patchRequest || body.groups() != null ? body.groups() : List.of();
         try {
-            updater.update(request, config -> upsert(config, name, new ClientConfig(mechanism, password)));
+            updater.update(request, config -> updateClient(
+                    config, name, new ClientConfig(mechanism, password), groups));
         } catch (IllegalArgumentException e) {
             return Router.Response.badRequest(e.getMessage());
         }
-        return Router.Response.ok(new ClientView(name, mechanism));
+        return patchRequest
+                ? Router.Response.ok(new ClientView(name, mechanism))
+                : Router.Response.ok(new ClientConfig(mechanism, password));
+    }
+
+    private GatewayConfig updateClient(
+            GatewayConfig config,
+            String name,
+            ClientConfig client,
+            List<String> groupNames
+    ) {
+        if (groupNames == null) {
+            groupNames = groupsForClient(config, name);
+        }
+        Set<String> selectedGroups = new HashSet<>(groupNames);
+        for (String groupName : selectedGroups) {
+            if (!config.rbac().groups().containsKey(groupName)) {
+                throw new IllegalArgumentException("group '" + groupName + "' not found");
+            }
+        }
+        var groups = config.rbac().groups().entrySet().stream().collect(
+                Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> {
+                            List<String> clients = entry.getValue().clients().stream()
+                                    .filter(clientName -> !clientName.equals(name))
+                                    .collect(Collectors.toCollection(ArrayList::new));
+                            if (selectedGroups.contains(entry.getKey())) {
+                                clients.add(name);
+                            }
+                            return new GroupConfig(clients, entry.getValue().roles());
+                        }));
+        return config.updateAuth(config.auth().withClient(name, client))
+                .updateRbac(new RbacConfig(config.rbac().roles(), groups));
+    }
+
+    private List<String> groupsForClient(GatewayConfig config, String name) {
+        return config.rbac().groups().entrySet().stream()
+                .filter(entry -> entry.getValue().clients().contains(name))
+                .map(Map.Entry::getKey)
+                .toList();
     }
 }

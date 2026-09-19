@@ -1,12 +1,20 @@
 package io.jonasg.kawa.http;
 
+import java.util.List;
+
 /// A partial update for a single auth client. Fields not supplied are preserved
-/// as-is; at least one of `mechanism` or `password` must be present.
+/// as-is; `groups`, when supplied, replaces the client's group memberships.
 ///
 /// @param mechanism the new SASL mechanism, or `null` to keep the current one
 /// @param password  the new password, or `null` to keep the current one
+/// @param groups    the replacement group names, or `null` to keep current memberships
 public record ClientConfigPatch(
         String mechanism,
-        String password
+        String password,
+        List<String> groups
 ) {
+
+    ClientConfigRequest toRequest() {
+        return new ClientConfigRequest(mechanism, password, groups);
+    }
 }
