@@ -112,7 +112,7 @@ public record GatewayConfig(
     }
 
     /// Returns a new [GatewayConfig] with the given virtual topic added or replaced.
-    public GatewayConfig putVirtualTopic(String topicName, VirtualTopicConfig topic) {
+    public GatewayConfig upsertVirtualTopic(String topicName, VirtualTopicConfig topic) {
         var newTopics = new HashMap<>(virtualTopics);
         newTopics.put(topicName, topic);
         return copyWith(Map.copyOf(newTopics), auth, rbac, governance);

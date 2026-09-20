@@ -28,7 +28,7 @@ final class RbacRolesCRUDHandler extends BaseCRUDHandler<RoleConfig> {
 
     @Override
     protected GatewayConfig upsert(GatewayConfig config, String name, RoleConfig value) {
-        return config.updateRbac(config.rbac().withRole(name, value));
+        return config.updateRbac(config.rbac().upsertRole(name, value));
     }
 
     @Override

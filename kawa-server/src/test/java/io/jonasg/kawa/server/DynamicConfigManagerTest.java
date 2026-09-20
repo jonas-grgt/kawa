@@ -218,7 +218,7 @@ class DynamicConfigManagerTest {
         manager.apply(applied);
 
         // when - a mutation is applied before anything has been persisted through the write side
-        manager.update(c -> c.putVirtualTopic("customers", new VirtualTopicConfig("crm.customers")));
+        manager.update(c -> c.upsertVirtualTopic("customers", new VirtualTopicConfig("crm.customers")));
 
         // then - the base is the last applied config, not an empty one
         assertThat(manager.getActiveConfig().virtualTopics())
@@ -399,7 +399,7 @@ class DynamicConfigManagerTest {
                 Duration.ofMillis(20));
 
         // when
-        manager.updateAndWaitUntilApplied(_ -> GatewayConfig.empty().putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+        manager.updateAndWaitUntilApplied(_ -> GatewayConfig.empty().upsertVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
 
         // then
         assertThat(writeRepository.getActiveConfig().virtualTopics())

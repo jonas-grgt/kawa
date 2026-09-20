@@ -36,7 +36,7 @@ final class AuthClientsCRUDHandler extends BaseCRUDHandler<ClientConfig> {
 
     @Override
     protected GatewayConfig upsert(GatewayConfig config, String name, ClientConfig value) {
-        AuthConfig auth = config.auth().withClient(name, value);
+        AuthConfig auth = config.auth().upsertClient(name, value);
         return config.updateAuth(auth);
     }
 
@@ -123,7 +123,7 @@ final class AuthClientsCRUDHandler extends BaseCRUDHandler<ClientConfig> {
                             }
                             return new GroupConfig(clients, entry.getValue().roles());
                         }));
-        return config.updateAuth(config.auth().withClient(name, client))
+        return config.updateAuth(config.auth().upsertClient(name, client))
                 .updateRbac(new RbacConfig(config.rbac().roles(), groups));
     }
 

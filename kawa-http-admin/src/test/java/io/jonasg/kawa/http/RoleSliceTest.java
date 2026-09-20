@@ -18,7 +18,7 @@ class RoleSliceTest extends AdminHttpSliceTestBase {
     void listsConfiguredRoles() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateRbac(GatewayConfig.empty().rbac().withRole("reader", new RoleConfig(null))));
+                .updateRbac(GatewayConfig.empty().rbac().upsertRole("reader", new RoleConfig(null))));
         startServer();
 
         // when
@@ -36,8 +36,8 @@ class RoleSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withRole("writer", new RoleConfig(null))
-                        .withRole("reader", new RoleConfig(null))));
+                        .upsertRole("writer", new RoleConfig(null))
+                        .upsertRole("reader", new RoleConfig(null))));
         startServer();
 
         // when
@@ -99,7 +99,7 @@ class RoleSliceTest extends AdminHttpSliceTestBase {
     void removesRoleAndPersistsSnapshot() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateRbac(GatewayConfig.empty().rbac().withRole("reader", new RoleConfig(null))));
+                .updateRbac(GatewayConfig.empty().rbac().upsertRole("reader", new RoleConfig(null))));
         startServer();
 
         // when
@@ -115,8 +115,8 @@ class RoleSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withRole("reader", new RoleConfig(null))
-                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
+                        .upsertRole("reader", new RoleConfig(null))
+                        .upsertGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
         startServer();
 
         // when

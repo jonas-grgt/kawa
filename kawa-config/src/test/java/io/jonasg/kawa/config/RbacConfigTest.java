@@ -146,19 +146,19 @@ class RbacConfigTest {
     }
 
     @Test
-    void withRoleAddsNewRole() {
+    void upsertRoleAddsNewRole() {
         // given
         var config = new RbacConfig(null, null);
 
         // when
-        var updated = config.withRole("admin", new RoleConfig(List.of()));
+        var updated = config.upsertRole("admin", new RoleConfig(List.of()));
 
         // then
         assertThat(updated.roles()).containsEntry("admin", new RoleConfig(List.of()));
     }
 
     @Test
-    void withRoleOverwritesExisting() {
+    void upsertRoleOverwritesExisting() {
         // given
         var config = new RbacConfig(Map.of("admin", new RoleConfig(List.of())), null);
         var newRole = new RoleConfig(List.of(
@@ -166,7 +166,7 @@ class RbacConfigTest {
                         AclOperation.READ, AclPermissionType.ALLOW)));
 
         // when
-        var updated = config.withRole("admin", newRole);
+        var updated = config.upsertRole("admin", newRole);
 
         // then
         assertThat(updated.roles()).containsEntry("admin", newRole);
@@ -259,25 +259,25 @@ class RbacConfigTest {
     }
 
     @Test
-    void withGroupAddsNewGroup() {
+    void upsertGroupAddsNewGroup() {
         // given
         var config = new RbacConfig(null, null);
 
         // when
-        var updated = config.withGroup("team-a", new GroupConfig(List.of("alice"), List.of("reader")));
+        var updated = config.upsertGroup("team-a", new GroupConfig(List.of("alice"), List.of("reader")));
 
         // then
         assertThat(updated.groups()).containsEntry("team-a", new GroupConfig(List.of("alice"), List.of("reader")));
     }
 
     @Test
-    void withGroupOverwritesExisting() {
+    void upsertGroupOverwritesExisting() {
         // given
         var config = new RbacConfig(null, Map.of("team-a", new GroupConfig(List.of("bob"), List.of())));
         var newGroup = new GroupConfig(List.of("alice"), List.of("admin"));
 
         // when
-        var updated = config.withGroup("team-a", newGroup);
+        var updated = config.upsertGroup("team-a", newGroup);
 
         // then
         assertThat(updated.groups()).containsEntry("team-a", newGroup);
@@ -312,14 +312,14 @@ class RbacConfigTest {
     }
 
     @Test
-    void withRolePreservesGroups() {
+    void upsertRolePreservesGroups() {
         // given
         var config = new RbacConfig(
                 Map.of("reader", new RoleConfig(List.of())),
                 Map.of("team-a", new GroupConfig(List.of("alice"), List.of("reader"))));
 
         // when
-        var updated = config.withRole("admin", new RoleConfig(List.of()));
+        var updated = config.upsertRole("admin", new RoleConfig(List.of()));
 
         // then
         assertThat(updated.roles()).hasSize(2);

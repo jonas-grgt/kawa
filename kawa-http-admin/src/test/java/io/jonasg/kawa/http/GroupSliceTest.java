@@ -17,7 +17,7 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
     void listsConfiguredGroups() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateRbac(GatewayConfig.empty().rbac().withGroup("producers", new GroupConfig(null, null))));
+                .updateRbac(GatewayConfig.empty().rbac().upsertGroup("producers", new GroupConfig(null, null))));
         startServer();
 
         // when
@@ -35,8 +35,8 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("writers", new GroupConfig(null, null))
-                        .withGroup("producers", new GroupConfig(null, null))));
+                        .upsertGroup("writers", new GroupConfig(null, null))
+                        .upsertGroup("producers", new GroupConfig(null, null))));
         startServer();
 
         // when
@@ -98,7 +98,7 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
     void removesGroupAndPersistsSnapshot() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateRbac(GatewayConfig.empty().rbac().withGroup("producers", new GroupConfig(null, null))));
+                .updateRbac(GatewayConfig.empty().rbac().upsertGroup("producers", new GroupConfig(null, null))));
         startServer();
 
         // when
@@ -114,7 +114,7 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
+                        .upsertGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
         startServer();
 
         // when
@@ -143,7 +143,7 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
+                        .upsertGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
         startServer();
 
         // when
@@ -176,8 +176,8 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))
-                        .withGroup("publishers", new GroupConfig(List.of("bob"), List.of()))));
+                        .upsertGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))
+                        .upsertGroup("publishers", new GroupConfig(List.of("bob"), List.of()))));
         startServer();
 
         // when
@@ -193,7 +193,7 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of()))));
+                        .upsertGroup("producers", new GroupConfig(List.of("alice"), List.of()))));
         startServer();
 
         // when
@@ -209,7 +209,7 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of()))));
+                        .upsertGroup("producers", new GroupConfig(List.of("alice"), List.of()))));
         startServer();
 
         // when
@@ -224,7 +224,7 @@ class GroupSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of()))));
+                        .upsertGroup("producers", new GroupConfig(List.of("alice"), List.of()))));
         startServer();
 
         // when

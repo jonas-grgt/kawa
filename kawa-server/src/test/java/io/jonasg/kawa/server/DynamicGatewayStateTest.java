@@ -32,7 +32,7 @@ class DynamicGatewayStateTest {
         // given
         var state = new DynamicGatewayState("localhost:9092", "__kawa", null);
         var config = GatewayConfig.empty()
-                .putVirtualTopic("orders", new VirtualTopicConfig("orders-physical"))
+                .upsertVirtualTopic("orders", new VirtualTopicConfig("orders-physical"))
                 .updateRbac(new RbacConfig(
                         Map.of("reader", new RoleConfig(List.of(new AclConfig(
                                 new ResourceConfig(ResourceType.TOPIC, "orders-physical"),

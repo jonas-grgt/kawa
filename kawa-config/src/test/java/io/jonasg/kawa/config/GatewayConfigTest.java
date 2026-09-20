@@ -43,26 +43,26 @@ class GatewayConfigTest {
     }
 
     @Test
-    void putVirtualTopicAddsNewEntry() {
+    void upsertVirtualTopicAddsNewEntry() {
         // given
         var config = new GatewayConfig(null, null, null, null, null, null, null, null, null);
 
         // when
-        var updated = config.putVirtualTopic("orders", new VirtualTopicConfig("raw-orders"));
+        var updated = config.upsertVirtualTopic("orders", new VirtualTopicConfig("raw-orders"));
 
         // then
         assertThat(updated.virtualTopics()).containsEntry("orders", new VirtualTopicConfig("raw-orders"));
     }
 
     @Test
-    void putVirtualTopicOverwritesExisting() {
+    void upsertVirtualTopicOverwritesExisting() {
         // given
         var config = new GatewayConfig(null, null,
                 Map.of("orders", new VirtualTopicConfig("raw-old")),
                 null, null, null, null, null, null);
 
         // when
-        var updated = config.putVirtualTopic("orders", new VirtualTopicConfig("raw-new"));
+        var updated = config.upsertVirtualTopic("orders", new VirtualTopicConfig("raw-new"));
 
         // then
         assertThat(updated.virtualTopics()).containsEntry("orders", new VirtualTopicConfig("raw-new"));
@@ -132,14 +132,14 @@ class GatewayConfigTest {
     }
 
     @Test
-    void putVirtualTopicPreservesOtherTopics() {
+    void upsertVirtualTopicPreservesOtherTopics() {
         // given
         var config = new GatewayConfig(null, null,
                 Map.of("existing", new VirtualTopicConfig("raw-existing")),
                 null, null, null, null, null, null);
 
         // when
-        var updated = config.putVirtualTopic("new-topic", new VirtualTopicConfig("raw-new"));
+        var updated = config.upsertVirtualTopic("new-topic", new VirtualTopicConfig("raw-new"));
 
         // then
         assertThat(updated.virtualTopics()).hasSize(2);

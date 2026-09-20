@@ -39,7 +39,7 @@ public final class PutTopicHandler implements Router.Handler {
         var value = new VirtualTopicConfig(
                 body.topic(), body.filter(), body.exposePhysicalTopic() != null && body.exposePhysicalTopic());
         try {
-            updater.update(request, base -> base.putVirtualTopic(name, value));
+            updater.update(request, base -> base.upsertVirtualTopic(name, value));
         } catch (IllegalArgumentException e) {
             return Router.Response.badRequest(e.getMessage());
         }

@@ -18,7 +18,7 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     void listsConfiguredClients() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret"))));
+                .updateAuth(GatewayConfig.empty().auth().upsertClient("alice", new ClientConfig("PLAIN", "secret"))));
         startServer();
 
         // when
@@ -36,8 +36,8 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateAuth(GatewayConfig.empty().auth()
-                        .withClient("bob", new ClientConfig("PLAIN", "bob-secret"))
-                        .withClient("alice", new ClientConfig("PLAIN", "alice-secret"))));
+                        .upsertClient("bob", new ClientConfig("PLAIN", "bob-secret"))
+                        .upsertClient("alice", new ClientConfig("PLAIN", "alice-secret"))));
         startServer();
 
         // when
@@ -88,8 +88,8 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of(), List.of("writer")))
-                        .withGroup("admins", new GroupConfig(List.of("bob"), List.of("admin")))));
+                        .upsertGroup("producers", new GroupConfig(List.of(), List.of("writer")))
+                        .upsertGroup("admins", new GroupConfig(List.of("bob"), List.of("admin")))));
         startServer();
 
         // when
@@ -178,7 +178,7 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     void removesClientAndPersistsSnapshot() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret"))));
+                .updateAuth(GatewayConfig.empty().auth().upsertClient("alice", new ClientConfig("PLAIN", "secret"))));
         startServer();
 
         // when
@@ -193,9 +193,9 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     void removesClientNotReferencedByAnyGroup() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret")))
+                .updateAuth(GatewayConfig.empty().auth().upsertClient("alice", new ClientConfig("PLAIN", "secret")))
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of("bob"), List.of("reader")))));
+                        .upsertGroup("producers", new GroupConfig(List.of("bob"), List.of("reader")))));
         startServer();
 
         // when
@@ -210,9 +210,9 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     void removesClientReferencedByAGroup() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret")))
+                .updateAuth(GatewayConfig.empty().auth().upsertClient("alice", new ClientConfig("PLAIN", "secret")))
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
+                        .upsertGroup("producers", new GroupConfig(List.of("alice"), List.of("reader")))));
         startServer();
 
         // when
@@ -244,7 +244,7 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     void patchChangesMechanismAndPreservesPassword() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret"))));
+                .updateAuth(GatewayConfig.empty().auth().upsertClient("alice", new ClientConfig("PLAIN", "secret"))));
         startServer();
 
         // when
@@ -260,7 +260,7 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     void patchWithAppliedConsistencyWaitsForApplyMode() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret"))));
+                .updateAuth(GatewayConfig.empty().auth().upsertClient("alice", new ClientConfig("PLAIN", "secret"))));
         startServer();
 
         // when
@@ -276,7 +276,7 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     void patchChangesPasswordAndPreservesMechanism() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret"))));
+                .updateAuth(GatewayConfig.empty().auth().upsertClient("alice", new ClientConfig("PLAIN", "secret"))));
         startServer();
 
         // when
@@ -293,10 +293,10 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateAuth(GatewayConfig.empty().auth()
-                        .withClient("alice", new ClientConfig("PLAIN", "secret")))
+                        .upsertClient("alice", new ClientConfig("PLAIN", "secret")))
                 .updateRbac(GatewayConfig.empty().rbac()
-                        .withGroup("producers", new GroupConfig(List.of("alice"), List.of("writer")))
-                        .withGroup("admins", new GroupConfig(List.of(), List.of("admin")))));
+                        .upsertGroup("producers", new GroupConfig(List.of("alice"), List.of("writer")))
+                        .upsertGroup("admins", new GroupConfig(List.of(), List.of("admin")))));
         startServer();
 
         // when
@@ -342,7 +342,7 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     void patchWithNothingToPatchIsRejected() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret"))));
+                .updateAuth(GatewayConfig.empty().auth().upsertClient("alice", new ClientConfig("PLAIN", "secret"))));
         startServer();
 
         // when
@@ -359,7 +359,7 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     void patchRejectsInvalidBody() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret"))));
+                .updateAuth(GatewayConfig.empty().auth().upsertClient("alice", new ClientConfig("PLAIN", "secret"))));
         startServer();
 
         // when

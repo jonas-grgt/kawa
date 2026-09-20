@@ -67,7 +67,7 @@ public final class PostTopicHandler implements Router.Handler {
         var config = new VirtualTopicConfig(
                 body.topic(), body.filter(), body.exposePhysicalTopic() != null && body.exposePhysicalTopic());
         try {
-            updater.update(request, base -> base.putVirtualTopic(body.name(), config));
+            updater.update(request, base -> base.upsertVirtualTopic(body.name(), config));
         } catch (IllegalArgumentException e) {
             return Router.Response.badRequest(e.getMessage());
         }

@@ -25,7 +25,7 @@ public record RbacConfig(
     }
 
     /// Returns a new [RbacConfig] with the given role added or replaced.
-    public RbacConfig withRole(String name, RoleConfig role) {
+    public RbacConfig upsertRole(String name, RoleConfig role) {
         var newRoles = new HashMap<>(roles);
         newRoles.put(name, role);
         return new RbacConfig(newRoles, groups);
@@ -50,7 +50,7 @@ public record RbacConfig(
     }
 
     /// Returns a new [RbacConfig] with the given group added or replaced.
-    public RbacConfig withGroup(String name, GroupConfig group) {
+    public RbacConfig upsertGroup(String name, GroupConfig group) {
         var newGroups = new HashMap<>(groups);
         newGroups.put(name, group);
         return new RbacConfig(roles, newGroups);

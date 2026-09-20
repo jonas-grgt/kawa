@@ -61,12 +61,12 @@ class AuthConfigTest {
     }
 
     @Test
-    void withClientAddsNewClient() {
+    void upsertClientAddsNewClient() {
         // given
         var config = new AuthConfig(Set.of("PLAIN"), Map.of(), null);
 
         // when
-        var updated = config.withClient("alice", new ClientConfig("PLAIN", "secret"));
+        var updated = config.upsertClient("alice", new ClientConfig("PLAIN", "secret"));
 
         // then
         assertThat(updated.clients()).containsKey("alice");
@@ -74,13 +74,13 @@ class AuthConfigTest {
     }
 
     @Test
-    void withClientOverwritesExisting() {
+    void upsertClientOverwritesExisting() {
         // given
         var config = new AuthConfig(Set.of("PLAIN"),
                 Map.of("alice", new ClientConfig("PLAIN", "old-secret")), null);
 
         // when
-        var updated = config.withClient("alice", new ClientConfig("PLAIN", "new-secret"));
+        var updated = config.upsertClient("alice", new ClientConfig("PLAIN", "new-secret"));
 
         // then
         assertThat(updated.clients()).hasSize(1);
@@ -116,24 +116,24 @@ class AuthConfigTest {
     }
 
     @Test
-    void withClientPreservesMechanisms() {
+    void upsertClientPreservesMechanisms() {
         // given
         var config = new AuthConfig(Set.of("PLAIN", "SCRAM-SHA-256"), Map.of(), null);
 
         // when
-        var updated = config.withClient("alice", new ClientConfig("PLAIN", "secret"));
+        var updated = config.upsertClient("alice", new ClientConfig("PLAIN", "secret"));
 
         // then
         assertThat(updated.mechanisms()).containsExactlyInAnyOrder("PLAIN", "SCRAM-SHA-256");
     }
 
     @Test
-    void withClientAddsMechanismWhenClientUsesNewOne() {
+    void upsertClientAddsMechanismWhenClientUsesNewOne() {
         // given
         var config = new AuthConfig(Set.of("PLAIN"), Map.of(), null);
 
         // when
-        var updated = config.withClient("bob", new ClientConfig("SCRAM-SHA-256", "secret"));
+        var updated = config.upsertClient("bob", new ClientConfig("SCRAM-SHA-256", "secret"));
 
         // then
         assertThat(updated.mechanisms()).containsExactlyInAnyOrder("PLAIN", "SCRAM-SHA-256");
@@ -141,36 +141,36 @@ class AuthConfigTest {
     }
 
     @Test
-    void withClientWithoutMechanismIsRejected() {
+    void upsertClientWithoutMechanismIsRejected() {
         // given
         var config = new AuthConfig(Set.of(), Map.of(), null);
 
         // when / then
-        assertThatThrownBy(() -> config.withClient("alice", new ClientConfig(null, "secret")))
+        assertThatThrownBy(() -> config.upsertClient("alice", new ClientConfig(null, "secret")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("alice")
                 .hasMessageContaining("mechanism");
     }
 
     @Test
-    void withClientWithoutMechanismIsRejectedEvenWhenMechanismsConfigured() {
+    void upsertClientWithoutMechanismIsRejectedEvenWhenMechanismsConfigured() {
         // given
         var config = new AuthConfig(Set.of("SCRAM-SHA-256", "PLAIN"), Map.of(), null);
 
         // when / then
-        assertThatThrownBy(() -> config.withClient("alice", new ClientConfig(null, "secret")))
+        assertThatThrownBy(() -> config.upsertClient("alice", new ClientConfig(null, "secret")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("alice")
                 .hasMessageContaining("mechanism");
     }
 
     @Test
-    void withClientRejectsNullClient() {
+    void upsertClientRejectsNullClient() {
         // given
         var config = new AuthConfig(Set.of("PLAIN"), Map.of(), null);
 
         // when / then
-        assertThatThrownBy(() -> config.withClient("alice", null))
+        assertThatThrownBy(() -> config.upsertClient("alice", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("alice");
     }
@@ -183,7 +183,7 @@ class AuthConfigTest {
                 Map.of("alice", new ClientConfig("PLAIN", "secret")), brokerAuth);
 
         // when
-        var updated = config.withClient("bob", new ClientConfig("PLAIN", "bob-secret"));
+        var updated = config.upsertClient("bob", new ClientConfig("PLAIN", "bob-secret"));
 
         // then
         assertThat(updated.brokerAuth()).isEqualTo(brokerAuth);

@@ -39,12 +39,12 @@ class GovernanceConfigTest {
     }
 
     @Test
-    void withRuleAddsNewRule() {
+    void upsertRuleAddsNewRule() {
         // given
         var config = new GovernanceConfig(null, null);
 
         // when
-        var updated = config.withRule("min-partitions",
+        var updated = config.upsertRule("min-partitions",
                 new GovernanceRuleConfig("must have partitions", "topic.partitions >= 1"));
 
         // then
@@ -53,14 +53,14 @@ class GovernanceConfigTest {
     }
 
     @Test
-    void withRuleOverwritesExisting() {
+    void upsertRuleOverwritesExisting() {
         // given
         var config = new GovernanceConfig(Map.of("min-partitions",
                 new GovernanceRuleConfig("old", "true")), null);
         var newRule = new GovernanceRuleConfig("must have partitions", "topic.partitions >= 1");
 
         // when
-        var updated = config.withRule("min-partitions", newRule);
+        var updated = config.upsertRule("min-partitions", newRule);
 
         // then
         assertThat(updated.topicRules()).containsEntry("min-partitions", newRule);
@@ -96,12 +96,12 @@ class GovernanceConfigTest {
     }
 
     @Test
-    void withExemptionAddsNewExemption() {
+    void upsertExemptionAddsNewExemption() {
         // given
         var config = new GovernanceConfig(null, null);
 
         // when
-        var updated = config.withExemption("streams-internal",
+        var updated = config.upsertExemption("streams-internal",
                 new GovernanceExemptionConfig("^streams-.*", ".*-changelog$"));
 
         // then
@@ -110,14 +110,14 @@ class GovernanceConfigTest {
     }
 
     @Test
-    void withExemptionOverwritesExisting() {
+    void upsertExemptionOverwritesExisting() {
         // given
         var config = new GovernanceConfig(null, Map.of("streams-internal",
                 new GovernanceExemptionConfig("^old-.*", ".*")));
         var newExemption = new GovernanceExemptionConfig("^streams-.*", ".*-changelog$");
 
         // when
-        var updated = config.withExemption("streams-internal", newExemption);
+        var updated = config.upsertExemption("streams-internal", newExemption);
 
         // then
         assertThat(updated.exemptions()).containsEntry("streams-internal", newExemption);
@@ -153,14 +153,14 @@ class GovernanceConfigTest {
     }
 
     @Test
-    void withRulePreservesExemptions() {
+    void upsertRulePreservesExemptions() {
         // given
         var config = new GovernanceConfig(
                 Map.of("min-partitions", new GovernanceRuleConfig("must have partitions", "topic.partitions >= 1")),
                 Map.of("streams-internal", new GovernanceExemptionConfig("^streams-.*", ".*-changelog$")));
 
         // when
-        var updated = config.withRule("max-partitions",
+        var updated = config.upsertRule("max-partitions",
                 new GovernanceRuleConfig("too many partitions", "topic.partitions <= 12"));
 
         // then

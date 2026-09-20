@@ -37,7 +37,7 @@ final class RbacGroupsCRUDHandler extends BaseCRUDHandler<GroupConfig> {
 
     @Override
     protected GatewayConfig upsert(GatewayConfig config, String name, GroupConfig value) {
-        return config.updateRbac(config.rbac().withGroup(name, value));
+        return config.updateRbac(config.rbac().upsertGroup(name, value));
     }
 
     @Override

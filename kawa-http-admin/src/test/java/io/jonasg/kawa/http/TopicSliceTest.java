@@ -473,7 +473,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
     void overwritesExistingVirtualTopic() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", new VirtualTopicConfig("raw-old")));
+                .upsertVirtualTopic("orders", new VirtualTopicConfig("raw-old")));
         startServer();
 
         // when
@@ -529,7 +529,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
     void patchesVirtualTopicConfiguration() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v1")));
+                .upsertVirtualTopic("orders", new VirtualTopicConfig("orders-v1")));
         startServer();
 
         // when
@@ -569,7 +569,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         // given
         var current = new VirtualTopicConfig("orders-v1", null, true);
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", current));
+                .upsertVirtualTopic("orders", current));
         startServer();
 
         // when
@@ -585,7 +585,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
     void clearsFilterWhenFilterIsNull() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v1",
+                .upsertVirtualTopic("orders", new VirtualTopicConfig("orders-v1",
                         new HeaderEqualsFilterConfig("region", "eu"), true)));
         startServer();
 
@@ -602,7 +602,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
     void clearsFilterWhenFilterIsOmitted() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v1",
+                .upsertVirtualTopic("orders", new VirtualTopicConfig("orders-v1",
                         new HeaderEqualsFilterConfig("region", "eu"), true)));
         startServer();
 
@@ -620,7 +620,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         // given
         var current = new VirtualTopicConfig("orders-v1", null, true);
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", current));
+                .upsertVirtualTopic("orders", current));
         startServer();
 
         // when
@@ -668,8 +668,8 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         var original = new VirtualTopicConfig("orders-v1");
         var existing = new VirtualTopicConfig("customers-v1");
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", original)
-                .putVirtualTopic("customers", existing));
+                .upsertVirtualTopic("orders", original)
+                .upsertVirtualTopic("customers", existing));
         startServer();
 
         // when
@@ -688,7 +688,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
         // given
         var current = new VirtualTopicConfig("orders-v1");
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", current));
+                .upsertVirtualTopic("orders", current));
         startServer();
 
         // when
@@ -720,7 +720,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
     void removesVirtualTopicConfigWithoutBrokerCall() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+                .upsertVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
         startServer();
 
         // when
@@ -738,7 +738,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
     void deletesVirtualTopicWithAppliedConsistencyWaitsForApplyMode() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+                .upsertVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
         startServer();
 
         // when
@@ -754,7 +754,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
     void rejectsInvalidConsistencyForVirtualTopicDelete() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+                .upsertVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
         startServer();
 
         // when
@@ -784,7 +784,7 @@ class TopicSliceTest extends AdminHttpSliceTestBase {
     void virtualTopicWinsOverPhysicalName() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
-                .putVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
+                .upsertVirtualTopic("orders", new VirtualTopicConfig("orders-v2")));
         cache = cacheWith(topic("orders", 1, 1));
         startServer();
 

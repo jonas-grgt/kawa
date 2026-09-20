@@ -22,7 +22,7 @@ public record AuthConfig(
     /// mechanism is required. It is ensured present in the advertised [mechanisms] list
     /// (added when missing), so the first client can be added to an empty config via the
     /// admin API. The startup-only [brokerAuth] is preserved.
-    public AuthConfig withClient(String username, ClientConfig client) {
+    public AuthConfig upsertClient(String username, ClientConfig client) {
         if (client == null) {
             throw new IllegalArgumentException("client config for '" + username + "' must not be null");
         }

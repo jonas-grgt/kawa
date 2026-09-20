@@ -19,7 +19,7 @@ public record GovernanceConfig(
     }
 
     /// Returns a new [GovernanceConfig] with the given rule added or replaced.
-    public GovernanceConfig withRule(String name, GovernanceRuleConfig rule) {
+    public GovernanceConfig upsertRule(String name, GovernanceRuleConfig rule) {
         var newRules = new HashMap<>(topicRules);
         newRules.put(name, rule);
         return new GovernanceConfig(newRules, exemptions);
@@ -33,7 +33,7 @@ public record GovernanceConfig(
     }
 
     /// Returns a new [GovernanceConfig] with the given exemption added or replaced.
-    public GovernanceConfig withExemption(String name, GovernanceExemptionConfig exemption) {
+    public GovernanceConfig upsertExemption(String name, GovernanceExemptionConfig exemption) {
         var newExemptions = new HashMap<>(exemptions);
         newExemptions.put(name, exemption);
         return new GovernanceConfig(topicRules, newExemptions);
