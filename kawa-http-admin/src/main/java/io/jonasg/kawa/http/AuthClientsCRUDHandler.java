@@ -42,20 +42,12 @@ final class AuthClientsCRUDHandler extends BaseCRUDHandler<ClientConfig> {
 
     @Override
     protected GatewayConfig remove(GatewayConfig config, String name) {
-        return config.updateAuth(config.auth().removeClient(name));
-    }
-
-    @Override
-    protected Router.Response<?> validateRemove(GatewayConfig config, String name) {
-        List<String> groups = config.rbac().groups().entrySet().stream()
-                .filter(entry -> entry.getValue().clients().contains(name))
-                .map(Map.Entry::getKey)
-                .sorted()
-                .toList();
-        if (groups.isEmpty()) {
-            return null;
-        }
-        return Router.Response.conflict("client '" + name + "' is still in groups " + groups);
+        var groups = config.rbac().groups().entrySet().stream().collect(
+                Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().removeClient(name)));
+        return config.updateAuth(config.auth().removeClient(name))
+                .updateRbac(new RbacConfig(config.rbac().roles(), groups));
     }
 
     Router.Response<?> patch(Router.Request request) {

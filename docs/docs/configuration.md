@@ -494,8 +494,9 @@ Adding a client via `PUT /auth/clients/{name}` auto-expands the advertised SASL 
 mechanism, so the first client can be added to an empty config. The client's `mechanism` is required — a `PUT` without
 it is rejected with `400`.
 
-Deleting a group that still lists clients, or a client that is still referenced by a group, is rejected with `409` and a
-message naming the blocker — clear the group's clients (or remove the client from its groups) first, then delete again.
+Deleting a group that still lists clients is rejected with `409` and a message naming the group's clients — clear the
+group's clients first, then delete again. Deleting a client also removes it from every group that lists it, so a delete
+cannot leave a dangling client reference behind.
 
 Deleting a role also removes it from every group that references it: the groups and their clients are kept, but the
 role's ACLs stop applying to them. Unlike group/client deletion, this is not rejected — the reference is cleaned up as

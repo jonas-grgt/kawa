@@ -207,7 +207,7 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
     }
 
     @Test
-    void rejectsRemovalWhileClientIsInGroup() throws Exception {
+    void removesClientReferencedByAGroup() throws Exception {
         // given
         repository = new FakeGatewayConfigRepository(GatewayConfig.empty()
                 .updateAuth(GatewayConfig.empty().auth().withClient("alice", new ClientConfig("PLAIN", "secret")))
@@ -219,9 +219,13 @@ class ClientSliceTest extends AdminHttpSliceTestBase {
         var response = send("DELETE", "/auth/clients/alice", null);
 
         // then
-        assertThat(response.statusCode()).isEqualTo(409);
-        assertThat(response.body()).contains("still in groups", "producers");
-        assertThat(repository.getActiveConfig().auth().clients()).containsKey("alice");
+        assertThat(response.statusCode()).isEqualTo(204);
+        assertThat(repository.getActiveConfig().auth().clients()).isEmpty();
+
+        // and - the client is removed from the group as well
+        assertThat(repository.getActiveConfig().rbac().groups().get("producers").clients())
+                .withFailMessage(() -> "Client 'alice' was not removed from group 'producers'")
+                .doesNotContain("alice");
     }
 
     @Test

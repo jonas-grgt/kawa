@@ -33,6 +33,16 @@ before forwarding requests to a real Kafka cluster. Maven multi-module, Java 26.
   `AdminHttpServer` on an ephemeral port and assert the JSON wire format. There are no per-handler unit tests — handler
   behavior is covered over HTTP.
 
+## Test style
+
+- Test methods use `// given` / `// when` / `// then` comment blocks and AssertJ.
+- use `junit` to run tests, `assertj` for assertions, and `mockito` for mocks.
+- AssertJ assertions carry a custom fail message stating what did not happen, e.g.
+  `.withFailMessage(() -> "Client 'alice' was not removed from group 'producers'")`.
+  Prefer the lazy `Supplier<String>` form so the message is only built on failure.
+- `GatewayTestSupport` (kawa-integration-tests) is the shared lifecycle; subclasses override `authConfig()`/
+  `rbacConfig()`/`initialTopics()`.
+
 ## Modules (dependency direction)
 
 The build dependency direction is: `kawa-config` → `kawa-core` and
@@ -56,17 +66,10 @@ The build dependency direction is: `kawa-config` → `kawa-core` and
 
 ## Code style (repo-specific)
 
-- Test methods use `// given` / `// when` / `// then` comment blocks and AssertJ.
 - Javadoc is Markdown `///` (Java 23+/JEP 467). `var` for obvious right-hand types; explicit type otherwise.
 - Java source and tests use four-space indentation and no tabs. Checkstyle enforces this, along with a 160-character
   line limit, naming conventions, import hygiene, modifier order, blank-line rules, and newline-at-EOF. The
   configuration lives in `checkstyle.xml` and runs during `validate`.
-- `GatewayTestSupport` (kawa-integration-tests) is the shared lifecycle; subclasses override `authConfig()`/
-  `rbacConfig()`/`initialTopics()`.
-- Raw-socket wire tests: see `VirtualTopicsIT.RawFetchSession` (a reusable hand-rolled request reader that resolves
-  `localhost` via
-  `InetAddress.getAllByName` + try-each-address; prefer that loop over
-  `new Socket(host, port)` to avoid multi-address flakiness).
 
 ## Docs
 

@@ -12,4 +12,11 @@ public record GroupConfig(List<String> clients, List<String> roles) {
         clients = clients == null ? List.of() : List.copyOf(clients);
         roles = roles == null ? List.of() : List.copyOf(roles);
     }
+
+    public GroupConfig removeClient(String name) {
+        var withRemovedClient = this.clients.stream()
+                .filter(client -> !client.equals(name))
+                .toList();
+        return new GroupConfig(withRemovedClient, this.roles);
+    }
 }
